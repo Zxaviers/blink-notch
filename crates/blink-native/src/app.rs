@@ -99,6 +99,10 @@ impl App {
         std::mem::take(&mut self.effects)
     }
 
+    pub fn translator(&self) -> Translator {
+        Translator::new(self.lang)
+    }
+
     pub fn now(&self) -> u64 {
         self.clock.now_ms()
     }
@@ -115,6 +119,7 @@ impl App {
         cfg.hover_delay_ms = settings.hover_delay_ms as u64;
         self.shell.set_config(cfg);
         self.settings = settings;
+        self.update_rest_style();
     }
 
     pub fn set_reduced_motion(&mut self, on: bool) {
@@ -170,6 +175,8 @@ impl App {
         if self.shell.mode() == Mode::Open {
             self.refresh_panel_height();
         }
+        // Marking something done can change what the resting pill shows.
+        self.update_rest_style();
     }
 
     // ---------------------------------------------------------------- input

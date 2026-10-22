@@ -7,5 +7,7 @@
 pub mod app;
 pub mod clock;
 pub mod modules;
+#[cfg(windows)]
+pub mod platform;
 pub mod shell;
 pub mod ui;

@@ -248,3 +248,14 @@ fn shell_modes_are_reachable_through_the_public_api() {
     let app = app();
     assert_eq!(app.shell().mode(), Mode::Rest);
 }
+#[test]
+fn changing_the_resting_style_takes_effect_without_waiting_for_a_timer() {
+    let mut app = common::app();
+    common::settle(&mut app);
+    assert_eq!(app.shell().rest_style(), blink_native::shell::RestStyle::Full);
+    let settings = blink_core::settings::normalize_settings(Some(&serde_json::json!({ "restingStyle": "hover" })));
+    app.apply_settings(settings, "en");
+    // No tick in between: the shell must already be heading for the hot strip.
+    assert_eq!(app.shell().rest_style(), blink_native::shell::RestStyle::Hot);
+    assert!(app.wants_frames(), "the shrink animation must be asked for right away");
+}
