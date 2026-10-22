@@ -1,0 +1,148 @@
+//! The module interface. The notch is a host: it owns the window, layout,
+//! animation and which module is on top; a module owns one kind of content
+//! (deadlines first; a timer, media, system peeks later).
+
+pub mod deadlines;
+
+use blink_core::i18n::Translator;
+use jiff::tz::TimeZone;
+
+use crate::ui::canvas::Canvas;
+use crate::ui::text::Fonts;
+use crate::ui::theme::Theme;
+
+/// Everything a module needs to know about "now" and the user's settings.
+pub struct Env<'a> {
+    /// Monotonic app time in ms (animation, hover timing).
+    pub now_ms: u64,
+    /// Unix ms: what deadlines are compared against.
+    pub wall_ms: i64,
+    pub tz: &'a TimeZone,
+    pub t: Translator,
+}
+
+/// Canvas plus fonts, passed together to drawing code.
+pub struct Kit<'a> {
+    pub canvas: &'a mut Canvas,
+    pub fonts: &'a mut Fonts,
+}
+
+/// What the resting pill shows.
+#[derive(Clone, Debug, PartialEq)]
+pub struct RestView {
+    pub label: String,
+    pub count: String,
+    /// "later", "soon" or "overdue" (colors the count; the text carries the meaning too).
+    pub urgency: &'static str,
+}
+
+/// A short automatic expansion about one item.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PeekView {
+    pub code: String,
+    pub title: String,
+    pub count: String,
+    pub urgency: &'static str,
+}
+
+/// Something a click or a key asks for.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Action {
+    OpenUrl(String),
+    MarkDone(String),
+    Restore(String),
+    ToggleSnooze(String),
+    Snooze(String, &'static str),
+    ToggleDone,
+    Refresh,
+    OpenSettings,
+}
+
+/// What the host must do for a module.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Effect {
+    OpenUrl(String),
+    OpenSettings,
+    RefreshFeeds,
+    /// The panel's content changed size or data; redraw.
+    Redraw,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum PointerKind {
+    Move,
+    Leave,
+    Down,
+    Wheel(f32),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Key {
+    Up,
+    Down,
+    Home,
+    End,
+    Enter,
+    Space,
+    Escape,
+    Char(char),
+}
+
+/// How a module answered a key press.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct KeyResult {
+    pub handled: bool,
+    /// Escape with nothing left to dismiss inside the module: close the notch.
+    pub close: bool,
+    pub effects: Vec<Effect>,
+}
+
+/// The visible part of the panel for one frame.
+pub struct PanelFrame<'a> {
+    pub theme: &'a Theme,
+    /// Fades the contents in and out with the notch.
+    pub alpha: f32,
+    /// Visible height of the notch in logical px (the viewport).
+    pub viewport_h: f32,
+    /// Left edge of the panel in window coordinates (logical px).
+    pub origin_x: f32,
+    pub keyboard: bool,
+}
+
+pub trait Module {
+    fn id(&self) -> &'static str;
+
+    /// For tests and tools that need the concrete module.
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
+
+    /// The resting pill form for the user's setting and this module's data.
+    fn rest_style(&mut self, env: &Env, resting_style: &str, due_horizon_hours: f64) -> crate::shell::RestStyle;
+
+    /// A snapshot of internal state for the control pipe and tests.
+    fn debug(&self) -> serde_json::Value {
+        serde_json::Value::Null
+    }
+
+    /// Resting pill content.
+    fn rest(&mut self, env: &Env) -> RestView;
+
+    /// Content for a peek, if the module wants one right now.
+    fn peek(&mut self, env: &Env) -> Option<PeekView>;
+
+    /// Natural height of the open panel (all content plus footer), in logical px.
+    fn panel_height(&mut self, env: &Env, kit: &mut Kit) -> f32;
+
+    /// Draw the panel and record where things can be clicked.
+    fn draw_panel(&mut self, env: &Env, kit: &mut Kit, frame: &PanelFrame);
+
+    /// A pointer event in window coordinates (logical px).
+    fn pointer(&mut self, kind: PointerKind, x: f32, y: f32, env: &Env) -> Vec<Effect>;
+
+    fn key(&mut self, key: Key, env: &Env) -> KeyResult;
+
+    /// Keyboard mode started or ended.
+    fn keyboard_mode(&mut self, on: bool, env: &Env);
+
+    /// When this module next needs to run without any input (countdown ticks).
+    fn next_wake(&mut self, env: &Env, panel_open: bool) -> Option<u64>;
+}

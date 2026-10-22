@@ -1,0 +1,11 @@
+//! Blink native notch.
+//!
+//! Pure pieces (clock, shell state machine, drawing kit, modules, the app) live
+//! here and are unit tested without Windows; the window, tray and other Windows
+//! glue is in `platform` and the `blink` binary.
+
+pub mod app;
+pub mod clock;
+pub mod modules;
+pub mod shell;
+pub mod ui;

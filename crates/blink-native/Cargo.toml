@@ -1,0 +1,43 @@
+[package]
+name = "blink-native"
+description = "Blink: the always-running native notch (no web engine)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "blink_native"
+path = "src/lib.rs"
+
+[[bin]]
+name = "blink"
+path = "src/main.rs"
+
+[dependencies]
+blink-core = { path = "../blink-core" }
+tiny-skia = "0.11"
+ttf-parser = "0.25"
+memmap2 = "0.9"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+jiff = { version = "0.2", default-features = false, features = ["std", "tz-system", "tzdb-bundle-platform", "tzdb-concatenated"] }
+
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.62"
+features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Dwm",
+  "Win32_Graphics_Gdi",
+  "Win32_Security",
+  "Win32_Security_Authorization",
+  "Win32_Storage_FileSystem",
+  "Win32_System_IO",
+  "Win32_System_LibraryLoader",
+  "Win32_System_Pipes",
+  "Win32_System_Registry",
+  "Win32_System_Threading",
+  "Win32_UI_HiDpi",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+]
