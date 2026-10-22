@@ -1662,5 +1662,6191 @@
    "onboarded": false,
    "feeds": []
   }
+ },
+ {
+  "value": [
+   {
+    "id": "a::1",
+    "uid": "a",
+    "title": "A",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-22T13:00:00.000Z",
+    "dueMs": 1792674000000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "moodle",
+    "feedKind": "moodle"
+   },
+   {
+    "id": "b::2",
+    "uid": "b",
+    "title": "B",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-22T14:00:00.000Z",
+    "dueMs": 1792677600000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "g1",
+    "feedKind": "google"
+   },
+   {
+    "id": "c::3",
+    "uid": "c",
+    "title": "C",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-22T15:00:00.000Z",
+    "dueMs": 1792681200000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "moodle",
+    "feedKind": "moodle"
+   }
+  ]
+ },
+ {
+  "value": [
+   {
+    "id": "x::1",
+    "uid": "x",
+    "title": "Same",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-22T13:00:00.000Z",
+    "dueMs": 1792674000000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "moodle",
+    "feedKind": "moodle"
+   }
+  ]
+ },
+ {
+  "value": [
+   {
+    "id": "c::3",
+    "uid": "c",
+    "title": "Tugas",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-23T12:00:00.000Z",
+    "dueMs": 1792756800000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "f",
+    "feedKind": "ics"
+   }
+  ]
+ },
+ {
+  "value": [
+   {
+    "id": "a::1",
+    "uid": "a",
+    "title": "Kuis Bab 4",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-23T12:00:00.000Z",
+    "dueMs": 1792756800000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "f",
+    "feedKind": "ics"
+   },
+   {
+    "id": "c::3",
+    "uid": "c",
+    "title": "Kuis Bab 4",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-24T12:00:00.000Z",
+    "dueMs": 1792843200000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "f",
+    "feedKind": "ics"
+   }
+  ]
+ },
+ {
+  "value": [
+   {
+    "id": "a::1",
+    "uid": "a",
+    "title": "Kuis",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-23T12:00:00.000Z",
+    "dueMs": 1792756800000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "f1",
+    "feedKind": "ics"
+   },
+   {
+    "id": "b::2",
+    "uid": "b",
+    "title": "Kuis",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-23T12:00:00.000Z",
+    "dueMs": 1792756800000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "f2",
+    "feedKind": "ics"
+   }
+  ]
+ },
+ {
+  "value": [
+   {
+    "id": "a::1",
+    "uid": "a",
+    "title": "A",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-22T12:00:00.000Z",
+    "dueMs": 1792670400000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "f",
+    "feedKind": "ics"
+   }
+  ]
+ },
+ {
+  "value": [
+   {
+    "id": "a::1",
+    "uid": "a",
+    "title": "A",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-22T12:00:00.000Z",
+    "dueMs": 1792670400000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "f",
+    "feedKind": "ics"
+   }
+  ]
+ },
+ {
+  "value": []
+ },
+ {
+  "value": []
+ },
+ {
+  "value": [
+   {
+    "id": "w::7",
+    "uid": "w",
+    "title": "Gamma",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-21T12:00:00.000Z",
+    "dueMs": 1792584000000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "f",
+    "feedKind": "ics"
+   },
+   {
+    "id": "y::8",
+    "uid": "y",
+    "title": "Alpha",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-22T12:00:00.000Z",
+    "dueMs": 1792670400000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "f",
+    "feedKind": "ics"
+   },
+   {
+    "id": "z::9",
+    "uid": "z",
+    "title": "Beta",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-22T12:00:00.000Z",
+    "dueMs": 1792670400000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "f",
+    "feedKind": "ics"
+   }
+  ]
+ },
+ {
+  "value": [
+   false,
+   null,
+   true,
+   {
+    "a::1": "2026-01-01T00:00:00.000Z"
+   },
+   {
+    "id": "a::1",
+    "type": "mark"
+   }
+  ]
+ },
+ {
+  "value": [
+   null,
+   null,
+   {
+    "a::1": "2026-01-01T00:00:00.000Z"
+   }
+  ]
+ },
+ {
+  "value": [
+   [
+    {
+     "id": "b::2",
+     "uid": "b",
+     "title": "B",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-24T12:00:00.000Z",
+     "dueMs": 1792843200000,
+     "allDay": false,
+     "description": "",
+     "url": null
+    },
+    {
+     "id": "c::3",
+     "uid": "c",
+     "title": "C",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-21T12:00:00.000Z",
+     "dueMs": 1792584000000,
+     "allDay": false,
+     "description": "",
+     "url": null
+    }
+   ],
+   [
+    {
+     "id": "a::1",
+     "uid": "a",
+     "title": "A",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-23T12:00:00.000Z",
+     "dueMs": 1792756800000,
+     "allDay": false,
+     "description": "",
+     "url": null
+    }
+   ],
+   null,
+   [
+    {
+     "id": "a::1",
+     "uid": "a",
+     "title": "A",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-23T12:00:00.000Z",
+     "dueMs": 1792756800000,
+     "allDay": false,
+     "description": "",
+     "url": null
+    },
+    {
+     "id": "b::2",
+     "uid": "b",
+     "title": "B",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-24T12:00:00.000Z",
+     "dueMs": 1792843200000,
+     "allDay": false,
+     "description": "",
+     "url": null
+    },
+    {
+     "id": "c::3",
+     "uid": "c",
+     "title": "C",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-21T12:00:00.000Z",
+     "dueMs": 1792584000000,
+     "allDay": false,
+     "description": "",
+     "url": null
+    }
+   ],
+   {
+    "id": "a::1",
+    "type": "unmark"
+   },
+   null,
+   {}
+  ]
+ },
+ {
+  "value": [
+   null,
+   null,
+   {},
+   null,
+   null,
+   {}
+  ]
+ },
+ {
+  "value": [
+   null,
+   {
+    "id": "a::1",
+    "type": "unmark"
+   }
+  ]
+ },
+ {
+  "value": [
+   {
+    "live::5": "i",
+    "gone-recent::1792666800000": "i",
+    "multi::1792666800000::x": "i"
+   },
+   {
+    "live::5": "i",
+    "gone-recent::1792666800000": "i",
+    "multi::1792666800000::x": "i"
+   }
+  ]
+ },
+ {
+  "value": [
+   {
+    "edge::1792411200000": "i"
+   }
+  ]
+ },
+ {
+  "value": {
+   "ok": true,
+   "event": {
+    "id": "local-ID",
+    "title": "Rapat",
+    "dueMs": 1792814340000,
+    "allDay": true
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "event": {
+    "id": "local-ID",
+    "title": "Rapat",
+    "dueMs": 1792814340000,
+    "allDay": true
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "event": {
+    "id": "local-ID",
+    "title": "Rapat",
+    "dueMs": 1792760400000,
+    "allDay": false
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "event": {
+    "id": "local-ID",
+    "title": "Rapat",
+    "dueMs": 1792728000000,
+    "allDay": false
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "event": {
+    "id": "local-ID",
+    "title": "Rapat",
+    "dueMs": 1792814400000,
+    "allDay": false
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "TITLE_REQUIRED"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "TITLE_REQUIRED"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "TITLE_REQUIRED"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_REQUIRED"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_REQUIRED"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_REQUIRED"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_INVALID"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_INVALID"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "TIME_INVALID"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "TIME_INVALID"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_INVALID"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_INVALID"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_INVALID"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_INVALID"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_INVALID"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_PAST"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_PAST"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_PAST"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_FAR"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_PAST"
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "event": {
+    "id": "local-ID",
+    "title": "Pas",
+    "dueMs": 1792555140000,
+    "allDay": false
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "event": {
+    "id": "local-ID",
+    "title": "Jauh",
+    "dueMs": 1802970000000,
+    "allDay": false
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_FAR"
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "event": {
+    "id": "local-ID",
+    "title": "Spring gap NY",
+    "dueMs": 1793511000000,
+    "allDay": false
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "event": {
+    "id": "local-ID",
+    "title": "Spring gap EU",
+    "dueMs": 1792906200000,
+    "allDay": false
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "event": {
+    "id": "local-ID",
+    "title": "Gap NY",
+    "dueMs": 1794123000000,
+    "allDay": false
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "event": {
+    "id": "local-ID",
+    "title": "padded",
+    "dueMs": 1792758600000,
+    "allDay": false
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "event": {
+    "id": "local-ID",
+    "title": "Emoji 😀",
+    "dueMs": 1792850400000,
+    "allDay": false
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "event": {
+    "id": "local-ID",
+    "title": "42",
+    "dueMs": 1792814340000,
+    "allDay": true
+   }
+  }
+ },
+ {
+  "value": {
+   "id": "local-x",
+   "uid": "local-x",
+   "title": "Rapat",
+   "course": "",
+   "phase": "due",
+   "due": "2026-10-23T12:00:00.000Z",
+   "dueMs": 1792756800000,
+   "allDay": false,
+   "description": "",
+   "url": null,
+   "source": "local"
+  }
+ },
+ {
+  "value": {
+   "id": "local-y",
+   "uid": "local-y",
+   "title": "Sehari",
+   "course": "",
+   "phase": "due",
+   "due": "2026-10-23T12:00:00.000Z",
+   "dueMs": 1792756800000,
+   "allDay": true,
+   "description": "",
+   "url": null,
+   "source": "local"
+  }
+ },
+ {
+  "value": [
+   {
+    "id": "local-x",
+    "uid": "local-x",
+    "title": "Rapat",
+    "course": "",
+    "phase": "due",
+    "due": "2026-10-23T12:00:00.000Z",
+    "dueMs": 1792756800000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "source": "local"
+   },
+   {
+    "id": "f1",
+    "uid": "f1",
+    "title": "Tugas",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-24T12:00:00.000Z",
+    "dueMs": 1792843200000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "value": []
+ },
+ {
+  "value": [
+   {
+    "id": "local-old",
+    "uid": "local-old",
+    "title": "Basi",
+    "course": "",
+    "phase": "due",
+    "due": "2026-10-18T12:00:00.000Z",
+    "dueMs": 1792324800000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "source": "local"
+   }
+  ]
+ },
+ {
+  "value": [
+   {
+    "id": "same",
+    "uid": "same",
+    "title": "Tugas",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-23T12:00:00.000Z",
+    "dueMs": 1792756800000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "value": [
+   {
+    "id": "l1",
+    "uid": "l1",
+    "title": "A",
+    "course": "",
+    "phase": "due",
+    "due": "2026-10-23T12:00:00.000Z",
+    "dueMs": 1792756800000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "source": "local"
+   },
+   {
+    "id": "f1",
+    "uid": "f1",
+    "title": "B",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-23T12:00:00.000Z",
+    "dueMs": 1792756800000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   },
+   {
+    "id": "l2",
+    "uid": "l2",
+    "title": "C",
+    "course": "",
+    "phase": "due",
+    "due": "2026-10-23T12:00:00.000Z",
+    "dueMs": 1792756800000,
+    "allDay": true,
+    "description": "",
+    "url": null,
+    "source": "local"
+   }
+  ]
+ },
+ {
+  "value": []
+ },
+ {
+  "value": []
+ },
+ {
+  "value": []
+ },
+ {
+  "value": [
+   {
+    "taskId": "a",
+    "thresholdHours": 24,
+    "crossed": [
+     24
+    ],
+    "remainingMs": 82800000
+   }
+  ]
+ },
+ {
+  "value": []
+ },
+ {
+  "value": [
+   {
+    "taskId": "a",
+    "thresholdHours": 6,
+    "crossed": [
+     6
+    ],
+    "remainingMs": 19800000
+   }
+  ]
+ },
+ {
+  "value": [
+   {
+    "taskId": "a",
+    "thresholdHours": 1,
+    "crossed": [
+     24,
+     6,
+     1
+    ],
+    "remainingMs": 1800000
+   }
+  ]
+ },
+ {
+  "value": []
+ },
+ {
+  "value": []
+ },
+ {
+  "value": [
+   {
+    "taskId": "near",
+    "thresholdHours": 6,
+    "crossed": [
+     24,
+     6
+    ],
+    "remainingMs": 7200000
+   },
+   {
+    "taskId": "mid",
+    "thresholdHours": 6,
+    "crossed": [
+     24,
+     6
+    ],
+    "remainingMs": 18000000
+   },
+   {
+    "taskId": "far",
+    "thresholdHours": 24,
+    "crossed": [
+     24
+    ],
+    "remainingMs": 72000000
+   }
+  ]
+ },
+ {
+  "value": []
+ },
+ {
+  "value": [
+   {
+    "taskId": "a",
+    "thresholdHours": 24,
+    "crossed": [
+     24
+    ],
+    "remainingMs": 3600000
+   }
+  ]
+ },
+ {
+  "value": []
+ },
+ {
+  "value": [
+   {
+    "taskId": "a",
+    "thresholdHours": 6,
+    "crossed": [
+     24,
+     6
+    ],
+    "remainingMs": 10800000
+   }
+  ]
+ },
+ {
+  "value": [
+   {
+    "taskId": "a",
+    "thresholdHours": 6,
+    "crossed": [
+     24,
+     6
+    ],
+    "remainingMs": 18000000
+   }
+  ]
+ },
+ {
+  "value": [
+   {
+    "taskId": "a",
+    "thresholdHours": 6,
+    "crossed": [
+     24,
+     6
+    ],
+    "remainingMs": 18000000
+   }
+  ]
+ },
+ {
+  "value": [
+   {
+    "taskId": "a",
+    "thresholdHours": 12,
+    "crossed": [
+     12
+    ],
+    "remainingMs": 36000000
+   },
+   {
+    "taskId": "b",
+    "thresholdHours": 12,
+    "crossed": [
+     12
+    ],
+    "remainingMs": 36000000
+   }
+  ]
+ },
+ {
+  "value": []
+ },
+ {
+  "value": []
+ },
+ {
+  "value": [
+   {
+    "taskId": "a",
+    "thresholdHours": 1,
+    "crossed": [
+     24,
+     6,
+     1
+    ],
+    "remainingMs": 3600000
+   }
+  ]
+ },
+ {
+  "value": {
+   "a": [
+    24,
+    6,
+    1
+   ]
+  }
+ },
+ {
+  "value": {
+   "a": [
+    24,
+    6
+   ]
+  }
+ },
+ {
+  "value": {
+   "a": [
+    1,
+    24
+   ],
+   "b": [
+    6
+   ],
+   "c": [
+    6,
+    1
+   ]
+  }
+ },
+ {
+  "value": {
+   "a": [
+    3,
+    2,
+    1
+   ]
+  }
+ },
+ {
+  "value": {
+   "a": [
+    24
+   ]
+  }
+ },
+ {
+  "value": {
+   "live::5": [
+    24
+   ],
+   "recent::1792666800000": [
+    1
+   ]
+  }
+ },
+ {
+  "value": {}
+ },
+ {
+  "value": {
+   "edge::1792411200000": [
+    1
+   ]
+  }
+ },
+ {
+  "value": {
+   "individual": [
+    {
+     "taskId": "1"
+    },
+    {
+     "taskId": "2"
+    },
+    {
+     "taskId": "3"
+    }
+   ],
+   "extra": 2
+  }
+ },
+ {
+  "value": {
+   "individual": [
+    {
+     "taskId": "1"
+    },
+    {
+     "taskId": "2"
+    }
+   ],
+   "extra": 0
+  }
+ },
+ {
+  "value": {
+   "individual": [
+    {
+     "taskId": "1"
+    },
+    {
+     "taskId": "2"
+    },
+    {
+     "taskId": "3"
+    }
+   ],
+   "extra": 1
+  }
+ },
+ {
+  "value": {
+   "individual": [],
+   "extra": 0
+  }
+ },
+ {
+  "value": 1792672200000
+ },
+ {
+  "value": 1792677600000
+ },
+ {
+  "value": null
+ },
+ {
+  "value": null
+ },
+ {
+  "value": null
+ },
+ {
+  "value": 1792756800000
+ },
+ {
+  "value": 1772971200000
+ },
+ {
+  "value": 1772971200000
+ },
+ {
+  "value": 1774785600000
+ },
+ {
+  "value": 1793538000000
+ },
+ {
+  "value": 1792929600000
+ },
+ {
+  "value": 1775390400000
+ },
+ {
+  "value": 1791115200000
+ },
+ {
+  "value": 1798808400000
+ },
+ {
+  "value": 1772370000000
+ },
+ {
+  "value": true
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": {
+   "snoozed": {
+    "live": 1792674000000
+   },
+   "fired": {
+    "live": [
+     24
+    ],
+    "other": [
+     1
+    ]
+   },
+   "changed": true
+  }
+ },
+ {
+  "value": {
+   "snoozed": {
+    "live": 1792674000000
+   },
+   "fired": {
+    "live": [
+     24
+    ]
+   },
+   "changed": false
+  }
+ },
+ {
+  "value": {
+   "snoozed": {},
+   "fired": {
+    "a": [
+     1
+    ]
+   },
+   "changed": false
+  }
+ },
+ {
+  "value": {
+   "snoozed": {},
+   "fired": {},
+   "changed": false
+  }
+ },
+ {
+  "value": {
+   "snoozed": {},
+   "fired": {
+    "keep": [
+     3
+    ]
+   },
+   "changed": true
+  }
+ },
+ {
+  "value": {
+   "upcoming": [
+    {
+     "id": "a::1",
+     "uid": "a",
+     "title": "a",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-22T14:00:00.000Z",
+     "dueMs": 1792677600000,
+     "allDay": false,
+     "description": "",
+     "url": null,
+     "feedId": "f",
+     "feedKind": "ics"
+    },
+    {
+     "id": "b::2",
+     "uid": "b",
+     "title": "b",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-22T22:00:00.000Z",
+     "dueMs": 1792706400000,
+     "allDay": false,
+     "description": "",
+     "url": null,
+     "feedId": "f",
+     "feedKind": "ics"
+    }
+   ],
+   "overdue": [
+    {
+     "id": "y::4",
+     "uid": "y",
+     "title": "y",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-22T11:00:00.000Z",
+     "dueMs": 1792666800000,
+     "allDay": false,
+     "description": "",
+     "url": null,
+     "feedId": "f",
+     "feedKind": "ics"
+    },
+    {
+     "id": "x::3",
+     "uid": "x",
+     "title": "x",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-22T07:00:00.000Z",
+     "dueMs": 1792652400000,
+     "allDay": false,
+     "description": "",
+     "url": null,
+     "feedId": "f",
+     "feedKind": "ics"
+    }
+   ],
+   "doneList": [],
+   "hero": {
+    "id": "a::1",
+    "uid": "a",
+    "title": "a",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-22T14:00:00.000Z",
+    "dueMs": 1792677600000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "f",
+    "feedKind": "ics"
+   }
+  }
+ },
+ {
+  "value": {
+   "upcoming": [],
+   "overdue": [
+    {
+     "id": "late::5",
+     "uid": "late",
+     "title": "late",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-22T10:00:00.000Z",
+     "dueMs": 1792663200000,
+     "allDay": false,
+     "description": "",
+     "url": null,
+     "feedId": "f",
+     "feedKind": "ics"
+    }
+   ],
+   "doneList": [],
+   "hero": {
+    "id": "late::5",
+    "uid": "late",
+    "title": "late",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-22T10:00:00.000Z",
+    "dueMs": 1792663200000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "f",
+    "feedKind": "ics"
+   }
+  }
+ },
+ {
+  "value": {
+   "upcoming": [],
+   "overdue": [],
+   "doneList": [],
+   "hero": null
+  }
+ },
+ {
+  "value": {
+   "upcoming": [
+    {
+     "id": "b::2",
+     "uid": "b",
+     "title": "b",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-22T15:00:00.000Z",
+     "dueMs": 1792681200000,
+     "allDay": false,
+     "description": "",
+     "url": null,
+     "feedId": "f",
+     "feedKind": "ics"
+    }
+   ],
+   "overdue": [],
+   "doneList": [
+    {
+     "id": "a::1",
+     "uid": "a",
+     "title": "a",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-22T14:00:00.000Z",
+     "dueMs": 1792677600000,
+     "allDay": false,
+     "description": "",
+     "url": null,
+     "feedId": "f",
+     "feedKind": "ics"
+    }
+   ],
+   "hero": {
+    "id": "b::2",
+    "uid": "b",
+    "title": "b",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-22T15:00:00.000Z",
+    "dueMs": 1792681200000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "f",
+    "feedKind": "ics"
+   }
+  }
+ },
+ {
+  "value": {
+   "upcoming": [],
+   "overdue": [
+    {
+     "id": "recent::2",
+     "uid": "recent",
+     "title": "recent",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-20T12:00:00.000Z",
+     "dueMs": 1792497600000,
+     "allDay": false,
+     "description": "",
+     "url": null,
+     "feedId": "f",
+     "feedKind": "ics"
+    }
+   ],
+   "doneList": [],
+   "hero": {
+    "id": "recent::2",
+    "uid": "recent",
+    "title": "recent",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-20T12:00:00.000Z",
+    "dueMs": 1792497600000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "f",
+    "feedKind": "ics"
+   }
+  }
+ },
+ {
+  "value": {
+   "upcoming": [
+    {
+     "id": "local-1",
+     "uid": "local-1",
+     "title": "Rapat",
+     "course": "",
+     "phase": "due",
+     "due": "2026-10-22T13:00:00.000Z",
+     "dueMs": 1792674000000,
+     "allDay": false,
+     "description": "",
+     "url": null,
+     "source": "local"
+    },
+    {
+     "id": "a::1",
+     "uid": "a",
+     "title": "a",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-22T17:00:00.000Z",
+     "dueMs": 1792688400000,
+     "allDay": false,
+     "description": "",
+     "url": null,
+     "feedId": "f",
+     "feedKind": "ics"
+    }
+   ],
+   "overdue": [],
+   "doneList": [],
+   "hero": {
+    "id": "local-1",
+    "uid": "local-1",
+    "title": "Rapat",
+    "course": "",
+    "phase": "due",
+    "due": "2026-10-22T13:00:00.000Z",
+    "dueMs": 1792674000000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "source": "local"
+   }
+  }
+ },
+ {
+  "value": {
+   "upcoming": [],
+   "overdue": [
+    {
+     "id": "old::1",
+     "uid": "old",
+     "title": "old",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-17T12:00:00.000Z",
+     "dueMs": 1792238400000,
+     "allDay": false,
+     "description": "",
+     "url": null,
+     "feedId": "f",
+     "feedKind": "ics"
+    }
+   ],
+   "doneList": [],
+   "hero": {
+    "id": "old::1",
+    "uid": "old",
+    "title": "old",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-17T12:00:00.000Z",
+    "dueMs": 1792238400000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "f",
+    "feedKind": "ics"
+   }
+  }
+ },
+ {
+  "value": {
+   "upcoming": [],
+   "overdue": [
+    {
+     "id": "t3::3",
+     "uid": "t3",
+     "title": "later",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-22T11:00:00.000Z",
+     "dueMs": 1792666800000,
+     "allDay": false,
+     "description": "",
+     "url": null,
+     "feedId": "f",
+     "feedKind": "ics"
+    },
+    {
+     "id": "t1::1",
+     "uid": "t1",
+     "title": "same",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-22T10:00:00.000Z",
+     "dueMs": 1792663200000,
+     "allDay": false,
+     "description": "",
+     "url": null,
+     "feedId": "f",
+     "feedKind": "ics"
+    },
+    {
+     "id": "t2::2",
+     "uid": "t2",
+     "title": "same2",
+     "course": null,
+     "phase": "due",
+     "due": "2026-10-22T10:00:00.000Z",
+     "dueMs": 1792663200000,
+     "allDay": false,
+     "description": "",
+     "url": null,
+     "feedId": "f",
+     "feedKind": "ics"
+    }
+   ],
+   "doneList": [],
+   "hero": {
+    "id": "t3::3",
+    "uid": "t3",
+    "title": "later",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-22T11:00:00.000Z",
+    "dueMs": 1792666800000,
+    "allDay": false,
+    "description": "",
+    "url": null,
+    "feedId": "f",
+    "feedKind": "ics"
+   }
+  }
+ },
+ {
+  "value": {
+   "upcoming": [],
+   "overdue": [],
+   "doneList": [],
+   "hero": null
+  }
+ },
+ {
+  "value": "hot"
+ },
+ {
+  "value": "full"
+ },
+ {
+  "value": "full"
+ },
+ {
+  "value": "full"
+ },
+ {
+  "value": "mini"
+ },
+ {
+  "value": "mini"
+ },
+ {
+  "value": "full"
+ },
+ {
+  "value": "full"
+ },
+ {
+  "value": "mini"
+ },
+ {
+  "value": "full"
+ },
+ {
+  "value": {
+   "ok": true,
+   "event": {
+    "id": "local-ID",
+    "title": "Edge: exactly at the past limit",
+    "dueMs": 1792425600000,
+    "allDay": false
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_PAST"
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "event": {
+    "id": "local-ID",
+    "title": "Edge: exactly at the far limit",
+    "dueMs": 1803056400000,
+    "allDay": false
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_FAR"
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "event": {
+    "id": "local-ID",
+    "title": "Edge: all-day at the past limit",
+    "dueMs": 1792468740000,
+    "allDay": true
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "DATE_PAST"
+  }
+ },
+ {
+  "value": "Deadline Notch"
+ },
+ {
+  "value": "Deadline Notch"
+ },
+ {
+  "value": "d"
+ },
+ {
+  "value": "d"
+ },
+ {
+  "value": "h"
+ },
+ {
+  "value": "h"
+ },
+ {
+  "value": "m"
+ },
+ {
+  "value": "m"
+ },
+ {
+  "value": "Overdue"
+ },
+ {
+  "value": "Overdue"
+ },
+ {
+  "value": "Overdue 5h"
+ },
+ {
+  "value": "Overdue {value}"
+ },
+ {
+  "value": "Today 12:03"
+ },
+ {
+  "value": "Today {time}"
+ },
+ {
+  "value": "Tomorrow 12:03"
+ },
+ {
+  "value": "Tomorrow {time}"
+ },
+ {
+  "value": "All clear"
+ },
+ {
+  "value": "All clear"
+ },
+ {
+  "value": "Add a feed"
+ },
+ {
+  "value": "Add a feed"
+ },
+ {
+  "value": "No upcoming deadlines"
+ },
+ {
+  "value": "No upcoming deadlines"
+ },
+ {
+  "value": "Add a calendar feed to see your deadlines."
+ },
+ {
+  "value": "Add a calendar feed to see your deadlines."
+ },
+ {
+  "value": "Set up"
+ },
+ {
+  "value": "Set up"
+ },
+ {
+  "value": "Overdue"
+ },
+ {
+  "value": "Overdue"
+ },
+ {
+  "value": "Done (3)"
+ },
+ {
+  "value": "Done ({n})"
+ },
+ {
+  "value": "Mark done"
+ },
+ {
+  "value": "Mark done"
+ },
+ {
+  "value": "Open page"
+ },
+ {
+  "value": "Open page"
+ },
+ {
+  "value": "Restore"
+ },
+ {
+  "value": "Restore"
+ },
+ {
+  "value": "Personal"
+ },
+ {
+  "value": "Personal"
+ },
+ {
+  "value": "Snooze reminders"
+ },
+ {
+  "value": "Snooze reminders"
+ },
+ {
+  "value": "Snoozed until 12:03"
+ },
+ {
+  "value": "Snoozed until {time}"
+ },
+ {
+  "value": "30 min"
+ },
+ {
+  "value": "30 min"
+ },
+ {
+  "value": "2 h"
+ },
+ {
+  "value": "2 h"
+ },
+ {
+  "value": "Tomorrow"
+ },
+ {
+  "value": "Tomorrow"
+ },
+ {
+  "value": "Cancel"
+ },
+ {
+  "value": "Cancel"
+ },
+ {
+  "value": "Synced 12:03"
+ },
+ {
+  "value": "Synced {time}"
+ },
+ {
+  "value": "Offline · last synced 12:03"
+ },
+ {
+  "value": "Offline · last synced {time}"
+ },
+ {
+  "value": "Not synced yet"
+ },
+ {
+  "value": "Not synced yet"
+ },
+ {
+  "value": "Syncing…"
+ },
+ {
+  "value": "Syncing…"
+ },
+ {
+  "value": "Refresh"
+ },
+ {
+  "value": "Refresh"
+ },
+ {
+  "value": "Settings"
+ },
+ {
+  "value": "Settings"
+ },
+ {
+  "value": "Deadline approaching: Tugas 1"
+ },
+ {
+  "value": "Deadline approaching: {title}"
+ },
+ {
+  "value": "[CS101] Due in 2h 14m."
+ },
+ {
+  "value": "3 deadlines are due soon"
+ },
+ {
+  "value": "Open the notch to see them."
+ },
+ {
+  "value": "Open the notch to see them."
+ },
+ {
+  "value": "Show notch"
+ },
+ {
+  "value": "Show notch"
+ },
+ {
+  "value": "Pause notch"
+ },
+ {
+  "value": "Pause notch"
+ },
+ {
+  "value": "Refresh now"
+ },
+ {
+  "value": "Refresh now"
+ },
+ {
+  "value": "Settings"
+ },
+ {
+  "value": "Settings"
+ },
+ {
+  "value": "Quit"
+ },
+ {
+  "value": "Quit"
+ },
+ {
+  "value": "Deadline Notch settings"
+ },
+ {
+  "value": "Deadline Notch settings"
+ },
+ {
+  "value": "Calendar feeds"
+ },
+ {
+  "value": "Calendar feeds"
+ },
+ {
+  "value": "Notifications"
+ },
+ {
+  "value": "Notifications"
+ },
+ {
+  "value": "Display"
+ },
+ {
+  "value": "Display"
+ },
+ {
+  "value": "My events"
+ },
+ {
+  "value": "My events"
+ },
+ {
+  "value": "General"
+ },
+ {
+  "value": "General"
+ },
+ {
+  "value": "Calendar feeds"
+ },
+ {
+  "value": "Calendar feeds"
+ },
+ {
+  "value": "Deadlines come from calendar links you add here. Links are stored in Windows Credential Manager, never in plain files."
+ },
+ {
+  "value": "Deadlines come from calendar links you add here. Links are stored in Windows Credential Manager, never in plain files."
+ },
+ {
+  "value": "No feeds yet."
+ },
+ {
+  "value": "No feeds yet."
+ },
+ {
+  "value": "Add a feed"
+ },
+ {
+  "value": "Add a feed"
+ },
+ {
+  "value": "Source"
+ },
+ {
+  "value": "Source"
+ },
+ {
+  "value": "Moodle / BRONE"
+ },
+ {
+  "value": "Moodle / BRONE"
+ },
+ {
+  "value": "Google Calendar"
+ },
+ {
+  "value": "Google Calendar"
+ },
+ {
+  "value": "Other .ics link"
+ },
+ {
+  "value": "Other .ics link"
+ },
+ {
+  "value": "Name"
+ },
+ {
+  "value": "Name"
+ },
+ {
+  "value": "Calendar link"
+ },
+ {
+  "value": "Calendar link"
+ },
+ {
+  "value": "Link saved in Credential Manager"
+ },
+ {
+  "value": "Link saved in Credential Manager"
+ },
+ {
+  "value": "Test link"
+ },
+ {
+  "value": "Test link"
+ },
+ {
+  "value": "Testing…"
+ },
+ {
+  "value": "Testing…"
+ },
+ {
+  "value": "Save feed"
+ },
+ {
+  "value": "Save feed"
+ },
+ {
+  "value": "Remove"
+ },
+ {
+  "value": "Remove"
+ },
+ {
+  "value": "Enabled"
+ },
+ {
+  "value": "Enabled"
+ },
+ {
+  "value": "Found 3 items. Next: Quiz 3 (Sat 00:31)"
+ },
+ {
+  "value": "Test the link first."
+ },
+ {
+  "value": "Test the link first."
+ },
+ {
+  "value": "Feed saved."
+ },
+ {
+  "value": "Feed saved."
+ },
+ {
+  "value": "Remove this feed and its stored link?"
+ },
+ {
+  "value": "Remove this feed and its stored link?"
+ },
+ {
+  "value": "In Moodle/BRONE open Calendar → Export calendar → Get calendar URL, then paste that link."
+ },
+ {
+  "value": "In Moodle/BRONE open Calendar → Export calendar → Get calendar URL, then paste that link."
+ },
+ {
+  "value": "In Google Calendar open Settings → your calendar → Integrate calendar → \"Secret address in iCal format\"."
+ },
+ {
+  "value": "In Google Calendar open Settings → your calendar → Integrate calendar → \"Secret address in iCal format\"."
+ },
+ {
+  "value": "Paste any link that ends in .ics or returns an iCalendar feed."
+ },
+ {
+  "value": "Paste any link that ends in .ics or returns an iCalendar feed."
+ },
+ {
+  "value": "The feed name is not valid."
+ },
+ {
+  "value": "The feed name is not valid."
+ },
+ {
+  "value": "Unknown feed type."
+ },
+ {
+  "value": "Unknown feed type."
+ },
+ {
+  "value": "That is not a valid link."
+ },
+ {
+  "value": "That is not a valid link."
+ },
+ {
+  "value": "Paste the calendar link first."
+ },
+ {
+  "value": "Paste the calendar link first."
+ },
+ {
+  "value": "The link must start with http or https."
+ },
+ {
+  "value": "The link must start with http or https."
+ },
+ {
+  "value": "Cannot reach the server. Check your connection."
+ },
+ {
+  "value": "Cannot reach the server. Check your connection."
+ },
+ {
+  "value": "The server took too long to answer."
+ },
+ {
+  "value": "The server took too long to answer."
+ },
+ {
+  "value": "The server rejected the link. The token may have been reset; export a fresh link."
+ },
+ {
+  "value": "The server rejected the link. The token may have been reset; export a fresh link."
+ },
+ {
+  "value": "The server returned an error."
+ },
+ {
+  "value": "The server returned an error."
+ },
+ {
+  "value": "That link did not return a calendar. Check that it is the exported .ics address."
+ },
+ {
+  "value": "That link did not return a calendar. Check that it is the exported .ics address."
+ },
+ {
+  "value": "The calendar file is too large."
+ },
+ {
+  "value": "The calendar file is too large."
+ },
+ {
+  "value": "No saved link for this feed."
+ },
+ {
+  "value": "No saved link for this feed."
+ },
+ {
+  "value": "Could not save. Try again."
+ },
+ {
+  "value": "Could not save. Try again."
+ },
+ {
+  "value": "Enter a title."
+ },
+ {
+  "value": "Enter a title."
+ },
+ {
+  "value": "Pick a date."
+ },
+ {
+  "value": "Pick a date."
+ },
+ {
+  "value": "The time is not valid."
+ },
+ {
+  "value": "The time is not valid."
+ },
+ {
+  "value": "The date is not valid."
+ },
+ {
+  "value": "The date is not valid."
+ },
+ {
+  "value": "That date is already past the reminder window."
+ },
+ {
+  "value": "That date is already past the reminder window."
+ },
+ {
+  "value": "That date is too far ahead (120 days max)."
+ },
+ {
+  "value": "That date is too far ahead (120 days max)."
+ },
+ {
+  "value": "That is your dashboard page. Use Calendar → Export calendar → Get calendar URL instead."
+ },
+ {
+  "value": "That is your dashboard page. Use Calendar → Export calendar → Get calendar URL instead."
+ },
+ {
+  "value": "That is the calendar page, not its export link."
+ },
+ {
+  "value": "That is the calendar page, not its export link."
+ },
+ {
+  "value": "That is a course page, not a calendar feed."
+ },
+ {
+  "value": "That is a course page, not a calendar feed."
+ },
+ {
+  "value": "That is a single activity page, not a calendar feed."
+ },
+ {
+  "value": "That is a single activity page, not a calendar feed."
+ },
+ {
+  "value": "That is just the site home page."
+ },
+ {
+  "value": "That is just the site home page."
+ },
+ {
+  "value": "This does not look like a Moodle export link. It should contain export_execute.php and an authtoken."
+ },
+ {
+  "value": "This does not look like a Moodle export link. It should contain export_execute.php and an authtoken."
+ },
+ {
+  "value": "The authtoken is missing. Copy the whole URL from \"Get calendar URL\"."
+ },
+ {
+  "value": "The authtoken is missing. Copy the whole URL from \"Get calendar URL\"."
+ },
+ {
+  "value": "Notifications"
+ },
+ {
+  "value": "Notifications"
+ },
+ {
+  "value": "Remind me this many hours before a deadline"
+ },
+ {
+  "value": "Remind me this many hours before a deadline"
+ },
+ {
+  "value": "Reminder 3"
+ },
+ {
+  "value": "Reminder {n}"
+ },
+ {
+  "value": "Also show a Windows notification"
+ },
+ {
+  "value": "Also show a Windows notification"
+ },
+ {
+  "value": "Refresh feeds every (minutes)"
+ },
+ {
+  "value": "Refresh feeds every (minutes)"
+ },
+ {
+  "value": "Keep overdue items for (days)"
+ },
+ {
+  "value": "Keep overdue items for (days)"
+ },
+ {
+  "value": "Display"
+ },
+ {
+  "value": "Display"
+ },
+ {
+  "value": "Panel theme"
+ },
+ {
+  "value": "Panel theme"
+ },
+ {
+  "value": "Dark"
+ },
+ {
+  "value": "Dark"
+ },
+ {
+  "value": "Light"
+ },
+ {
+  "value": "Light"
+ },
+ {
+  "value": "Follow Windows"
+ },
+ {
+  "value": "Follow Windows"
+ },
+ {
+  "value": "Language"
+ },
+ {
+  "value": "Language"
+ },
+ {
+  "value": "Automatic"
+ },
+ {
+  "value": "Automatic"
+ },
+ {
+  "value": "When resting"
+ },
+ {
+  "value": "When resting"
+ },
+ {
+  "value": "Always show the pill"
+ },
+ {
+  "value": "Always show the pill"
+ },
+ {
+  "value": "Full pill only when something is due soon"
+ },
+ {
+  "value": "Full pill only when something is due soon"
+ },
+ {
+  "value": "Hidden until I hover the top edge"
+ },
+ {
+  "value": "Hidden until I hover the top edge"
+ },
+ {
+  "value": "\"Due soon\" means within (hours)"
+ },
+ {
+  "value": "\"Due soon\" means within (hours)"
+ },
+ {
+  "value": "Hover delay (ms)"
+ },
+ {
+  "value": "Hover delay (ms)"
+ },
+ {
+  "value": "Show on screen"
+ },
+ {
+  "value": "Show on screen"
+ },
+ {
+  "value": "Screen 3"
+ },
+ {
+  "value": "Screen {n}"
+ },
+ {
+  "value": "Screen 3 (primary)"
+ },
+ {
+  "value": "Screen {n} (primary)"
+ },
+ {
+  "value": "Horizontal offset (px)"
+ },
+ {
+  "value": "Horizontal offset (px)"
+ },
+ {
+  "value": "Keyboard shortcut to open the notch"
+ },
+ {
+  "value": "Keyboard shortcut to open the notch"
+ },
+ {
+  "value": "Opens the notch and moves keyboard focus into it. Use a combination with Ctrl, Alt or the Windows key."
+ },
+ {
+  "value": "Opens the notch and moves keyboard focus into it. Use a combination with Ctrl, Alt or the Windows key."
+ },
+ {
+  "value": "Change"
+ },
+ {
+  "value": "Change"
+ },
+ {
+  "value": "Press the new shortcut… (Esc to cancel)"
+ },
+ {
+  "value": "Press the new shortcut… (Esc to cancel)"
+ },
+ {
+  "value": "Off"
+ },
+ {
+  "value": "Off"
+ },
+ {
+  "value": "Turn off"
+ },
+ {
+  "value": "Turn off"
+ },
+ {
+  "value": "Reset to default"
+ },
+ {
+  "value": "Reset to default"
+ },
+ {
+  "value": "Shortcut saved."
+ },
+ {
+  "value": "Shortcut saved."
+ },
+ {
+  "value": "Include Ctrl, Alt or the Windows key."
+ },
+ {
+  "value": "Include Ctrl, Alt or the Windows key."
+ },
+ {
+  "value": "That key cannot be used."
+ },
+ {
+  "value": "That key cannot be used."
+ },
+ {
+  "value": "That shortcut is not supported."
+ },
+ {
+  "value": "That shortcut is not supported."
+ },
+ {
+  "value": "Another app already uses that shortcut."
+ },
+ {
+  "value": "Another app already uses that shortcut."
+ },
+ {
+  "value": "↑↓ select · Enter open · D done · S snooze · Esc close"
+ },
+ {
+  "value": "↑↓ select · Enter open · D done · S snooze · Esc close"
+ },
+ {
+  "value": "Snooze: 1 = 30 min · 2 = 2 h · 3 = tomorrow · Esc cancel"
+ },
+ {
+  "value": "Snooze: 1 = 30 min · 2 = 2 h · 3 = tomorrow · Esc cancel"
+ },
+ {
+  "value": "Deadlines"
+ },
+ {
+  "value": "Deadlines"
+ },
+ {
+  "value": "My events"
+ },
+ {
+  "value": "My events"
+ },
+ {
+  "value": "Deadlines that no calendar knows about. They appear in the same list."
+ },
+ {
+  "value": "Deadlines that no calendar knows about. They appear in the same list."
+ },
+ {
+  "value": "Title"
+ },
+ {
+  "value": "Title"
+ },
+ {
+  "value": "Date"
+ },
+ {
+  "value": "Date"
+ },
+ {
+  "value": "Time (optional)"
+ },
+ {
+  "value": "Time (optional)"
+ },
+ {
+  "value": "Add event"
+ },
+ {
+  "value": "Add event"
+ },
+ {
+  "value": "No personal events."
+ },
+ {
+  "value": "No personal events."
+ },
+ {
+  "value": "Delete"
+ },
+ {
+  "value": "Delete"
+ },
+ {
+  "value": "General"
+ },
+ {
+  "value": "General"
+ },
+ {
+  "value": "Start with Windows"
+ },
+ {
+  "value": "Start with Windows"
+ },
+ {
+  "value": "Version 0.1.0"
+ },
+ {
+  "value": "Version {v}"
+ },
+ {
+  "value": "No account, no analytics. The only network requests go to your own calendar links."
+ },
+ {
+  "value": "No account, no analytics. The only network requests go to your own calendar links."
+ },
+ {
+  "value": "Copy diagnostics"
+ },
+ {
+  "value": "Copy diagnostics"
+ },
+ {
+  "value": "A redacted report for bug reports: no links, names or deadlines."
+ },
+ {
+  "value": "A redacted report for bug reports: no links, names or deadlines."
+ },
+ {
+  "value": "Copied."
+ },
+ {
+  "value": "Copied."
+ },
+ {
+  "value": "Could not copy."
+ },
+ {
+  "value": "Could not copy."
+ },
+ {
+  "value": "Copy settings"
+ },
+ {
+  "value": "Copy settings"
+ },
+ {
+  "value": "Feed links are never included; add them again on the other PC."
+ },
+ {
+  "value": "Feed links are never included; add them again on the other PC."
+ },
+ {
+  "value": "Import settings"
+ },
+ {
+  "value": "Import settings"
+ },
+ {
+  "value": "Paste exported settings here"
+ },
+ {
+  "value": "Paste exported settings here"
+ },
+ {
+  "value": "Apply"
+ },
+ {
+  "value": "Apply"
+ },
+ {
+  "value": "Settings imported."
+ },
+ {
+  "value": "Settings imported."
+ },
+ {
+  "value": "That is not valid exported settings."
+ },
+ {
+  "value": "That is not valid exported settings."
+ },
+ {
+  "value": "Welcome to Deadline Notch"
+ },
+ {
+  "value": "Welcome to Deadline Notch"
+ },
+ {
+  "value": "Where do your deadlines live?"
+ },
+ {
+  "value": "Where do your deadlines live?"
+ },
+ {
+  "value": "Paste your calendar link"
+ },
+ {
+  "value": "Paste your calendar link"
+ },
+ {
+  "value": "You are set"
+ },
+ {
+  "value": "You are set"
+ },
+ {
+  "value": "Next"
+ },
+ {
+  "value": "Next"
+ },
+ {
+  "value": "Back"
+ },
+ {
+  "value": "Back"
+ },
+ {
+  "value": "Skip for now"
+ },
+ {
+  "value": "Skip for now"
+ },
+ {
+  "value": "Finish"
+ },
+ {
+  "value": "Finish"
+ },
+ {
+  "value": "Hover the top-center of your screen to see your deadlines. The tray icon has Pause, Refresh and Quit."
+ },
+ {
+  "value": "Hover the top-center of your screen to see your deadlines. The tray icon has Pause, Refresh and Quit."
+ },
+ {
+  "value": "Pick one to see the steps."
+ },
+ {
+  "value": "Pick one to see the steps."
+ },
+ {
+  "value": "Deadline Notch"
+ },
+ {
+  "value": "Deadline Notch"
+ },
+ {
+  "value": "h"
+ },
+ {
+  "value": "h"
+ },
+ {
+  "value": "j"
+ },
+ {
+  "value": "j"
+ },
+ {
+  "value": "mnt"
+ },
+ {
+  "value": "mnt"
+ },
+ {
+  "value": "Terlewat"
+ },
+ {
+  "value": "Terlewat"
+ },
+ {
+  "value": "Terlewat 5h"
+ },
+ {
+  "value": "Terlewat {value}"
+ },
+ {
+  "value": "Hari ini 12:03"
+ },
+ {
+  "value": "Hari ini {time}"
+ },
+ {
+  "value": "Besok 12:03"
+ },
+ {
+  "value": "Besok {time}"
+ },
+ {
+  "value": "Tidak ada tenggat"
+ },
+ {
+  "value": "Tidak ada tenggat"
+ },
+ {
+  "value": "Tambah feed"
+ },
+ {
+  "value": "Tambah feed"
+ },
+ {
+  "value": "Tidak ada tenggat mendatang"
+ },
+ {
+  "value": "Tidak ada tenggat mendatang"
+ },
+ {
+  "value": "Tambahkan feed kalender untuk melihat tenggat."
+ },
+ {
+  "value": "Tambahkan feed kalender untuk melihat tenggat."
+ },
+ {
+  "value": "Atur"
+ },
+ {
+  "value": "Atur"
+ },
+ {
+  "value": "Terlewat"
+ },
+ {
+  "value": "Terlewat"
+ },
+ {
+  "value": "Selesai (3)"
+ },
+ {
+  "value": "Selesai ({n})"
+ },
+ {
+  "value": "Tandai selesai"
+ },
+ {
+  "value": "Tandai selesai"
+ },
+ {
+  "value": "Buka halaman"
+ },
+ {
+  "value": "Buka halaman"
+ },
+ {
+  "value": "Pulihkan"
+ },
+ {
+  "value": "Pulihkan"
+ },
+ {
+  "value": "Pribadi"
+ },
+ {
+  "value": "Pribadi"
+ },
+ {
+  "value": "Tunda pengingat"
+ },
+ {
+  "value": "Tunda pengingat"
+ },
+ {
+  "value": "Ditunda sampai 12:03"
+ },
+ {
+  "value": "Ditunda sampai {time}"
+ },
+ {
+  "value": "30 mnt"
+ },
+ {
+  "value": "30 mnt"
+ },
+ {
+  "value": "2 jam"
+ },
+ {
+  "value": "2 jam"
+ },
+ {
+  "value": "Besok"
+ },
+ {
+  "value": "Besok"
+ },
+ {
+  "value": "Batal"
+ },
+ {
+  "value": "Batal"
+ },
+ {
+  "value": "Tersinkron 12:03"
+ },
+ {
+  "value": "Tersinkron {time}"
+ },
+ {
+  "value": "Offline · terakhir sinkron 12:03"
+ },
+ {
+  "value": "Offline · terakhir sinkron {time}"
+ },
+ {
+  "value": "Belum tersinkron"
+ },
+ {
+  "value": "Belum tersinkron"
+ },
+ {
+  "value": "Menyinkronkan…"
+ },
+ {
+  "value": "Menyinkronkan…"
+ },
+ {
+  "value": "Segarkan"
+ },
+ {
+  "value": "Segarkan"
+ },
+ {
+  "value": "Pengaturan"
+ },
+ {
+  "value": "Pengaturan"
+ },
+ {
+  "value": "Deadline mendekat: Tugas 1"
+ },
+ {
+  "value": "Deadline mendekat: {title}"
+ },
+ {
+  "value": "[CS101] Tenggat tersisa 2h 14m."
+ },
+ {
+  "value": "3 tenggat segera tiba"
+ },
+ {
+  "value": "Buka notch untuk melihatnya."
+ },
+ {
+  "value": "Buka notch untuk melihatnya."
+ },
+ {
+  "value": "Tampilkan notch"
+ },
+ {
+  "value": "Tampilkan notch"
+ },
+ {
+  "value": "Jeda notch"
+ },
+ {
+  "value": "Jeda notch"
+ },
+ {
+  "value": "Segarkan sekarang"
+ },
+ {
+  "value": "Segarkan sekarang"
+ },
+ {
+  "value": "Pengaturan"
+ },
+ {
+  "value": "Pengaturan"
+ },
+ {
+  "value": "Keluar"
+ },
+ {
+  "value": "Keluar"
+ },
+ {
+  "value": "Pengaturan Deadline Notch"
+ },
+ {
+  "value": "Pengaturan Deadline Notch"
+ },
+ {
+  "value": "Feed kalender"
+ },
+ {
+  "value": "Feed kalender"
+ },
+ {
+  "value": "Notifikasi"
+ },
+ {
+  "value": "Notifikasi"
+ },
+ {
+  "value": "Tampilan"
+ },
+ {
+  "value": "Tampilan"
+ },
+ {
+  "value": "Acara saya"
+ },
+ {
+  "value": "Acara saya"
+ },
+ {
+  "value": "Umum"
+ },
+ {
+  "value": "Umum"
+ },
+ {
+  "value": "Feed kalender"
+ },
+ {
+  "value": "Feed kalender"
+ },
+ {
+  "value": "Tenggat berasal dari tautan kalender yang kamu tambahkan di sini. Tautan disimpan di Windows Credential Manager, bukan di file biasa."
+ },
+ {
+  "value": "Tenggat berasal dari tautan kalender yang kamu tambahkan di sini. Tautan disimpan di Windows Credential Manager, bukan di file biasa."
+ },
+ {
+  "value": "Belum ada feed."
+ },
+ {
+  "value": "Belum ada feed."
+ },
+ {
+  "value": "Tambah feed"
+ },
+ {
+  "value": "Tambah feed"
+ },
+ {
+  "value": "Sumber"
+ },
+ {
+  "value": "Sumber"
+ },
+ {
+  "value": "Moodle / BRONE"
+ },
+ {
+  "value": "Moodle / BRONE"
+ },
+ {
+  "value": "Google Calendar"
+ },
+ {
+  "value": "Google Calendar"
+ },
+ {
+  "value": "Tautan .ics lain"
+ },
+ {
+  "value": "Tautan .ics lain"
+ },
+ {
+  "value": "Nama"
+ },
+ {
+  "value": "Nama"
+ },
+ {
+  "value": "Tautan kalender"
+ },
+ {
+  "value": "Tautan kalender"
+ },
+ {
+  "value": "Tautan tersimpan di Credential Manager"
+ },
+ {
+  "value": "Tautan tersimpan di Credential Manager"
+ },
+ {
+  "value": "Tes tautan"
+ },
+ {
+  "value": "Tes tautan"
+ },
+ {
+  "value": "Menguji…"
+ },
+ {
+  "value": "Menguji…"
+ },
+ {
+  "value": "Simpan feed"
+ },
+ {
+  "value": "Simpan feed"
+ },
+ {
+  "value": "Hapus"
+ },
+ {
+  "value": "Hapus"
+ },
+ {
+  "value": "Aktif"
+ },
+ {
+  "value": "Aktif"
+ },
+ {
+  "value": "Ditemukan 3 item. Berikutnya: Quiz 3 (Sat 00:31)"
+ },
+ {
+  "value": "Tes tautan dulu."
+ },
+ {
+  "value": "Tes tautan dulu."
+ },
+ {
+  "value": "Feed tersimpan."
+ },
+ {
+  "value": "Feed tersimpan."
+ },
+ {
+  "value": "Hapus feed ini beserta tautan tersimpannya?"
+ },
+ {
+  "value": "Hapus feed ini beserta tautan tersimpannya?"
+ },
+ {
+  "value": "Di Moodle/BRONE buka Kalender → Ekspor kalender → Dapatkan URL kalender, lalu tempel tautannya."
+ },
+ {
+  "value": "Di Moodle/BRONE buka Kalender → Ekspor kalender → Dapatkan URL kalender, lalu tempel tautannya."
+ },
+ {
+  "value": "Di Google Calendar buka Setelan → kalendermu → Integrasikan kalender → \"Alamat rahasia dalam format iCal\"."
+ },
+ {
+  "value": "Di Google Calendar buka Setelan → kalendermu → Integrasikan kalender → \"Alamat rahasia dalam format iCal\"."
+ },
+ {
+  "value": "Tempel tautan apa pun yang berakhiran .ics atau mengembalikan feed iCalendar."
+ },
+ {
+  "value": "Tempel tautan apa pun yang berakhiran .ics atau mengembalikan feed iCalendar."
+ },
+ {
+  "value": "Nama feed tidak valid."
+ },
+ {
+  "value": "Nama feed tidak valid."
+ },
+ {
+  "value": "Jenis feed tidak dikenal."
+ },
+ {
+  "value": "Jenis feed tidak dikenal."
+ },
+ {
+  "value": "Itu bukan tautan yang valid."
+ },
+ {
+  "value": "Itu bukan tautan yang valid."
+ },
+ {
+  "value": "Tempel tautan kalender dulu."
+ },
+ {
+  "value": "Tempel tautan kalender dulu."
+ },
+ {
+  "value": "Tautan harus diawali http atau https."
+ },
+ {
+  "value": "Tautan harus diawali http atau https."
+ },
+ {
+  "value": "Tidak bisa menjangkau server. Periksa koneksimu."
+ },
+ {
+  "value": "Tidak bisa menjangkau server. Periksa koneksimu."
+ },
+ {
+  "value": "Server terlalu lama menjawab."
+ },
+ {
+  "value": "Server terlalu lama menjawab."
+ },
+ {
+  "value": "Server menolak tautan. Token mungkin direset; ekspor tautan baru."
+ },
+ {
+  "value": "Server menolak tautan. Token mungkin direset; ekspor tautan baru."
+ },
+ {
+  "value": "Server mengembalikan kesalahan."
+ },
+ {
+  "value": "Server mengembalikan kesalahan."
+ },
+ {
+  "value": "Tautan itu tidak mengembalikan kalender. Pastikan itu alamat .ics hasil ekspor."
+ },
+ {
+  "value": "Tautan itu tidak mengembalikan kalender. Pastikan itu alamat .ics hasil ekspor."
+ },
+ {
+  "value": "File kalender terlalu besar."
+ },
+ {
+  "value": "File kalender terlalu besar."
+ },
+ {
+  "value": "Belum ada tautan tersimpan untuk feed ini."
+ },
+ {
+  "value": "Belum ada tautan tersimpan untuk feed ini."
+ },
+ {
+  "value": "Gagal menyimpan. Coba lagi."
+ },
+ {
+  "value": "Gagal menyimpan. Coba lagi."
+ },
+ {
+  "value": "Judul wajib diisi."
+ },
+ {
+  "value": "Judul wajib diisi."
+ },
+ {
+  "value": "Pilih tanggal."
+ },
+ {
+  "value": "Pilih tanggal."
+ },
+ {
+  "value": "Format jam tidak valid."
+ },
+ {
+  "value": "Format jam tidak valid."
+ },
+ {
+  "value": "Tanggal tidak valid."
+ },
+ {
+  "value": "Tanggal tidak valid."
+ },
+ {
+  "value": "Tanggal sudah lewat dari jendela pengingat."
+ },
+ {
+  "value": "Tanggal sudah lewat dari jendela pengingat."
+ },
+ {
+  "value": "Tanggal terlalu jauh (maks 120 hari ke depan)."
+ },
+ {
+  "value": "Tanggal terlalu jauh (maks 120 hari ke depan)."
+ },
+ {
+  "value": "Itu halaman dasbor. Gunakan Kalender → Ekspor kalender → Dapatkan URL kalender."
+ },
+ {
+  "value": "Itu halaman dasbor. Gunakan Kalender → Ekspor kalender → Dapatkan URL kalender."
+ },
+ {
+  "value": "Itu halaman kalender, bukan tautan ekspornya."
+ },
+ {
+  "value": "Itu halaman kalender, bukan tautan ekspornya."
+ },
+ {
+  "value": "Itu halaman mata kuliah, bukan feed kalender."
+ },
+ {
+  "value": "Itu halaman mata kuliah, bukan feed kalender."
+ },
+ {
+  "value": "Itu halaman satu aktivitas, bukan feed kalender."
+ },
+ {
+  "value": "Itu halaman satu aktivitas, bukan feed kalender."
+ },
+ {
+  "value": "Itu hanya beranda situs."
+ },
+ {
+  "value": "Itu hanya beranda situs."
+ },
+ {
+  "value": "Ini tidak terlihat seperti tautan ekspor Moodle. Seharusnya memuat export_execute.php dan authtoken."
+ },
+ {
+  "value": "Ini tidak terlihat seperti tautan ekspor Moodle. Seharusnya memuat export_execute.php dan authtoken."
+ },
+ {
+  "value": "authtoken tidak ada. Salin seluruh URL dari \"Dapatkan URL kalender\"."
+ },
+ {
+  "value": "authtoken tidak ada. Salin seluruh URL dari \"Dapatkan URL kalender\"."
+ },
+ {
+  "value": "Notifikasi"
+ },
+ {
+  "value": "Notifikasi"
+ },
+ {
+  "value": "Ingatkan aku sekian jam sebelum tenggat"
+ },
+ {
+  "value": "Ingatkan aku sekian jam sebelum tenggat"
+ },
+ {
+  "value": "Pengingat 3"
+ },
+ {
+  "value": "Pengingat {n}"
+ },
+ {
+  "value": "Tampilkan juga notifikasi Windows"
+ },
+ {
+  "value": "Tampilkan juga notifikasi Windows"
+ },
+ {
+  "value": "Segarkan feed setiap (menit)"
+ },
+ {
+  "value": "Segarkan feed setiap (menit)"
+ },
+ {
+  "value": "Simpan item terlewat selama (hari)"
+ },
+ {
+  "value": "Simpan item terlewat selama (hari)"
+ },
+ {
+  "value": "Tampilan"
+ },
+ {
+  "value": "Tampilan"
+ },
+ {
+  "value": "Tema panel"
+ },
+ {
+  "value": "Tema panel"
+ },
+ {
+  "value": "Gelap"
+ },
+ {
+  "value": "Gelap"
+ },
+ {
+  "value": "Terang"
+ },
+ {
+  "value": "Terang"
+ },
+ {
+  "value": "Ikuti Windows"
+ },
+ {
+  "value": "Ikuti Windows"
+ },
+ {
+  "value": "Bahasa"
+ },
+ {
+  "value": "Bahasa"
+ },
+ {
+  "value": "Otomatis"
+ },
+ {
+  "value": "Otomatis"
+ },
+ {
+  "value": "Saat diam"
+ },
+ {
+  "value": "Saat diam"
+ },
+ {
+  "value": "Selalu tampilkan pil"
+ },
+ {
+  "value": "Selalu tampilkan pil"
+ },
+ {
+  "value": "Pil penuh hanya saat ada yang segera jatuh tempo"
+ },
+ {
+  "value": "Pil penuh hanya saat ada yang segera jatuh tempo"
+ },
+ {
+  "value": "Tersembunyi sampai kuarahkan kursor ke tepi atas"
+ },
+ {
+  "value": "Tersembunyi sampai kuarahkan kursor ke tepi atas"
+ },
+ {
+  "value": "\"Segera\" berarti dalam (jam)"
+ },
+ {
+  "value": "\"Segera\" berarti dalam (jam)"
+ },
+ {
+  "value": "Jeda hover (md)"
+ },
+ {
+  "value": "Jeda hover (md)"
+ },
+ {
+  "value": "Tampilkan di layar"
+ },
+ {
+  "value": "Tampilkan di layar"
+ },
+ {
+  "value": "Layar 3"
+ },
+ {
+  "value": "Layar {n}"
+ },
+ {
+  "value": "Layar 3 (utama)"
+ },
+ {
+  "value": "Layar {n} (utama)"
+ },
+ {
+  "value": "Geser horizontal (px)"
+ },
+ {
+  "value": "Geser horizontal (px)"
+ },
+ {
+  "value": "Pintasan keyboard untuk membuka notch"
+ },
+ {
+  "value": "Pintasan keyboard untuk membuka notch"
+ },
+ {
+  "value": "Membuka notch dan memindahkan fokus keyboard ke dalamnya. Gunakan kombinasi dengan Ctrl, Alt, atau tombol Windows."
+ },
+ {
+  "value": "Membuka notch dan memindahkan fokus keyboard ke dalamnya. Gunakan kombinasi dengan Ctrl, Alt, atau tombol Windows."
+ },
+ {
+  "value": "Ubah"
+ },
+ {
+  "value": "Ubah"
+ },
+ {
+  "value": "Tekan pintasan baru… (Esc untuk batal)"
+ },
+ {
+  "value": "Tekan pintasan baru… (Esc untuk batal)"
+ },
+ {
+  "value": "Mati"
+ },
+ {
+  "value": "Mati"
+ },
+ {
+  "value": "Matikan"
+ },
+ {
+  "value": "Matikan"
+ },
+ {
+  "value": "Kembalikan ke bawaan"
+ },
+ {
+  "value": "Kembalikan ke bawaan"
+ },
+ {
+  "value": "Pintasan tersimpan."
+ },
+ {
+  "value": "Pintasan tersimpan."
+ },
+ {
+  "value": "Sertakan Ctrl, Alt, atau tombol Windows."
+ },
+ {
+  "value": "Sertakan Ctrl, Alt, atau tombol Windows."
+ },
+ {
+  "value": "Tombol itu tidak bisa dipakai."
+ },
+ {
+  "value": "Tombol itu tidak bisa dipakai."
+ },
+ {
+  "value": "Pintasan itu tidak didukung."
+ },
+ {
+  "value": "Pintasan itu tidak didukung."
+ },
+ {
+  "value": "Aplikasi lain sudah memakai pintasan itu."
+ },
+ {
+  "value": "Aplikasi lain sudah memakai pintasan itu."
+ },
+ {
+  "value": "↑↓ pilih · Enter buka · D selesai · S tunda · Esc tutup"
+ },
+ {
+  "value": "↑↓ pilih · Enter buka · D selesai · S tunda · Esc tutup"
+ },
+ {
+  "value": "Tunda: 1 = 30 mnt · 2 = 2 jam · 3 = besok · Esc batal"
+ },
+ {
+  "value": "Tunda: 1 = 30 mnt · 2 = 2 jam · 3 = besok · Esc batal"
+ },
+ {
+  "value": "Tenggat"
+ },
+ {
+  "value": "Tenggat"
+ },
+ {
+  "value": "Acara saya"
+ },
+ {
+  "value": "Acara saya"
+ },
+ {
+  "value": "Tenggat yang tidak ada di kalender mana pun. Muncul di daftar yang sama."
+ },
+ {
+  "value": "Tenggat yang tidak ada di kalender mana pun. Muncul di daftar yang sama."
+ },
+ {
+  "value": "Judul"
+ },
+ {
+  "value": "Judul"
+ },
+ {
+  "value": "Tanggal"
+ },
+ {
+  "value": "Tanggal"
+ },
+ {
+  "value": "Jam (opsional)"
+ },
+ {
+  "value": "Jam (opsional)"
+ },
+ {
+  "value": "Tambah acara"
+ },
+ {
+  "value": "Tambah acara"
+ },
+ {
+  "value": "Belum ada acara pribadi."
+ },
+ {
+  "value": "Belum ada acara pribadi."
+ },
+ {
+  "value": "Hapus"
+ },
+ {
+  "value": "Hapus"
+ },
+ {
+  "value": "Umum"
+ },
+ {
+  "value": "Umum"
+ },
+ {
+  "value": "Jalankan saat Windows mulai"
+ },
+ {
+  "value": "Jalankan saat Windows mulai"
+ },
+ {
+  "value": "Versi 0.1.0"
+ },
+ {
+  "value": "Versi {v}"
+ },
+ {
+  "value": "Tanpa akun, tanpa analitik. Satu-satunya permintaan jaringan menuju tautan kalendermu sendiri."
+ },
+ {
+  "value": "Tanpa akun, tanpa analitik. Satu-satunya permintaan jaringan menuju tautan kalendermu sendiri."
+ },
+ {
+  "value": "Salin diagnostik"
+ },
+ {
+  "value": "Salin diagnostik"
+ },
+ {
+  "value": "Laporan tersamar untuk laporan bug: tanpa tautan, nama, atau tenggat."
+ },
+ {
+  "value": "Laporan tersamar untuk laporan bug: tanpa tautan, nama, atau tenggat."
+ },
+ {
+  "value": "Tersalin."
+ },
+ {
+  "value": "Tersalin."
+ },
+ {
+  "value": "Gagal menyalin."
+ },
+ {
+  "value": "Gagal menyalin."
+ },
+ {
+  "value": "Salin pengaturan"
+ },
+ {
+  "value": "Salin pengaturan"
+ },
+ {
+  "value": "Tautan feed tidak pernah disertakan; tambahkan lagi di PC lain."
+ },
+ {
+  "value": "Tautan feed tidak pernah disertakan; tambahkan lagi di PC lain."
+ },
+ {
+  "value": "Impor pengaturan"
+ },
+ {
+  "value": "Impor pengaturan"
+ },
+ {
+  "value": "Tempel pengaturan hasil ekspor di sini"
+ },
+ {
+  "value": "Tempel pengaturan hasil ekspor di sini"
+ },
+ {
+  "value": "Terapkan"
+ },
+ {
+  "value": "Terapkan"
+ },
+ {
+  "value": "Pengaturan diimpor."
+ },
+ {
+  "value": "Pengaturan diimpor."
+ },
+ {
+  "value": "Itu bukan pengaturan hasil ekspor yang valid."
+ },
+ {
+  "value": "Itu bukan pengaturan hasil ekspor yang valid."
+ },
+ {
+  "value": "Selamat datang di Deadline Notch"
+ },
+ {
+  "value": "Selamat datang di Deadline Notch"
+ },
+ {
+  "value": "Di mana tenggatmu disimpan?"
+ },
+ {
+  "value": "Di mana tenggatmu disimpan?"
+ },
+ {
+  "value": "Tempel tautan kalendermu"
+ },
+ {
+  "value": "Tempel tautan kalendermu"
+ },
+ {
+  "value": "Siap"
+ },
+ {
+  "value": "Siap"
+ },
+ {
+  "value": "Lanjut"
+ },
+ {
+  "value": "Lanjut"
+ },
+ {
+  "value": "Kembali"
+ },
+ {
+  "value": "Kembali"
+ },
+ {
+  "value": "Lewati dulu"
+ },
+ {
+  "value": "Lewati dulu"
+ },
+ {
+  "value": "Selesai"
+ },
+ {
+  "value": "Selesai"
+ },
+ {
+  "value": "Arahkan kursor ke tengah atas layar untuk melihat tenggatmu. Ikon tray punya Jeda, Segarkan, dan Keluar."
+ },
+ {
+  "value": "Arahkan kursor ke tengah atas layar untuk melihat tenggatmu. Ikon tray punya Jeda, Segarkan, dan Keluar."
+ },
+ {
+  "value": "Pilih salah satu untuk melihat langkahnya."
+ },
+ {
+  "value": "Pilih salah satu untuk melihat langkahnya."
+ },
+ {
+  "value": "Deadline Notch"
+ },
+ {
+  "value": "Deadline Notch"
+ },
+ {
+  "value": "d"
+ },
+ {
+  "value": "d"
+ },
+ {
+  "value": "h"
+ },
+ {
+  "value": "h"
+ },
+ {
+  "value": "m"
+ },
+ {
+  "value": "m"
+ },
+ {
+  "value": "Overdue"
+ },
+ {
+  "value": "Overdue"
+ },
+ {
+  "value": "Overdue 5h"
+ },
+ {
+  "value": "Overdue {value}"
+ },
+ {
+  "value": "Today 12:03"
+ },
+ {
+  "value": "Today {time}"
+ },
+ {
+  "value": "Tomorrow 12:03"
+ },
+ {
+  "value": "Tomorrow {time}"
+ },
+ {
+  "value": "All clear"
+ },
+ {
+  "value": "All clear"
+ },
+ {
+  "value": "Add a feed"
+ },
+ {
+  "value": "Add a feed"
+ },
+ {
+  "value": "No upcoming deadlines"
+ },
+ {
+  "value": "No upcoming deadlines"
+ },
+ {
+  "value": "Add a calendar feed to see your deadlines."
+ },
+ {
+  "value": "Add a calendar feed to see your deadlines."
+ },
+ {
+  "value": "Set up"
+ },
+ {
+  "value": "Set up"
+ },
+ {
+  "value": "Overdue"
+ },
+ {
+  "value": "Overdue"
+ },
+ {
+  "value": "Done (3)"
+ },
+ {
+  "value": "Done ({n})"
+ },
+ {
+  "value": "Mark done"
+ },
+ {
+  "value": "Mark done"
+ },
+ {
+  "value": "Open page"
+ },
+ {
+  "value": "Open page"
+ },
+ {
+  "value": "Restore"
+ },
+ {
+  "value": "Restore"
+ },
+ {
+  "value": "Personal"
+ },
+ {
+  "value": "Personal"
+ },
+ {
+  "value": "Snooze reminders"
+ },
+ {
+  "value": "Snooze reminders"
+ },
+ {
+  "value": "Snoozed until 12:03"
+ },
+ {
+  "value": "Snoozed until {time}"
+ },
+ {
+  "value": "30 min"
+ },
+ {
+  "value": "30 min"
+ },
+ {
+  "value": "2 h"
+ },
+ {
+  "value": "2 h"
+ },
+ {
+  "value": "Tomorrow"
+ },
+ {
+  "value": "Tomorrow"
+ },
+ {
+  "value": "Cancel"
+ },
+ {
+  "value": "Cancel"
+ },
+ {
+  "value": "Synced 12:03"
+ },
+ {
+  "value": "Synced {time}"
+ },
+ {
+  "value": "Offline · last synced 12:03"
+ },
+ {
+  "value": "Offline · last synced {time}"
+ },
+ {
+  "value": "Not synced yet"
+ },
+ {
+  "value": "Not synced yet"
+ },
+ {
+  "value": "Syncing…"
+ },
+ {
+  "value": "Syncing…"
+ },
+ {
+  "value": "Refresh"
+ },
+ {
+  "value": "Refresh"
+ },
+ {
+  "value": "Settings"
+ },
+ {
+  "value": "Settings"
+ },
+ {
+  "value": "Deadline approaching: Tugas 1"
+ },
+ {
+  "value": "Deadline approaching: {title}"
+ },
+ {
+  "value": "[CS101] Due in 2h 14m."
+ },
+ {
+  "value": "3 deadlines are due soon"
+ },
+ {
+  "value": "Open the notch to see them."
+ },
+ {
+  "value": "Open the notch to see them."
+ },
+ {
+  "value": "Show notch"
+ },
+ {
+  "value": "Show notch"
+ },
+ {
+  "value": "Pause notch"
+ },
+ {
+  "value": "Pause notch"
+ },
+ {
+  "value": "Refresh now"
+ },
+ {
+  "value": "Refresh now"
+ },
+ {
+  "value": "Settings"
+ },
+ {
+  "value": "Settings"
+ },
+ {
+  "value": "Quit"
+ },
+ {
+  "value": "Quit"
+ },
+ {
+  "value": "Deadline Notch settings"
+ },
+ {
+  "value": "Deadline Notch settings"
+ },
+ {
+  "value": "Calendar feeds"
+ },
+ {
+  "value": "Calendar feeds"
+ },
+ {
+  "value": "Notifications"
+ },
+ {
+  "value": "Notifications"
+ },
+ {
+  "value": "Display"
+ },
+ {
+  "value": "Display"
+ },
+ {
+  "value": "My events"
+ },
+ {
+  "value": "My events"
+ },
+ {
+  "value": "General"
+ },
+ {
+  "value": "General"
+ },
+ {
+  "value": "Calendar feeds"
+ },
+ {
+  "value": "Calendar feeds"
+ },
+ {
+  "value": "Deadlines come from calendar links you add here. Links are stored in Windows Credential Manager, never in plain files."
+ },
+ {
+  "value": "Deadlines come from calendar links you add here. Links are stored in Windows Credential Manager, never in plain files."
+ },
+ {
+  "value": "No feeds yet."
+ },
+ {
+  "value": "No feeds yet."
+ },
+ {
+  "value": "Add a feed"
+ },
+ {
+  "value": "Add a feed"
+ },
+ {
+  "value": "Source"
+ },
+ {
+  "value": "Source"
+ },
+ {
+  "value": "Moodle / BRONE"
+ },
+ {
+  "value": "Moodle / BRONE"
+ },
+ {
+  "value": "Google Calendar"
+ },
+ {
+  "value": "Google Calendar"
+ },
+ {
+  "value": "Other .ics link"
+ },
+ {
+  "value": "Other .ics link"
+ },
+ {
+  "value": "Name"
+ },
+ {
+  "value": "Name"
+ },
+ {
+  "value": "Calendar link"
+ },
+ {
+  "value": "Calendar link"
+ },
+ {
+  "value": "Link saved in Credential Manager"
+ },
+ {
+  "value": "Link saved in Credential Manager"
+ },
+ {
+  "value": "Test link"
+ },
+ {
+  "value": "Test link"
+ },
+ {
+  "value": "Testing…"
+ },
+ {
+  "value": "Testing…"
+ },
+ {
+  "value": "Save feed"
+ },
+ {
+  "value": "Save feed"
+ },
+ {
+  "value": "Remove"
+ },
+ {
+  "value": "Remove"
+ },
+ {
+  "value": "Enabled"
+ },
+ {
+  "value": "Enabled"
+ },
+ {
+  "value": "Found 3 items. Next: Quiz 3 (Sat 00:31)"
+ },
+ {
+  "value": "Test the link first."
+ },
+ {
+  "value": "Test the link first."
+ },
+ {
+  "value": "Feed saved."
+ },
+ {
+  "value": "Feed saved."
+ },
+ {
+  "value": "Remove this feed and its stored link?"
+ },
+ {
+  "value": "Remove this feed and its stored link?"
+ },
+ {
+  "value": "In Moodle/BRONE open Calendar → Export calendar → Get calendar URL, then paste that link."
+ },
+ {
+  "value": "In Moodle/BRONE open Calendar → Export calendar → Get calendar URL, then paste that link."
+ },
+ {
+  "value": "In Google Calendar open Settings → your calendar → Integrate calendar → \"Secret address in iCal format\"."
+ },
+ {
+  "value": "In Google Calendar open Settings → your calendar → Integrate calendar → \"Secret address in iCal format\"."
+ },
+ {
+  "value": "Paste any link that ends in .ics or returns an iCalendar feed."
+ },
+ {
+  "value": "Paste any link that ends in .ics or returns an iCalendar feed."
+ },
+ {
+  "value": "The feed name is not valid."
+ },
+ {
+  "value": "The feed name is not valid."
+ },
+ {
+  "value": "Unknown feed type."
+ },
+ {
+  "value": "Unknown feed type."
+ },
+ {
+  "value": "That is not a valid link."
+ },
+ {
+  "value": "That is not a valid link."
+ },
+ {
+  "value": "Paste the calendar link first."
+ },
+ {
+  "value": "Paste the calendar link first."
+ },
+ {
+  "value": "The link must start with http or https."
+ },
+ {
+  "value": "The link must start with http or https."
+ },
+ {
+  "value": "Cannot reach the server. Check your connection."
+ },
+ {
+  "value": "Cannot reach the server. Check your connection."
+ },
+ {
+  "value": "The server took too long to answer."
+ },
+ {
+  "value": "The server took too long to answer."
+ },
+ {
+  "value": "The server rejected the link. The token may have been reset; export a fresh link."
+ },
+ {
+  "value": "The server rejected the link. The token may have been reset; export a fresh link."
+ },
+ {
+  "value": "The server returned an error."
+ },
+ {
+  "value": "The server returned an error."
+ },
+ {
+  "value": "That link did not return a calendar. Check that it is the exported .ics address."
+ },
+ {
+  "value": "That link did not return a calendar. Check that it is the exported .ics address."
+ },
+ {
+  "value": "The calendar file is too large."
+ },
+ {
+  "value": "The calendar file is too large."
+ },
+ {
+  "value": "No saved link for this feed."
+ },
+ {
+  "value": "No saved link for this feed."
+ },
+ {
+  "value": "Could not save. Try again."
+ },
+ {
+  "value": "Could not save. Try again."
+ },
+ {
+  "value": "Enter a title."
+ },
+ {
+  "value": "Enter a title."
+ },
+ {
+  "value": "Pick a date."
+ },
+ {
+  "value": "Pick a date."
+ },
+ {
+  "value": "The time is not valid."
+ },
+ {
+  "value": "The time is not valid."
+ },
+ {
+  "value": "The date is not valid."
+ },
+ {
+  "value": "The date is not valid."
+ },
+ {
+  "value": "That date is already past the reminder window."
+ },
+ {
+  "value": "That date is already past the reminder window."
+ },
+ {
+  "value": "That date is too far ahead (120 days max)."
+ },
+ {
+  "value": "That date is too far ahead (120 days max)."
+ },
+ {
+  "value": "That is your dashboard page. Use Calendar → Export calendar → Get calendar URL instead."
+ },
+ {
+  "value": "That is your dashboard page. Use Calendar → Export calendar → Get calendar URL instead."
+ },
+ {
+  "value": "That is the calendar page, not its export link."
+ },
+ {
+  "value": "That is the calendar page, not its export link."
+ },
+ {
+  "value": "That is a course page, not a calendar feed."
+ },
+ {
+  "value": "That is a course page, not a calendar feed."
+ },
+ {
+  "value": "That is a single activity page, not a calendar feed."
+ },
+ {
+  "value": "That is a single activity page, not a calendar feed."
+ },
+ {
+  "value": "That is just the site home page."
+ },
+ {
+  "value": "That is just the site home page."
+ },
+ {
+  "value": "This does not look like a Moodle export link. It should contain export_execute.php and an authtoken."
+ },
+ {
+  "value": "This does not look like a Moodle export link. It should contain export_execute.php and an authtoken."
+ },
+ {
+  "value": "The authtoken is missing. Copy the whole URL from \"Get calendar URL\"."
+ },
+ {
+  "value": "The authtoken is missing. Copy the whole URL from \"Get calendar URL\"."
+ },
+ {
+  "value": "Notifications"
+ },
+ {
+  "value": "Notifications"
+ },
+ {
+  "value": "Remind me this many hours before a deadline"
+ },
+ {
+  "value": "Remind me this many hours before a deadline"
+ },
+ {
+  "value": "Reminder 3"
+ },
+ {
+  "value": "Reminder {n}"
+ },
+ {
+  "value": "Also show a Windows notification"
+ },
+ {
+  "value": "Also show a Windows notification"
+ },
+ {
+  "value": "Refresh feeds every (minutes)"
+ },
+ {
+  "value": "Refresh feeds every (minutes)"
+ },
+ {
+  "value": "Keep overdue items for (days)"
+ },
+ {
+  "value": "Keep overdue items for (days)"
+ },
+ {
+  "value": "Display"
+ },
+ {
+  "value": "Display"
+ },
+ {
+  "value": "Panel theme"
+ },
+ {
+  "value": "Panel theme"
+ },
+ {
+  "value": "Dark"
+ },
+ {
+  "value": "Dark"
+ },
+ {
+  "value": "Light"
+ },
+ {
+  "value": "Light"
+ },
+ {
+  "value": "Follow Windows"
+ },
+ {
+  "value": "Follow Windows"
+ },
+ {
+  "value": "Language"
+ },
+ {
+  "value": "Language"
+ },
+ {
+  "value": "Automatic"
+ },
+ {
+  "value": "Automatic"
+ },
+ {
+  "value": "When resting"
+ },
+ {
+  "value": "When resting"
+ },
+ {
+  "value": "Always show the pill"
+ },
+ {
+  "value": "Always show the pill"
+ },
+ {
+  "value": "Full pill only when something is due soon"
+ },
+ {
+  "value": "Full pill only when something is due soon"
+ },
+ {
+  "value": "Hidden until I hover the top edge"
+ },
+ {
+  "value": "Hidden until I hover the top edge"
+ },
+ {
+  "value": "\"Due soon\" means within (hours)"
+ },
+ {
+  "value": "\"Due soon\" means within (hours)"
+ },
+ {
+  "value": "Hover delay (ms)"
+ },
+ {
+  "value": "Hover delay (ms)"
+ },
+ {
+  "value": "Show on screen"
+ },
+ {
+  "value": "Show on screen"
+ },
+ {
+  "value": "Screen 3"
+ },
+ {
+  "value": "Screen {n}"
+ },
+ {
+  "value": "Screen 3 (primary)"
+ },
+ {
+  "value": "Screen {n} (primary)"
+ },
+ {
+  "value": "Horizontal offset (px)"
+ },
+ {
+  "value": "Horizontal offset (px)"
+ },
+ {
+  "value": "Keyboard shortcut to open the notch"
+ },
+ {
+  "value": "Keyboard shortcut to open the notch"
+ },
+ {
+  "value": "Opens the notch and moves keyboard focus into it. Use a combination with Ctrl, Alt or the Windows key."
+ },
+ {
+  "value": "Opens the notch and moves keyboard focus into it. Use a combination with Ctrl, Alt or the Windows key."
+ },
+ {
+  "value": "Change"
+ },
+ {
+  "value": "Change"
+ },
+ {
+  "value": "Press the new shortcut… (Esc to cancel)"
+ },
+ {
+  "value": "Press the new shortcut… (Esc to cancel)"
+ },
+ {
+  "value": "Off"
+ },
+ {
+  "value": "Off"
+ },
+ {
+  "value": "Turn off"
+ },
+ {
+  "value": "Turn off"
+ },
+ {
+  "value": "Reset to default"
+ },
+ {
+  "value": "Reset to default"
+ },
+ {
+  "value": "Shortcut saved."
+ },
+ {
+  "value": "Shortcut saved."
+ },
+ {
+  "value": "Include Ctrl, Alt or the Windows key."
+ },
+ {
+  "value": "Include Ctrl, Alt or the Windows key."
+ },
+ {
+  "value": "That key cannot be used."
+ },
+ {
+  "value": "That key cannot be used."
+ },
+ {
+  "value": "That shortcut is not supported."
+ },
+ {
+  "value": "That shortcut is not supported."
+ },
+ {
+  "value": "Another app already uses that shortcut."
+ },
+ {
+  "value": "Another app already uses that shortcut."
+ },
+ {
+  "value": "↑↓ select · Enter open · D done · S snooze · Esc close"
+ },
+ {
+  "value": "↑↓ select · Enter open · D done · S snooze · Esc close"
+ },
+ {
+  "value": "Snooze: 1 = 30 min · 2 = 2 h · 3 = tomorrow · Esc cancel"
+ },
+ {
+  "value": "Snooze: 1 = 30 min · 2 = 2 h · 3 = tomorrow · Esc cancel"
+ },
+ {
+  "value": "Deadlines"
+ },
+ {
+  "value": "Deadlines"
+ },
+ {
+  "value": "My events"
+ },
+ {
+  "value": "My events"
+ },
+ {
+  "value": "Deadlines that no calendar knows about. They appear in the same list."
+ },
+ {
+  "value": "Deadlines that no calendar knows about. They appear in the same list."
+ },
+ {
+  "value": "Title"
+ },
+ {
+  "value": "Title"
+ },
+ {
+  "value": "Date"
+ },
+ {
+  "value": "Date"
+ },
+ {
+  "value": "Time (optional)"
+ },
+ {
+  "value": "Time (optional)"
+ },
+ {
+  "value": "Add event"
+ },
+ {
+  "value": "Add event"
+ },
+ {
+  "value": "No personal events."
+ },
+ {
+  "value": "No personal events."
+ },
+ {
+  "value": "Delete"
+ },
+ {
+  "value": "Delete"
+ },
+ {
+  "value": "General"
+ },
+ {
+  "value": "General"
+ },
+ {
+  "value": "Start with Windows"
+ },
+ {
+  "value": "Start with Windows"
+ },
+ {
+  "value": "Version 0.1.0"
+ },
+ {
+  "value": "Version {v}"
+ },
+ {
+  "value": "No account, no analytics. The only network requests go to your own calendar links."
+ },
+ {
+  "value": "No account, no analytics. The only network requests go to your own calendar links."
+ },
+ {
+  "value": "Copy diagnostics"
+ },
+ {
+  "value": "Copy diagnostics"
+ },
+ {
+  "value": "A redacted report for bug reports: no links, names or deadlines."
+ },
+ {
+  "value": "A redacted report for bug reports: no links, names or deadlines."
+ },
+ {
+  "value": "Copied."
+ },
+ {
+  "value": "Copied."
+ },
+ {
+  "value": "Could not copy."
+ },
+ {
+  "value": "Could not copy."
+ },
+ {
+  "value": "Copy settings"
+ },
+ {
+  "value": "Copy settings"
+ },
+ {
+  "value": "Feed links are never included; add them again on the other PC."
+ },
+ {
+  "value": "Feed links are never included; add them again on the other PC."
+ },
+ {
+  "value": "Import settings"
+ },
+ {
+  "value": "Import settings"
+ },
+ {
+  "value": "Paste exported settings here"
+ },
+ {
+  "value": "Paste exported settings here"
+ },
+ {
+  "value": "Apply"
+ },
+ {
+  "value": "Apply"
+ },
+ {
+  "value": "Settings imported."
+ },
+ {
+  "value": "Settings imported."
+ },
+ {
+  "value": "That is not valid exported settings."
+ },
+ {
+  "value": "That is not valid exported settings."
+ },
+ {
+  "value": "Welcome to Deadline Notch"
+ },
+ {
+  "value": "Welcome to Deadline Notch"
+ },
+ {
+  "value": "Where do your deadlines live?"
+ },
+ {
+  "value": "Where do your deadlines live?"
+ },
+ {
+  "value": "Paste your calendar link"
+ },
+ {
+  "value": "Paste your calendar link"
+ },
+ {
+  "value": "You are set"
+ },
+ {
+  "value": "You are set"
+ },
+ {
+  "value": "Next"
+ },
+ {
+  "value": "Next"
+ },
+ {
+  "value": "Back"
+ },
+ {
+  "value": "Back"
+ },
+ {
+  "value": "Skip for now"
+ },
+ {
+  "value": "Skip for now"
+ },
+ {
+  "value": "Finish"
+ },
+ {
+  "value": "Finish"
+ },
+ {
+  "value": "Hover the top-center of your screen to see your deadlines. The tray icon has Pause, Refresh and Quit."
+ },
+ {
+  "value": "Hover the top-center of your screen to see your deadlines. The tray icon has Pause, Refresh and Quit."
+ },
+ {
+  "value": "Pick one to see the steps."
+ },
+ {
+  "value": "Pick one to see the steps."
+ },
+ {
+  "value": "no.such.key"
+ },
+ {
+  "value": "no.such.key"
+ },
+ {
+  "value": "Found 0 items."
+ },
+ {
+  "value": "Found 1 item."
+ },
+ {
+  "value": "Found 2 items."
+ },
+ {
+  "value": "Found 11 items."
+ },
+ {
+  "value": "Found 1 item. Next: Tugas (Besok 09:00)"
+ },
+ {
+  "value": "Due in 1h."
+ },
+ {
+  "value": "[MA201] Due in 1h."
+ },
+ {
+  "value": "1 deadlines are due soon"
+ },
+ {
+  "value": "Done (0)"
+ },
+ {
+  "value": "Synced {time}"
+ },
+ {
+  "value": "Ditemukan 0 item."
+ },
+ {
+  "value": "Ditemukan 1 item."
+ },
+ {
+  "value": "Ditemukan 2 item."
+ },
+ {
+  "value": "Ditemukan 11 item."
+ },
+ {
+  "value": "Ditemukan 1 item. Berikutnya: Tugas (Besok 09:00)"
+ },
+ {
+  "value": "Tenggat tersisa 1h."
+ },
+ {
+  "value": "[MA201] Tenggat tersisa 1h."
+ },
+ {
+  "value": "1 tenggat segera tiba"
+ },
+ {
+  "value": "Selesai (0)"
+ },
+ {
+  "value": "Tersinkron {time}"
+ },
+ {
+  "value": "en"
+ },
+ {
+  "value": "id"
+ },
+ {
+  "value": "id"
+ },
+ {
+  "value": "id"
+ },
+ {
+  "value": "en"
+ },
+ {
+  "value": "en"
+ },
+ {
+  "value": "en"
+ },
+ {
+  "value": "en"
+ },
+ {
+  "value": "id"
+ },
+ {
+  "value": "id"
+ },
+ {
+  "value": "id"
+ },
+ {
+  "value": "overdue"
+ },
+ {
+  "value": "soon"
+ },
+ {
+  "value": "soon"
+ },
+ {
+  "value": "soon"
+ },
+ {
+  "value": "later"
+ },
+ {
+  "value": "overdue"
+ },
+ {
+  "value": "later"
+ },
+ {
+  "value": "1m"
+ },
+ {
+  "value": "00:00"
+ },
+ {
+  "value": "1m"
+ },
+ {
+  "value": "00:00"
+ },
+ {
+  "value": "1m"
+ },
+ {
+  "value": "00:00"
+ },
+ {
+  "value": "Overdue 1m"
+ },
+ {
+  "value": "Overdue 1m"
+ },
+ {
+  "value": "1m"
+ },
+ {
+  "value": "00:00"
+ },
+ {
+  "value": "Overdue 1m"
+ },
+ {
+  "value": "Overdue 1m"
+ },
+ {
+  "value": "1m"
+ },
+ {
+  "value": "00:01"
+ },
+ {
+  "value": "Overdue 1m"
+ },
+ {
+  "value": "Overdue 1m"
+ },
+ {
+  "value": "1m"
+ },
+ {
+  "value": "00:59"
+ },
+ {
+  "value": "Overdue 1m"
+ },
+ {
+  "value": "Overdue 1m"
+ },
+ {
+  "value": "1m"
+ },
+ {
+  "value": "00:59"
+ },
+ {
+  "value": "Overdue 1m"
+ },
+ {
+  "value": "Overdue 1m"
+ },
+ {
+  "value": "1m"
+ },
+ {
+  "value": "01:00"
+ },
+ {
+  "value": "Overdue 1m"
+ },
+ {
+  "value": "Overdue 1m"
+ },
+ {
+  "value": "1m"
+ },
+ {
+  "value": "01:00"
+ },
+ {
+  "value": "Overdue 1m"
+ },
+ {
+  "value": "Overdue 1m"
+ },
+ {
+  "value": "5m"
+ },
+ {
+  "value": "05:00"
+ },
+ {
+  "value": "Overdue 5m"
+ },
+ {
+  "value": "Overdue 5m"
+ },
+ {
+  "value": "59m"
+ },
+ {
+  "value": "59:00"
+ },
+ {
+  "value": "Overdue 59m"
+ },
+ {
+  "value": "Overdue 59m"
+ },
+ {
+  "value": "59m"
+ },
+ {
+  "value": "59:59"
+ },
+ {
+  "value": "Overdue 59m"
+ },
+ {
+  "value": "Overdue 59m"
+ },
+ {
+  "value": "59m"
+ },
+ {
+  "value": "59:59"
+ },
+ {
+  "value": "Overdue 59m"
+ },
+ {
+  "value": "Overdue 59m"
+ },
+ {
+  "value": "1h 0m"
+ },
+ {
+  "value": "1h 0m"
+ },
+ {
+  "value": "Overdue 1h"
+ },
+ {
+  "value": "Overdue 1h"
+ },
+ {
+  "value": "1h 1m"
+ },
+ {
+  "value": "1h 1m"
+ },
+ {
+  "value": "Overdue 1h"
+ },
+ {
+  "value": "Overdue 1h"
+ },
+ {
+  "value": "2h 14m"
+ },
+ {
+  "value": "2h 14m"
+ },
+ {
+  "value": "Overdue 2h"
+ },
+ {
+  "value": "Overdue 2h"
+ },
+ {
+  "value": "23h 59m"
+ },
+ {
+  "value": "23h 59m"
+ },
+ {
+  "value": "Overdue 23h"
+ },
+ {
+  "value": "Overdue 23h"
+ },
+ {
+  "value": "23h 59m"
+ },
+ {
+  "value": "23h 59m"
+ },
+ {
+  "value": "Overdue 23h"
+ },
+ {
+  "value": "Overdue 23h"
+ },
+ {
+  "value": "1d 0h"
+ },
+ {
+  "value": "1d 0h"
+ },
+ {
+  "value": "Overdue 1d"
+ },
+ {
+  "value": "Overdue 1d"
+ },
+ {
+  "value": "1d 0h"
+ },
+ {
+  "value": "1d 0h"
+ },
+ {
+  "value": "Overdue 1d"
+ },
+ {
+  "value": "Overdue 1d"
+ },
+ {
+  "value": "1d 1h"
+ },
+ {
+  "value": "1d 1h"
+ },
+ {
+  "value": "Overdue 1d"
+ },
+ {
+  "value": "Overdue 1d"
+ },
+ {
+  "value": "2d 3h"
+ },
+ {
+  "value": "2d 3h"
+ },
+ {
+  "value": "Overdue 2d"
+ },
+ {
+  "value": "Overdue 2d"
+ },
+ {
+  "value": "10d 23h"
+ },
+ {
+  "value": "10d 23h"
+ },
+ {
+  "value": "Overdue 10d"
+ },
+ {
+  "value": "Overdue 10d"
+ },
+ {
+  "value": "400d 0h"
+ },
+ {
+  "value": "400d 0h"
+ },
+ {
+  "value": "Overdue 400d"
+ },
+ {
+  "value": "Overdue 400d"
+ },
+ {
+  "value": "1mnt"
+ },
+ {
+  "value": "00:00"
+ },
+ {
+  "value": "1mnt"
+ },
+ {
+  "value": "00:00"
+ },
+ {
+  "value": "1mnt"
+ },
+ {
+  "value": "00:00"
+ },
+ {
+  "value": "Terlewat 1mnt"
+ },
+ {
+  "value": "Terlewat 1mnt"
+ },
+ {
+  "value": "1mnt"
+ },
+ {
+  "value": "00:00"
+ },
+ {
+  "value": "Terlewat 1mnt"
+ },
+ {
+  "value": "Terlewat 1mnt"
+ },
+ {
+  "value": "1mnt"
+ },
+ {
+  "value": "00:01"
+ },
+ {
+  "value": "Terlewat 1mnt"
+ },
+ {
+  "value": "Terlewat 1mnt"
+ },
+ {
+  "value": "1mnt"
+ },
+ {
+  "value": "00:59"
+ },
+ {
+  "value": "Terlewat 1mnt"
+ },
+ {
+  "value": "Terlewat 1mnt"
+ },
+ {
+  "value": "1mnt"
+ },
+ {
+  "value": "00:59"
+ },
+ {
+  "value": "Terlewat 1mnt"
+ },
+ {
+  "value": "Terlewat 1mnt"
+ },
+ {
+  "value": "1mnt"
+ },
+ {
+  "value": "01:00"
+ },
+ {
+  "value": "Terlewat 1mnt"
+ },
+ {
+  "value": "Terlewat 1mnt"
+ },
+ {
+  "value": "1mnt"
+ },
+ {
+  "value": "01:00"
+ },
+ {
+  "value": "Terlewat 1mnt"
+ },
+ {
+  "value": "Terlewat 1mnt"
+ },
+ {
+  "value": "5mnt"
+ },
+ {
+  "value": "05:00"
+ },
+ {
+  "value": "Terlewat 5mnt"
+ },
+ {
+  "value": "Terlewat 5mnt"
+ },
+ {
+  "value": "59mnt"
+ },
+ {
+  "value": "59:00"
+ },
+ {
+  "value": "Terlewat 59mnt"
+ },
+ {
+  "value": "Terlewat 59mnt"
+ },
+ {
+  "value": "59mnt"
+ },
+ {
+  "value": "59:59"
+ },
+ {
+  "value": "Terlewat 59mnt"
+ },
+ {
+  "value": "Terlewat 59mnt"
+ },
+ {
+  "value": "59mnt"
+ },
+ {
+  "value": "59:59"
+ },
+ {
+  "value": "Terlewat 59mnt"
+ },
+ {
+  "value": "Terlewat 59mnt"
+ },
+ {
+  "value": "1j 0mnt"
+ },
+ {
+  "value": "1j 0mnt"
+ },
+ {
+  "value": "Terlewat 1j"
+ },
+ {
+  "value": "Terlewat 1j"
+ },
+ {
+  "value": "1j 1mnt"
+ },
+ {
+  "value": "1j 1mnt"
+ },
+ {
+  "value": "Terlewat 1j"
+ },
+ {
+  "value": "Terlewat 1j"
+ },
+ {
+  "value": "2j 14mnt"
+ },
+ {
+  "value": "2j 14mnt"
+ },
+ {
+  "value": "Terlewat 2j"
+ },
+ {
+  "value": "Terlewat 2j"
+ },
+ {
+  "value": "23j 59mnt"
+ },
+ {
+  "value": "23j 59mnt"
+ },
+ {
+  "value": "Terlewat 23j"
+ },
+ {
+  "value": "Terlewat 23j"
+ },
+ {
+  "value": "23j 59mnt"
+ },
+ {
+  "value": "23j 59mnt"
+ },
+ {
+  "value": "Terlewat 23j"
+ },
+ {
+  "value": "Terlewat 23j"
+ },
+ {
+  "value": "1h 0j"
+ },
+ {
+  "value": "1h 0j"
+ },
+ {
+  "value": "Terlewat 1h"
+ },
+ {
+  "value": "Terlewat 1h"
+ },
+ {
+  "value": "1h 0j"
+ },
+ {
+  "value": "1h 0j"
+ },
+ {
+  "value": "Terlewat 1h"
+ },
+ {
+  "value": "Terlewat 1h"
+ },
+ {
+  "value": "1h 1j"
+ },
+ {
+  "value": "1h 1j"
+ },
+ {
+  "value": "Terlewat 1h"
+ },
+ {
+  "value": "Terlewat 1h"
+ },
+ {
+  "value": "2h 3j"
+ },
+ {
+  "value": "2h 3j"
+ },
+ {
+  "value": "Terlewat 2h"
+ },
+ {
+  "value": "Terlewat 2h"
+ },
+ {
+  "value": "10h 23j"
+ },
+ {
+  "value": "10h 23j"
+ },
+ {
+  "value": "Terlewat 10h"
+ },
+ {
+  "value": "Terlewat 10h"
+ },
+ {
+  "value": "400h 0j"
+ },
+ {
+  "value": "400h 0j"
+ },
+ {
+  "value": "Terlewat 400h"
+ },
+ {
+  "value": "Terlewat 400h"
+ },
+ {
+  "value": "19 Oct"
+ },
+ {
+  "value": "19 Oct"
+ },
+ {
+  "value": "19 Oct"
+ },
+ {
+  "value": "19 Oct"
+ },
+ {
+  "value": "21 Oct"
+ },
+ {
+  "value": "21 Oct"
+ },
+ {
+  "value": "21 Oct"
+ },
+ {
+  "value": "21 Oct"
+ },
+ {
+  "value": "Today 00:00"
+ },
+ {
+  "value": "Today 09:05"
+ },
+ {
+  "value": "Today 14:05"
+ },
+ {
+  "value": "Today 23:59"
+ },
+ {
+  "value": "Tomorrow 00:00"
+ },
+ {
+  "value": "Tomorrow 09:05"
+ },
+ {
+  "value": "Tomorrow 14:05"
+ },
+ {
+  "value": "Tomorrow 23:59"
+ },
+ {
+  "value": "Sat 00:00"
+ },
+ {
+  "value": "Sat 09:05"
+ },
+ {
+  "value": "Sat 14:05"
+ },
+ {
+  "value": "Sat 23:59"
+ },
+ {
+  "value": "Sun 00:00"
+ },
+ {
+  "value": "Sun 09:05"
+ },
+ {
+  "value": "Sun 14:05"
+ },
+ {
+  "value": "Sun 23:59"
+ },
+ {
+  "value": "Wed 00:00"
+ },
+ {
+  "value": "Wed 09:05"
+ },
+ {
+  "value": "Wed 14:05"
+ },
+ {
+  "value": "Wed 23:59"
+ },
+ {
+  "value": "29 Oct"
+ },
+ {
+  "value": "29 Oct"
+ },
+ {
+  "value": "29 Oct"
+ },
+ {
+  "value": "29 Oct"
+ },
+ {
+  "value": "30 Oct"
+ },
+ {
+  "value": "30 Oct"
+ },
+ {
+  "value": "30 Oct"
+ },
+ {
+  "value": "30 Oct"
+ },
+ {
+  "value": "11 Nov"
+ },
+ {
+  "value": "11 Nov"
+ },
+ {
+  "value": "11 Nov"
+ },
+ {
+  "value": "11 Nov"
+ },
+ {
+  "value": "10 Jan"
+ },
+ {
+  "value": "10 Jan"
+ },
+ {
+  "value": "10 Jan"
+ },
+ {
+  "value": "10 Jan"
+ },
+ {
+  "value": "10 May"
+ },
+ {
+  "value": "10 May"
+ },
+ {
+  "value": "10 May"
+ },
+ {
+  "value": "10 May"
+ },
+ {
+  "value": "26 Nov"
+ },
+ {
+  "value": "26 Nov"
+ },
+ {
+  "value": "26 Nov"
+ },
+ {
+  "value": "26 Nov"
+ },
+ {
+  "value": "15 Jan"
+ },
+ {
+  "value": "15 Feb"
+ },
+ {
+  "value": "15 Mar"
+ },
+ {
+  "value": "15 Apr"
+ },
+ {
+  "value": "15 May"
+ },
+ {
+  "value": "15 Jun"
+ },
+ {
+  "value": "15 Jul"
+ },
+ {
+  "value": "15 Aug"
+ },
+ {
+  "value": "15 Sept"
+ },
+ {
+  "value": "15 Oct"
+ },
+ {
+  "value": "15 Nov"
+ },
+ {
+  "value": "15 Dec"
+ },
+ {
+  "value": "Sat 09:05"
+ },
+ {
+  "value": "Sun 09:05"
+ },
+ {
+  "value": "Mon 09:05"
+ },
+ {
+  "value": "Tue 09:05"
+ },
+ {
+  "value": "Wed 09:05"
+ },
+ {
+  "value": "29 Oct"
+ },
+ {
+  "value": "30 Oct"
+ },
+ {
+  "value": "Tomorrow 01:00"
+ },
+ {
+  "value": "Mon 02:00"
+ },
+ {
+  "value": "Tue 02:00"
+ },
+ {
+  "value": "Wed 02:00"
+ },
+ {
+  "value": "Today 20:30"
+ },
+ {
+  "value": "Tomorrow 20:30"
+ },
+ {
+  "value": "Mon 20:30"
+ },
+ {
+  "value": "Tue 20:30"
+ },
+ {
+  "value": "Today 20:30"
+ },
+ {
+  "value": "Tomorrow 20:30"
+ },
+ {
+  "value": "Mon 20:30"
+ },
+ {
+  "value": "Tue 20:30"
+ },
+ {
+  "value": "Tomorrow 01:30"
+ },
+ {
+  "value": "Mon 00:30"
+ },
+ {
+  "value": "Tue 00:30"
+ },
+ {
+  "value": "Wed 00:30"
+ },
+ {
+  "value": "Tomorrow 11:00"
+ },
+ {
+  "value": "Sun 11:00"
+ },
+ {
+  "value": "Mon 11:00"
+ },
+ {
+  "value": "Tue 11:00"
+ },
+ {
+  "value": "19 Okt"
+ },
+ {
+  "value": "19 Okt"
+ },
+ {
+  "value": "19 Okt"
+ },
+ {
+  "value": "19 Okt"
+ },
+ {
+  "value": "21 Okt"
+ },
+ {
+  "value": "21 Okt"
+ },
+ {
+  "value": "21 Okt"
+ },
+ {
+  "value": "21 Okt"
+ },
+ {
+  "value": "Hari ini 00:00"
+ },
+ {
+  "value": "Hari ini 09:05"
+ },
+ {
+  "value": "Hari ini 14:05"
+ },
+ {
+  "value": "Hari ini 23:59"
+ },
+ {
+  "value": "Besok 00:00"
+ },
+ {
+  "value": "Besok 09:05"
+ },
+ {
+  "value": "Besok 14:05"
+ },
+ {
+  "value": "Besok 23:59"
+ },
+ {
+  "value": "Sab 00:00"
+ },
+ {
+  "value": "Sab 09:05"
+ },
+ {
+  "value": "Sab 14:05"
+ },
+ {
+  "value": "Sab 23:59"
+ },
+ {
+  "value": "Min 00:00"
+ },
+ {
+  "value": "Min 09:05"
+ },
+ {
+  "value": "Min 14:05"
+ },
+ {
+  "value": "Min 23:59"
+ },
+ {
+  "value": "Rab 00:00"
+ },
+ {
+  "value": "Rab 09:05"
+ },
+ {
+  "value": "Rab 14:05"
+ },
+ {
+  "value": "Rab 23:59"
+ },
+ {
+  "value": "29 Okt"
+ },
+ {
+  "value": "29 Okt"
+ },
+ {
+  "value": "29 Okt"
+ },
+ {
+  "value": "29 Okt"
+ },
+ {
+  "value": "30 Okt"
+ },
+ {
+  "value": "30 Okt"
+ },
+ {
+  "value": "30 Okt"
+ },
+ {
+  "value": "30 Okt"
+ },
+ {
+  "value": "11 Nov"
+ },
+ {
+  "value": "11 Nov"
+ },
+ {
+  "value": "11 Nov"
+ },
+ {
+  "value": "11 Nov"
+ },
+ {
+  "value": "10 Jan"
+ },
+ {
+  "value": "10 Jan"
+ },
+ {
+  "value": "10 Jan"
+ },
+ {
+  "value": "10 Jan"
+ },
+ {
+  "value": "10 Mei"
+ },
+ {
+  "value": "10 Mei"
+ },
+ {
+  "value": "10 Mei"
+ },
+ {
+  "value": "10 Mei"
+ },
+ {
+  "value": "26 Nov"
+ },
+ {
+  "value": "26 Nov"
+ },
+ {
+  "value": "26 Nov"
+ },
+ {
+  "value": "26 Nov"
+ },
+ {
+  "value": "15 Jan"
+ },
+ {
+  "value": "15 Feb"
+ },
+ {
+  "value": "15 Mar"
+ },
+ {
+  "value": "15 Apr"
+ },
+ {
+  "value": "15 Mei"
+ },
+ {
+  "value": "15 Jun"
+ },
+ {
+  "value": "15 Jul"
+ },
+ {
+  "value": "15 Agu"
+ },
+ {
+  "value": "15 Sep"
+ },
+ {
+  "value": "15 Okt"
+ },
+ {
+  "value": "15 Nov"
+ },
+ {
+  "value": "15 Des"
+ },
+ {
+  "value": "Sab 09:05"
+ },
+ {
+  "value": "Min 09:05"
+ },
+ {
+  "value": "Sen 09:05"
+ },
+ {
+  "value": "Sel 09:05"
+ },
+ {
+  "value": "Rab 09:05"
+ },
+ {
+  "value": "29 Okt"
+ },
+ {
+  "value": "30 Okt"
+ },
+ {
+  "value": "Besok 01:00"
+ },
+ {
+  "value": "Sen 02:00"
+ },
+ {
+  "value": "Sel 02:00"
+ },
+ {
+  "value": "Rab 02:00"
+ },
+ {
+  "value": "Hari ini 20:30"
+ },
+ {
+  "value": "Besok 20:30"
+ },
+ {
+  "value": "Sen 20:30"
+ },
+ {
+  "value": "Sel 20:30"
+ },
+ {
+  "value": "Hari ini 20:30"
+ },
+ {
+  "value": "Besok 20:30"
+ },
+ {
+  "value": "Sen 20:30"
+ },
+ {
+  "value": "Sel 20:30"
+ },
+ {
+  "value": "Besok 01:30"
+ },
+ {
+  "value": "Sen 00:30"
+ },
+ {
+  "value": "Sel 00:30"
+ },
+ {
+  "value": "Rab 00:30"
+ },
+ {
+  "value": "Besok 11:00"
+ },
+ {
+  "value": "Min 11:00"
+ },
+ {
+  "value": "Sen 11:00"
+ },
+ {
+  "value": "Sel 11:00"
+ },
+ {
+  "value": true
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": true
+ },
+ {
+  "value": true
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": true
+ },
+ {
+  "value": true
+ },
+ {
+  "value": 1000
+ },
+ {
+  "value": 15000
+ },
+ {
+  "value": 60000
+ },
+ {
+  "value": 15000
+ },
+ {
+  "value": 15000
+ },
+ {
+  "value": 1000
+ },
+ {
+  "value": 15000
+ },
+ {
+  "value": "short"
+ },
+ {
+  "value": "abcd…"
+ },
+ {
+  "value": ""
+ },
+ {
+  "value": "padded"
+ },
+ {
+  "value": "exact"
+ },
+ {
+  "value": "sixs…"
+ },
+ {
+  "value": "a b c…"
+ },
+ {
+  "value": "abc…"
+ },
+ {
+  "value": "éè…"
+ },
+ {
+  "value": "ab😀…"
+ },
+ {
+  "value": ""
+ },
+ {
+  "value": "…"
+ },
+ {
+  "value": "…"
+ },
+ {
+  "value": "12…"
+ },
+ {
+  "value": "CS101"
+ },
+ {
+  "value": "MA201"
+ },
+ {
+  "value": "Desain dan An…"
+ },
+ {
+  "value": "Rapat"
+ },
+ {
+  "value": ""
+ },
+ {
+  "value": "Basis Data 2"
+ },
+ {
+  "value": "CS101"
+ },
+ {
+  "value": "CS101"
+ },
+ {
+  "value": "CS - 101"
+ },
+ {
+  "value": "CS101A"
+ },
+ {
+  "value": "CS101ab"
+ },
+ {
+  "value": "CS1"
+ },
+ {
+  "value": "C101"
+ },
+ {
+  "value": "ABCDEFG101"
+ },
+ {
+  "value": "ABCDEF1234"
+ },
+ {
+  "value": "ABC12345"
+ },
+ {
+  "value": "ABC123B"
+ },
+ {
+  "value": "AB12"
+ },
+ {
+  "value": "AB123"
+ },
+ {
+  "value": "CS101"
+ },
+ {
+  "value": "Judul yang sa…"
+ },
+ {
+  "value": "Ruang…"
+ },
+ {
+  "value": "abc12345"
+ },
+ {
+  "value": "abc1234x1"
+ },
+ {
+  "value": "ab1"
+ },
+ {
+  "value": "ABC12"
+ },
+ {
+  "value": "abc- 12"
+ },
+ {
+  "value": "Tanpa kursus"
+ },
+ {
+  "value": "only tit…"
+ },
+ {
+  "value": "CS101"
+ },
+ {
+  "value": {
+   "kind": "none",
+   "text": ""
+  }
+ },
+ {
+  "value": {
+   "kind": "none",
+   "text": ""
+  }
+ },
+ {
+  "value": {
+   "kind": "syncing",
+   "text": "Syncing…"
+  }
+ },
+ {
+  "value": {
+   "kind": "ok",
+   "text": "Synced 06:00"
+  }
+ },
+ {
+  "value": {
+   "kind": "offline",
+   "text": "Offline · last synced 06:00"
+  }
+ },
+ {
+  "value": {
+   "kind": "error",
+   "text": "The server rejected the link. The token may have been reset; export a fresh link."
+  }
+ },
+ {
+  "value": {
+   "kind": "never",
+   "text": "Not synced yet"
+  }
+ },
+ {
+  "value": {
+   "kind": "offline",
+   "text": "Not synced yet"
+  }
+ },
+ {
+  "value": {
+   "kind": "ok",
+   "text": "Synced 06:05"
+  }
+ },
+ {
+  "value": {
+   "kind": "error",
+   "text": "That link did not return a calendar. Check that it is the exported .ics address."
+  }
+ },
+ {
+  "value": {
+   "kind": "syncing",
+   "text": "Syncing…"
+  }
+ },
+ {
+  "value": {
+   "kind": "offline",
+   "text": "Offline · last synced 08:00"
+  }
+ },
+ {
+  "value": {
+   "kind": "ok",
+   "text": "Synced 06:00"
+  }
+ },
+ {
+  "value": {
+   "kind": "error",
+   "text": "The server returned an error."
+  }
+ },
+ {
+  "value": {
+   "kind": "none",
+   "text": ""
+  }
+ },
+ {
+  "value": {
+   "kind": "none",
+   "text": ""
+  }
+ },
+ {
+  "value": {
+   "kind": "syncing",
+   "text": "Menyinkronkan…"
+  }
+ },
+ {
+  "value": {
+   "kind": "ok",
+   "text": "Tersinkron 06:00"
+  }
+ },
+ {
+  "value": {
+   "kind": "offline",
+   "text": "Offline · terakhir sinkron 06:00"
+  }
+ },
+ {
+  "value": {
+   "kind": "error",
+   "text": "Server menolak tautan. Token mungkin direset; ekspor tautan baru."
+  }
+ },
+ {
+  "value": {
+   "kind": "never",
+   "text": "Belum tersinkron"
+  }
+ },
+ {
+  "value": {
+   "kind": "offline",
+   "text": "Belum tersinkron"
+  }
+ },
+ {
+  "value": {
+   "kind": "ok",
+   "text": "Tersinkron 06:05"
+  }
+ },
+ {
+  "value": {
+   "kind": "error",
+   "text": "Tautan itu tidak mengembalikan kalender. Pastikan itu alamat .ics hasil ekspor."
+  }
+ },
+ {
+  "value": {
+   "kind": "syncing",
+   "text": "Menyinkronkan…"
+  }
+ },
+ {
+  "value": {
+   "kind": "offline",
+   "text": "Offline · terakhir sinkron 08:00"
+  }
+ },
+ {
+  "value": {
+   "kind": "ok",
+   "text": "Tersinkron 06:00"
+  }
+ },
+ {
+  "value": {
+   "kind": "error",
+   "text": "Server mengembalikan kesalahan."
+  }
  }
 ]

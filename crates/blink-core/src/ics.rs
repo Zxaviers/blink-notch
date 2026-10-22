@@ -18,7 +18,7 @@ use jiff::civil::DateTime;
 use jiff::tz::TimeZone;
 use jiff::Timestamp;
 use regex_lite::Regex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::jsval::{is_js_space, js_trim, js_trim_end};
 
@@ -30,8 +30,8 @@ pub const DEFAULT_HORIZON_MS: i64 = 120 * DAY_MS;
 
 const DESCRIPTION_MAX_LEN: usize = 240;
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
 pub struct Task {
     pub id: String,
     pub uid: String,
@@ -44,6 +44,14 @@ pub struct Task {
     pub all_day: bool,
     pub description: String,
     pub url: Option<String>,
+    /// "local" for personal events; absent for feed tasks.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    /// Which feed a merged task came from.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub feed_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub feed_kind: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -298,7 +306,7 @@ fn first_prop<'a>(ev: &'a Event, name: &str) -> Option<&'a Prop> {
 // ---------------------------------------------------------------- time
 
 /// `Date.UTC` semantics: month and day overflow roll over, years 0 to 99 mean 1900s.
-fn utc_ms(year: i64, month0: i64, day: i64, hour: i64, minute: i64, second: i64) -> Option<i64> {
+pub(crate) fn utc_ms(year: i64, month0: i64, day: i64, hour: i64, minute: i64, second: i64) -> Option<i64> {
     let mut year = year;
     if (0..=99).contains(&year) {
         year += 1900;
@@ -317,7 +325,7 @@ fn civil_from_wall_ms(wall_ms: i64) -> Option<DateTime> {
 
 /// A wall-clock time in `tz`, resolved like JavaScript: a gap moves forward, an
 /// ambiguous time takes the earlier instant.
-fn local_ms(tz: &TimeZone, wall_ms: i64) -> Option<i64> {
+pub(crate) fn local_ms(tz: &TimeZone, wall_ms: i64) -> Option<i64> {
     let dt = civil_from_wall_ms(wall_ms)?;
     Some(tz.to_timestamp(dt).ok()?.as_millisecond())
 }
@@ -433,7 +441,7 @@ fn extract_url(ev: &Event) -> Option<String> {
 }
 
 /// Locale-aware title order is approximated: case-insensitive, lowercase first.
-fn compare_titles(a: &str, b: &str) -> std::cmp::Ordering {
+pub(crate) fn compare_titles(a: &str, b: &str) -> std::cmp::Ordering {
     a.to_lowercase().cmp(&b.to_lowercase()).then_with(|| b.cmp(a))
 }
 
@@ -493,7 +501,10 @@ pub fn parse_tasks(ics_text: &str, opts: &ParseOptions, local: &TimeZone) -> Vec
         order.push(id.clone());
         by_id.insert(
             id.clone(),
-            Task { id, uid, title, course, phase, due: iso_string(due_ms), due_ms, all_day, description, url },
+            Task {
+                id, uid, title, course, phase, due: iso_string(due_ms), due_ms, all_day, description, url,
+                source: None, feed_id: None, feed_kind: None,
+            },
         );
     }
 

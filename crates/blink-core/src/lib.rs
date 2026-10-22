@@ -4,10 +4,19 @@
 //! retired, `tests/` runs both implementations on the same inputs and requires
 //! identical output.
 
+pub mod countdown;
+pub mod done;
 pub mod feed_url;
 pub mod feeds;
+pub mod format;
 pub mod hotkey;
+pub mod i18n;
+mod i18n_data;
 pub mod ics;
 pub mod jsval;
+pub mod local_events;
+pub mod merge;
+pub mod planner;
 pub mod settings;
 pub mod thresholds;
+pub mod view;

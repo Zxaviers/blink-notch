@@ -22,7 +22,7 @@ pub fn js_trim_end(s: &str) -> &str {
 }
 
 /// `Number(string)`.
-fn number_from_str(s: &str) -> f64 {
+pub fn number_from_str(s: &str) -> f64 {
     let t = js_trim(s);
     if t.is_empty() {
         return 0.0;
