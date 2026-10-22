@@ -1,0 +1,1460 @@
+[
+ {
+  "fn": "normalizeThresholdsHours",
+  "args": [
+   [
+    24,
+    6,
+    1
+   ]
+  ]
+ },
+ {
+  "fn": "normalizeThresholdsHours",
+  "args": [
+   [
+    1,
+    6,
+    24
+   ]
+  ]
+ },
+ {
+  "fn": "normalizeThresholdsHours",
+  "args": [
+   [
+    6,
+    6,
+    6
+   ]
+  ]
+ },
+ {
+  "fn": "normalizeThresholdsHours",
+  "args": [
+   [
+    "6",
+    "24",
+    1
+   ]
+  ]
+ },
+ {
+  "fn": "normalizeThresholdsHours",
+  "args": [
+   [
+    0,
+    -1,
+    5
+   ]
+  ]
+ },
+ {
+  "fn": "normalizeThresholdsHours",
+  "args": [
+   [
+    337,
+    336,
+    335.5
+   ]
+  ]
+ },
+ {
+  "fn": "normalizeThresholdsHours",
+  "args": [
+   [
+    0.5,
+    0.25
+   ]
+  ]
+ },
+ {
+  "fn": "normalizeThresholdsHours",
+  "args": [
+   []
+  ]
+ },
+ {
+  "fn": "normalizeThresholdsHours",
+  "args": [
+   [
+    "x",
+    null,
+    true,
+    false
+   ]
+  ]
+ },
+ {
+  "fn": "normalizeThresholdsHours",
+  "args": [
+   [
+    null
+   ]
+  ]
+ },
+ {
+  "fn": "normalizeThresholdsHours",
+  "args": [
+   "nope"
+  ]
+ },
+ {
+  "fn": "normalizeThresholdsHours",
+  "args": [
+   5
+  ]
+ },
+ {
+  "fn": "normalizeThresholdsHours",
+  "args": [
+   null
+  ]
+ },
+ {
+  "fn": "normalizeThresholdsHours",
+  "args": [
+   {
+    "a": 1
+   }
+  ]
+ },
+ {
+  "fn": "normalizeThresholdsHours",
+  "args": [
+   [
+    " 12 ",
+    "0x10",
+    "1e1"
+   ]
+  ]
+ },
+ {
+  "fn": "normalizeThresholdsHours",
+  "args": [
+   [
+    9007199254740991
+   ]
+  ]
+ },
+ {
+  "fn": "normalizeThresholdsHours",
+  "args": [
+   [
+    [],
+    [
+     5
+    ],
+    [
+     [
+      6
+     ]
+    ]
+   ]
+  ]
+ },
+ {
+  "fn": "normalizeThresholdsHours",
+  "args": [
+   [
+    1.5,
+    1.5,
+    2
+   ]
+  ]
+ },
+ {
+  "fn": "isValidFeedId",
+  "args": [
+   "moodle"
+  ]
+ },
+ {
+  "fn": "isValidFeedId",
+  "args": [
+   "google-1"
+  ]
+ },
+ {
+  "fn": "isValidFeedId",
+  "args": [
+   "kelas_a.2"
+  ]
+ },
+ {
+  "fn": "isValidFeedId",
+  "args": [
+   "a"
+  ]
+ },
+ {
+  "fn": "isValidFeedId",
+  "args": [
+   ""
+  ]
+ },
+ {
+  "fn": "isValidFeedId",
+  "args": [
+   "ada spasi"
+  ]
+ },
+ {
+  "fn": "isValidFeedId",
+  "args": [
+   "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  ]
+ },
+ {
+  "fn": "isValidFeedId",
+  "args": [
+   "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  ]
+ },
+ {
+  "fn": "isValidFeedId",
+  "args": [
+   "-bad"
+  ]
+ },
+ {
+  "fn": "isValidFeedId",
+  "args": [
+   ".bad"
+  ]
+ },
+ {
+  "fn": "isValidFeedId",
+  "args": [
+   " padded "
+  ]
+ },
+ {
+  "fn": "isValidFeedId",
+  "args": [
+   "ünïcode"
+  ]
+ },
+ {
+  "fn": "isValidFeedId",
+  "args": [
+   "a/b"
+  ]
+ },
+ {
+  "fn": "isValidFeedId",
+  "args": [
+   "ok.id_1-2"
+  ]
+ },
+ {
+  "fn": "normalizeFeedKind",
+  "args": [
+   "moodle"
+  ]
+ },
+ {
+  "fn": "normalizeFeedKind",
+  "args": [
+   "google"
+  ]
+ },
+ {
+  "fn": "normalizeFeedKind",
+  "args": [
+   "ics"
+  ]
+ },
+ {
+  "fn": "normalizeFeedKind",
+  "args": [
+   " ics "
+  ]
+ },
+ {
+  "fn": "normalizeFeedKind",
+  "args": [
+   "dropbox"
+  ]
+ },
+ {
+  "fn": "normalizeFeedKind",
+  "args": [
+   ""
+  ]
+ },
+ {
+  "fn": "normalizeFeedKind",
+  "args": [
+   "MOODLE"
+  ]
+ },
+ {
+  "fn": "normalizeFeed",
+  "args": [
+   {
+    "id": "x1",
+    "kind": "moodle",
+    "url": "https://example.com/cal.ics?token=secret"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeFeed",
+  "args": [
+   {
+    "id": "x1",
+    "kind": "google",
+    "url": "https://example.com/cal.ics?token=secret",
+    "label": "  Kelas  ",
+    "enabled": false
+   }
+  ]
+ },
+ {
+  "fn": "normalizeFeed",
+  "args": [
+   {
+    "id": "",
+    "kind": "moodle",
+    "url": "https://example.com/cal.ics?token=secret"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeFeed",
+  "args": [
+   {
+    "id": "a",
+    "kind": "dropbox",
+    "url": "https://example.com/cal.ics?token=secret"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeFeed",
+  "args": [
+   {
+    "id": "a",
+    "kind": "ics",
+    "url": "ftp://x/y"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeFeed",
+  "args": [
+   {
+    "id": "a",
+    "kind": "ics",
+    "url": ""
+   }
+  ]
+ },
+ {
+  "fn": "normalizeFeed",
+  "args": [
+   {
+    "id": "a",
+    "kind": "ics",
+    "url": "   "
+   }
+  ]
+ },
+ {
+  "fn": "normalizeFeed",
+  "args": [
+   {
+    "id": "a",
+    "kind": "ics",
+    "url": "not a url"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeFeed",
+  "args": [
+   {
+    "id": "a",
+    "kind": "ics",
+    "url": "http://localhost:8765/cal.ics"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeFeed",
+  "args": [
+   {
+    "id": "a",
+    "kind": "ics",
+    "url": " https://example.com/x "
+   }
+  ]
+ },
+ {
+  "fn": "normalizeFeed",
+  "args": [
+   {
+    "id": "a",
+    "kind": "ics"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeFeed",
+  "args": [
+   {
+    "id": 5,
+    "kind": "ics",
+    "url": "https://example.com/cal.ics?token=secret"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeFeed",
+  "args": [
+   {
+    "id": "g1",
+    "kind": "google",
+    "url": "https://calendar.google.com/x",
+    "enabled": true
+   }
+  ]
+ },
+ {
+  "fn": "normalizeFeed",
+  "args": [
+   {
+    "id": "g1",
+    "kind": "google",
+    "url": "https://calendar.google.com/x",
+    "enabled": 0
+   }
+  ]
+ },
+ {
+  "fn": "normalizeFeed",
+  "args": [
+   {
+    "id": "g1",
+    "kind": "google",
+    "url": "https://calendar.google.com/x",
+    "label": null
+   }
+  ]
+ },
+ {
+  "fn": "normalizeFeed",
+  "args": [
+   {}
+  ]
+ },
+ {
+  "fn": "feedMetaFrom",
+  "args": [
+   {
+    "id": "g1",
+    "kind": "google",
+    "label": "Kelas",
+    "enabled": true,
+    "url": "https://secret"
+   }
+  ]
+ },
+ {
+  "fn": "feedMetaFrom",
+  "args": [
+   {
+    "id": "g1",
+    "kind": "ics",
+    "label": "x",
+    "enabled": false
+   }
+  ]
+ },
+ {
+  "fn": "feedMetaFrom",
+  "args": [
+   {
+    "id": "g1",
+    "kind": "ics",
+    "label": "x"
+   }
+  ]
+ },
+ {
+  "fn": "upsertFeedMeta",
+  "args": [
+   [
+    {
+     "id": "moodle",
+     "kind": "moodle",
+     "label": "M",
+     "enabled": true
+    }
+   ],
+   {
+    "id": "g1",
+    "kind": "google",
+    "label": "K",
+    "enabled": true
+   }
+  ]
+ },
+ {
+  "fn": "upsertFeedMeta",
+  "args": [
+   [
+    {
+     "id": "g1",
+     "kind": "google",
+     "label": "K",
+     "enabled": true
+    }
+   ],
+   {
+    "id": "g1",
+    "kind": "google",
+    "label": "Baru",
+    "enabled": false
+   }
+  ]
+ },
+ {
+  "fn": "upsertFeedMeta",
+  "args": [
+   null,
+   {
+    "id": "g1",
+    "kind": "ics",
+    "label": "x",
+    "enabled": true
+   }
+  ]
+ },
+ {
+  "fn": "upsertFeedMeta",
+  "args": [
+   [],
+   {
+    "id": "g1",
+    "kind": "ics",
+    "label": "x",
+    "enabled": true
+   }
+  ]
+ },
+ {
+  "fn": "clampInterval",
+  "args": [
+   1
+  ]
+ },
+ {
+  "fn": "clampInterval",
+  "args": [
+   60000
+  ]
+ },
+ {
+  "fn": "clampInterval",
+  "args": [
+   900000
+  ]
+ },
+ {
+  "fn": "clampInterval",
+  "args": [
+   1200000
+  ]
+ },
+ {
+  "fn": "clampInterval",
+  "args": [
+   1800000
+  ]
+ },
+ {
+  "fn": "clampInterval",
+  "args": [
+   3600000
+  ]
+ },
+ {
+  "fn": "clampInterval",
+  "args": [
+   0
+  ]
+ },
+ {
+  "fn": "clampInterval",
+  "args": [
+   -5
+  ]
+ },
+ {
+  "fn": "clampInterval",
+  "args": [
+   null
+  ]
+ },
+ {
+  "fn": "clampInterval",
+  "args": [
+   "x"
+  ]
+ },
+ {
+  "fn": "clampInterval",
+  "args": [
+   1000000000000
+  ]
+ },
+ {
+  "fn": "clampInterval",
+  "args": [
+   899999
+  ]
+ },
+ {
+  "fn": "clampInterval",
+  "args": [
+   1800001
+  ]
+ },
+ {
+  "fn": "describeUrl",
+  "args": [
+   "https://x.edu/calendar/export_execute.php?userid=1&authtoken=abc"
+  ]
+ },
+ {
+  "fn": "describeUrl",
+  "args": [
+   "http://h:8080/p?q=1#f"
+  ]
+ },
+ {
+  "fn": "describeUrl",
+  "args": [
+   "https://h:443/p"
+  ]
+ },
+ {
+  "fn": "describeUrl",
+  "args": [
+   "http://h:80/"
+  ]
+ },
+ {
+  "fn": "describeUrl",
+  "args": [
+   "https://User:pw@h/p"
+  ]
+ },
+ {
+  "fn": "describeUrl",
+  "args": [
+   "nonsense"
+  ]
+ },
+ {
+  "fn": "describeUrl",
+  "args": [
+   ""
+  ]
+ },
+ {
+  "fn": "describeUrl",
+  "args": [
+   "https://[::1]:3000/a"
+  ]
+ },
+ {
+  "fn": "validateUrl",
+  "args": [
+   "https://example.edu/a.ics"
+  ]
+ },
+ {
+  "fn": "validateUrl",
+  "args": [
+   " https://example.edu/a.ics "
+  ]
+ },
+ {
+  "fn": "validateUrl",
+  "args": [
+   ""
+  ]
+ },
+ {
+  "fn": "validateUrl",
+  "args": [
+   "   "
+  ]
+ },
+ {
+  "fn": "validateUrl",
+  "args": [
+   null
+  ]
+ },
+ {
+  "fn": "validateUrl",
+  "args": [
+   5
+  ]
+ },
+ {
+  "fn": "validateUrl",
+  "args": [
+   "nonsense"
+  ]
+ },
+ {
+  "fn": "validateUrl",
+  "args": [
+   "file:///C:/secrets.ics"
+  ]
+ },
+ {
+  "fn": "validateUrl",
+  "args": [
+   "javascript:alert(1)"
+  ]
+ },
+ {
+  "fn": "validateUrl",
+  "args": [
+   "ftp://x/y"
+  ]
+ },
+ {
+  "fn": "validateUrl",
+  "args": [
+   "HTTPS://EXAMPLE.EDU/A"
+  ]
+ },
+ {
+  "fn": "validateUrl",
+  "args": [
+   "https://example.edu"
+  ]
+ },
+ {
+  "fn": "validateUrl",
+  "args": [
+   "http://h:80/x"
+  ]
+ },
+ {
+  "fn": "validateUrl",
+  "args": [
+   "https://h/a b"
+  ]
+ },
+ {
+  "fn": "nextRefreshDelayMs",
+  "args": [
+   {
+    "refreshMs": 1200000,
+    "ok": true
+   }
+  ]
+ },
+ {
+  "fn": "nextRefreshDelayMs",
+  "args": [
+   {
+    "refreshMs": 1200000,
+    "ok": false,
+    "transportFailures": 1
+   }
+  ]
+ },
+ {
+  "fn": "nextRefreshDelayMs",
+  "args": [
+   {
+    "refreshMs": 1200000,
+    "ok": false,
+    "transportFailures": 2
+   }
+  ]
+ },
+ {
+  "fn": "nextRefreshDelayMs",
+  "args": [
+   {
+    "refreshMs": 1200000,
+    "ok": false,
+    "transportFailures": 4
+   }
+  ]
+ },
+ {
+  "fn": "nextRefreshDelayMs",
+  "args": [
+   {
+    "refreshMs": 1200000,
+    "ok": false,
+    "transportFailures": 5
+   }
+  ]
+ },
+ {
+  "fn": "nextRefreshDelayMs",
+  "args": [
+   {
+    "refreshMs": 1200000,
+    "ok": false,
+    "transportFailures": 0
+   }
+  ]
+ },
+ {
+  "fn": "nextRefreshDelayMs",
+  "args": [
+   {
+    "refreshMs": 60000,
+    "ok": true
+   }
+  ]
+ },
+ {
+  "fn": "nextRefreshDelayMs",
+  "args": [
+   {
+    "refreshMs": 9000000000,
+    "ok": true
+   }
+  ]
+ },
+ {
+  "fn": "nextRefreshDelayMs",
+  "args": [
+   {
+    "refreshMs": null,
+    "ok": false,
+    "transportFailures": 3
+   }
+  ]
+ },
+ {
+  "fn": "inspectMoodleUrl",
+  "args": [
+   "https://x.edu/calendar/export_execute.php?authtoken=1"
+  ]
+ },
+ {
+  "fn": "inspectMoodleUrl",
+  "args": [
+   "https://x.edu/my/"
+  ]
+ },
+ {
+  "fn": "inspectMoodleUrl",
+  "args": [
+   "https://x.edu/my"
+  ]
+ },
+ {
+  "fn": "inspectMoodleUrl",
+  "args": [
+   "https://x.edu/calendar/view.php?view=month"
+  ]
+ },
+ {
+  "fn": "inspectMoodleUrl",
+  "args": [
+   "https://x.edu/course/view.php?id=2"
+  ]
+ },
+ {
+  "fn": "inspectMoodleUrl",
+  "args": [
+   "https://x.edu/mod/assign/view.php?id=3"
+  ]
+ },
+ {
+  "fn": "inspectMoodleUrl",
+  "args": [
+   "https://x.edu/"
+  ]
+ },
+ {
+  "fn": "inspectMoodleUrl",
+  "args": [
+   "https://x.edu"
+  ]
+ },
+ {
+  "fn": "inspectMoodleUrl",
+  "args": [
+   "https://x.edu/calendar/export_execute.php"
+  ]
+ },
+ {
+  "fn": "inspectMoodleUrl",
+  "args": [
+   "https://x.edu/other"
+  ]
+ },
+ {
+  "fn": "inspectMoodleUrl",
+  "args": [
+   "not a url"
+  ]
+ },
+ {
+  "fn": "inspectMoodleUrl",
+  "args": [
+   ""
+  ]
+ },
+ {
+  "fn": "inspectMoodleUrl",
+  "args": [
+   "https://x.edu/Calendar/EXPORT_EXECUTE.php?authtoken=z"
+  ]
+ },
+ {
+  "fn": "inspectMoodleUrl",
+  "args": [
+   "https://x.edu/calendar/export_execute.php?AUTHTOKEN=z"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   ""
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "Ctrl+Alt+D"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "Super+F12"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "Alt+Space"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "Ctrl+Shift+ArrowUp"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "Ctrl+9"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "D"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "Shift+D"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "Ctrl+"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "+D"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "Ctrl+Ctrl+D"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "Ctrl+Alt+Shift+Super+Ctrl+D"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "Ctrl+dd"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "Win+D"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "Ctrl+F25"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "Ctrl+F0"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "Ctrl+F01"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "Ctrl+F1"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "Ctrl+F24"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "Ctrl+Alt+Shift+Super+D"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "Shift+Super+PageDown"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   "ctrl+alt+d"
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   null
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   5
+  ]
+ },
+ {
+  "fn": "isValidAccelerator",
+  "args": [
+   [
+    "Ctrl+D"
+   ]
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   null
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   "x"
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   42
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   []
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {}
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "language": "fr",
+    "theme": "neon",
+    "restingStyle": "never"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "language": "id",
+    "theme": "auto",
+    "restingStyle": "hover"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "refreshMinutes": 1,
+    "hoverDelayMs": 99999,
+    "keepOverdueDays": -4,
+    "offsetX": 99999,
+    "monitor": -1
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "refreshMinutes": 999
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "refreshMinutes": "abc"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "refreshMinutes": "25"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "refreshMinutes": null
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "refreshMinutes": 17.5
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "dueHorizonHours": null
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "dueHorizonHours": 0
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "dueHorizonHours": 1000
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "dueHorizonHours": "48"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "dueHorizonHours": 2.5
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "dueHorizonHours": -2.5
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "hoverDelayMs": 150.5
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "hoverDelayMs": "200"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "hoverDelayMs": true
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "offsetX": -2.5
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "offsetX": "-300"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "monitor": 2.5
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "thresholdsHours": [
+     1,
+     "6",
+     24,
+     6,
+     -1,
+     "x"
+    ]
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "thresholdsHours": []
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "thresholdsHours": "x"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "toast": false
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "toast": 0
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "toast": null
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "onboarded": true
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "onboarded": 1
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "hotkey": "Ctrl+Alt+K"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "hotkey": ""
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "hotkey": "D"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "hotkey": 42
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "hotkey": null
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "feeds": [
+     {
+      "id": "a",
+      "kind": "moodle",
+      "label": " BRONE ",
+      "enabled": true,
+      "url": "https://secret"
+     },
+     {
+      "id": "a",
+      "kind": "google",
+      "label": "dupe"
+     },
+     {
+      "id": "bad id",
+      "kind": "ics"
+     },
+     {
+      "id": "b",
+      "kind": "dropbox"
+     },
+     {
+      "id": "c",
+      "kind": "ics",
+      "enabled": false
+     },
+     null,
+     5,
+     {
+      "id": "d",
+      "kind": "ics",
+      "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+     },
+     {
+      "id": "e",
+      "kind": "ics",
+      "label": "   "
+     },
+     {
+      "id": "f",
+      "kind": "ics",
+      "label": 42
+     },
+     {
+      "id": " g ",
+      "kind": "ics"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "feeds": "nope"
+   }
+  ]
+ },
+ {
+  "fn": "normalizeSettings",
+  "args": [
+   {
+    "feeds": null
+   }
+  ]
+ }
+]

@@ -1,0 +1,16 @@
+[package]
+name = "blink-core"
+description = "Blink: pure logic, stores and feed fetching, shared by the native notch and the settings program"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Time zones: the JS version used Intl; jiff bundles the IANA database on Windows.
+jiff = { version = "0.2", default-features = false, features = ["std", "tz-system", "tzdb-bundle-platform", "tzdb-concatenated"] }
+# Small regex engine without Unicode tables (keeps size and memory down).
+regex-lite = "0.1"
+# WHATWG URL parsing, so links are judged the way the JS `new URL` judged them.
+url = "2"

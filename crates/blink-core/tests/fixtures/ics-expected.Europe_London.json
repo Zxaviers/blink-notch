@@ -1,0 +1,1585 @@
+[
+ {
+  "tasks": [
+   {
+    "id": "3234567890@brone.ub.ac.id::1787331540000",
+    "uid": "3234567890@brone.ub.ac.id",
+    "title": "Praktikum Basis Data",
+    "course": "Basis Data",
+    "phase": "due",
+    "due": "2026-08-21T16:59:00.000Z",
+    "dueMs": 1787331540000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   },
+   {
+    "id": "1234567890@brone.ub.ac.id::1787418000000",
+    "uid": "1234567890@brone.ub.ac.id",
+    "title": "Tugas 1 - Analisis Algoritma",
+    "course": "Desain dan Analisis Algoritma",
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "Kerjakan bab 1-3. Submit sebelum deadline.",
+    "url": null
+   },
+   {
+    "id": "2234567890@brone.ub.ac.id::1787698799999",
+    "uid": "2234567890@brone.ub.ac.id",
+    "title": "Kuis Jaringan Komputer",
+    "course": "Jaringan Komputer",
+    "phase": "closes",
+    "due": "2026-08-25T22:59:59.999Z",
+    "dueMs": 1787698799999,
+    "allDay": true,
+    "description": "Kuis online bab 4",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "3234567890@brone.ub.ac.id::1787331540000",
+    "uid": "3234567890@brone.ub.ac.id",
+    "title": "Praktikum Basis Data",
+    "course": "Basis Data",
+    "phase": "due",
+    "due": "2026-08-21T16:59:00.000Z",
+    "dueMs": 1787331540000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   },
+   {
+    "id": "1234567890@brone.ub.ac.id::1787418000000",
+    "uid": "1234567890@brone.ub.ac.id",
+    "title": "Tugas 1 - Analisis Algoritma",
+    "course": "Desain dan Analisis Algoritma",
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "Kerjakan bab 1-3. Submit sebelum deadline.",
+    "url": null
+   },
+   {
+    "id": "2234567890@brone.ub.ac.id::1787698799999",
+    "uid": "2234567890@brone.ub.ac.id",
+    "title": "Kuis Jaringan Komputer",
+    "course": "Jaringan Komputer",
+    "phase": "closes",
+    "due": "2026-08-25T22:59:59.999Z",
+    "dueMs": 1787698799999,
+    "allDay": true,
+    "description": "Kuis online bab 4",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "3234567890@brone.ub.ac.id::1787331540000",
+    "uid": "3234567890@brone.ub.ac.id",
+    "title": "Praktikum Basis Data",
+    "course": "Basis Data",
+    "phase": "due",
+    "due": "2026-08-21T16:59:00.000Z",
+    "dueMs": 1787331540000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   },
+   {
+    "id": "1234567890@brone.ub.ac.id::1787418000000",
+    "uid": "1234567890@brone.ub.ac.id",
+    "title": "Tugas 1 - Analisis Algoritma",
+    "course": "Desain dan Analisis Algoritma",
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "Kerjakan bab 1-3. Submit sebelum deadline.",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": []
+ },
+ {
+  "tasks": []
+ },
+ {
+  "tasks": []
+ },
+ {
+  "tasks": []
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1787418000000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "fold::1787418000000",
+    "uid": "fold",
+    "title": "Very longtitle thatwraps",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "esc::1787418000000",
+    "uid": "esc",
+    "title": "A, B; C\\ D E",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "bs::1787418000000",
+    "uid": "bs",
+    "title": "Ends with slash\\",
+    "course": null,
+    "phase": "event",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": []
+ },
+ {
+  "tasks": [
+   {
+    "id": "e::1787418000000",
+    "uid": "e",
+    "title": "real",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "q::1787392800000",
+    "uid": "q",
+    "title": "Quoted",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T10:00:00.000Z",
+    "dueMs": 1787392800000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "p::1787392800000",
+    "uid": "p",
+    "title": "Param",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T10:00:00.000Z",
+    "dueMs": 1787392800000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "sfx::1787418000000",
+    "uid": "sfx",
+    "title": "Name",
+    "course": null,
+    "phase": "grading",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "sfx::1787418000000",
+    "uid": "sfx",
+    "title": "Name",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "sfx::1787418000000",
+    "uid": "sfx",
+    "title": "Name",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "sfx::1787418000000",
+    "uid": "sfx",
+    "title": "Name",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "sfx::1787418000000",
+    "uid": "sfx",
+    "title": "Name",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "sfx::1787418000000",
+    "uid": "sfx",
+    "title": "Name",
+    "course": null,
+    "phase": "closes",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "sfx::1787418000000",
+    "uid": "sfx",
+    "title": "Name",
+    "course": null,
+    "phase": "closes",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "sfx::1787418000000",
+    "uid": "sfx",
+    "title": "Name",
+    "course": null,
+    "phase": "opens",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "sfx::1787418000000",
+    "uid": "sfx",
+    "title": "Name",
+    "course": null,
+    "phase": "opens",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "sfx::1787418000000",
+    "uid": "sfx",
+    "title": "Name",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "sfx::1787418000000",
+    "uid": "sfx",
+    "title": "Name",
+    "course": null,
+    "phase": "grading",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "s1::1787418000000",
+    "uid": "s1",
+    "title": "is due",
+    "course": null,
+    "phase": "event",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "s2::1787418000000",
+    "uid": "s2",
+    "title": "Tugas & Kuis – bab 1",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "uni::1787418000000",
+    "uid": "uni",
+    "title": "Ujian Akhir Semester – Pemrograman éü中文",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "d1::1787418000000",
+    "uid": "d1",
+    "title": "D",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "Kuis online bab 4 Baris dua & \"kutipan\" ©",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "d2::1787418000000",
+    "uid": "d2",
+    "title": "D",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-…",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "d3::1787418000000",
+    "uid": "d3",
+    "title": "D",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "d4::1787418000000",
+    "uid": "d4",
+    "title": "D",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "d5::1787418000000",
+    "uid": "d5",
+    "title": "D",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "😀 yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy…",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "c1::1787418000000",
+    "uid": "c1",
+    "title": "C",
+    "course": "CS101 Algorithms",
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "c2::1787418000000",
+    "uid": "c2",
+    "title": "C",
+    "course": "Basis Data",
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "c3::1787418000000",
+    "uid": "c3",
+    "title": "C",
+    "course": "Jaringan Komputer",
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "c4::1787418000000",
+    "uid": "c4",
+    "title": "C",
+    "course": "Data Structures",
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "Submit now. Course: Data Structures. More text",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "c5::1787418000000",
+    "uid": "c5",
+    "title": "C",
+    "course": "Basis Data",
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "Mata kuliah - Basis Data; lainnya",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "c6::1787418000000",
+    "uid": "c6",
+    "title": "C",
+    "course": "Fisika Dasar 2",
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "KELAS: Fisika Dasar 2",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "c7::1787418000000",
+    "uid": "c7",
+    "title": "C",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "l1::1787418000000",
+    "uid": "l1",
+    "title": "L",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": "https://brone.ub.ac.id/mod/assign/view.php?id=1"
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "l2::1787418000000",
+    "uid": "l2",
+    "title": "L",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "l3::1787418000000",
+    "uid": "l3",
+    "title": "L",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": "HTTPS://example.edu/a"
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "l4::1787418000000",
+    "uid": "l4",
+    "title": "L",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "l5::1787418000000",
+    "uid": "l5",
+    "title": "L",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "see https://drive.google.com/x",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "l6::1787418000000",
+    "uid": "l6",
+    "title": "L",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1787418000000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1787414400000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T16:00:00.000Z",
+    "dueMs": 1787414400000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1787698799999",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-25T22:59:59.999Z",
+    "dueMs": 1787698799999,
+    "allDay": true,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1787698799999",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-25T22:59:59.999Z",
+    "dueMs": 1787698799999,
+    "allDay": true,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1787418000000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1787353200000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-21T23:00:00.000Z",
+    "dueMs": 1787353200000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1787353200000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-21T23:00:00.000Z",
+    "dueMs": 1787353200000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": []
+ },
+ {
+  "tasks": []
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1787443200000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-23T00:00:00.000Z",
+    "dueMs": 1787443200000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1798761600000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2027-01-01T00:00:00.000Z",
+    "dueMs": 1798761600000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1772452800000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-03-02T12:00:00.000Z",
+    "dueMs": 1772452800000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": []
+ },
+ {
+  "tasks": []
+ },
+ {
+  "tasks": [
+   {
+    "id": "Nameless|due::1787418000000",
+    "uid": "Nameless|due",
+    "title": "Nameless",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "Blank|due::1787418000000",
+    "uid": "Blank|due",
+    "title": "Blank",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "tz::1787392800000",
+    "uid": "tz",
+    "title": "Zone",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T10:00:00.000Z",
+    "dueMs": 1787392800000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "tz::1787432400000",
+    "uid": "tz",
+    "title": "Zone",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T21:00:00.000Z",
+    "dueMs": 1787432400000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "tz::1772951400000",
+    "uid": "tz",
+    "title": "Zone",
+    "course": null,
+    "phase": "due",
+    "due": "2026-03-08T06:30:00.000Z",
+    "dueMs": 1772951400000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "tz::1793511000000",
+    "uid": "tz",
+    "title": "Zone",
+    "course": null,
+    "phase": "due",
+    "due": "2026-11-01T05:30:00.000Z",
+    "dueMs": 1793511000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "tz::1793516400000",
+    "uid": "tz",
+    "title": "Zone",
+    "course": null,
+    "phase": "due",
+    "due": "2026-11-01T07:00:00.000Z",
+    "dueMs": 1793516400000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "tz::1774747800000",
+    "uid": "tz",
+    "title": "Zone",
+    "course": null,
+    "phase": "due",
+    "due": "2026-03-29T01:30:00.000Z",
+    "dueMs": 1774747800000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "tz::1792891800000",
+    "uid": "tz",
+    "title": "Zone",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-25T01:30:00.000Z",
+    "dueMs": 1792891800000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "tz::1791042300000",
+    "uid": "tz",
+    "title": "Zone",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-03T15:45:00.000Z",
+    "dueMs": 1791042300000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "tz::1775315700000",
+    "uid": "tz",
+    "title": "Zone",
+    "course": null,
+    "phase": "due",
+    "due": "2026-04-04T15:15:00.000Z",
+    "dueMs": 1775315700000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "tz::1787398200000",
+    "uid": "tz",
+    "title": "Zone",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T11:30:00.000Z",
+    "dueMs": 1787398200000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "tz::1787372100000",
+    "uid": "tz",
+    "title": "Zone",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T04:15:00.000Z",
+    "dueMs": 1787372100000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "tz::1787398200000",
+    "uid": "tz",
+    "title": "Zone",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T11:30:00.000Z",
+    "dueMs": 1787398200000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "tz::1787432400000",
+    "uid": "tz",
+    "title": "Zone",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T21:00:00.000Z",
+    "dueMs": 1787432400000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "tz::1787392800000",
+    "uid": "tz",
+    "title": "Zone",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T10:00:00.000Z",
+    "dueMs": 1787392800000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": []
+ },
+ {
+  "tasks": []
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1787418000000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1772937000000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-03-08T02:30:00.000Z",
+    "dueMs": 1772937000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1773014399999",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-03-08T23:59:59.999Z",
+    "dueMs": 1773014399999,
+    "allDay": true,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1793496600000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-11-01T01:30:00.000Z",
+    "dueMs": 1793496600000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1793577599999",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-11-01T23:59:59.999Z",
+    "dueMs": 1793577599999,
+    "allDay": true,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1774747800000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-03-29T01:30:00.000Z",
+    "dueMs": 1774747800000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1774825199999",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-03-29T22:59:59.999Z",
+    "dueMs": 1774825199999,
+    "allDay": true,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1792888200000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-25T00:30:00.000Z",
+    "dueMs": 1792888200000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1792972799999",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-25T23:59:59.999Z",
+    "dueMs": 1792972799999,
+    "allDay": true,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1791076500000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-04T01:15:00.000Z",
+    "dueMs": 1791076500000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1791154799999",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-10-04T22:59:59.999Z",
+    "dueMs": 1791154799999,
+    "allDay": true,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1775349900000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-04-05T00:45:00.000Z",
+    "dueMs": 1775349900000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1775429999999",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-04-05T22:59:59.999Z",
+    "dueMs": 1775429999999,
+    "allDay": true,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "dup::1787418000000",
+    "uid": "dup",
+    "title": "First",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "same::1787418000000",
+    "uid": "same",
+    "title": "A",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   },
+   {
+    "id": "same::1787504400000",
+    "uid": "same",
+    "title": "A",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-23T17:00:00.000Z",
+    "dueMs": 1787504400000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "x2::1787418000000",
+    "uid": "x2",
+    "title": "Alpha",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   },
+   {
+    "id": "x1::1787418000000",
+    "uid": "x1",
+    "title": "Beta",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   },
+   {
+    "id": "x3::1787418000000",
+    "uid": "x3",
+    "title": "Gamma",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "o2::1787184000000",
+    "uid": "o2",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-20T00:00:00.000Z",
+    "dueMs": 1787184000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   },
+   {
+    "id": "o3::1787616000000",
+    "uid": "o3",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-25T00:00:00.000Z",
+    "dueMs": 1787616000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   },
+   {
+    "id": "o1::1788220800000",
+    "uid": "o1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-09-01T00:00:00.000Z",
+    "dueMs": 1788220800000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1786752000000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-15T00:00:00.000Z",
+    "dueMs": 1786752000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": []
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1786579200000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-13T00:00:00.000Z",
+    "dueMs": 1786579200000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": []
+ },
+ {
+  "tasks": [
+   {
+    "id": "u1::1797379200000",
+    "uid": "u1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-12-16T00:00:00.000Z",
+    "dueMs": 1797379200000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ },
+ {
+  "tasks": [
+   {
+    "id": "a1::1787418000000",
+    "uid": "a1",
+    "title": "Task",
+    "course": null,
+    "phase": "due",
+    "due": "2026-08-22T17:00:00.000Z",
+    "dueMs": 1787418000000,
+    "allDay": false,
+    "description": "",
+    "url": null
+   }
+  ]
+ }
+]

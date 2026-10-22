@@ -11,3 +11,4 @@ src-tauri/gen/
 .claude/
 scripts/out/
 spikes/*/target/
+/target/

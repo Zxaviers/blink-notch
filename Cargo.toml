@@ -1,0 +1,18 @@
+# Workspace for the native Blink crates. The WebView2 app (src-tauri) and the
+# spike keep their own manifests and lockfiles until cutover.
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+exclude = ["src-tauri", "spikes/native-notch"]
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+version = "0.2.0"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

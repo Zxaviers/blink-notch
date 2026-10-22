@@ -1,0 +1,517 @@
+[
+ {
+  "name": "moodle sample, early",
+  "ics": "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Moodle Pty Ltd//NONSGML Moodle Version 2024042200//EN\nMETHOD:PUBLISH\nCALSCALE:GREGORIAN\nBEGIN:VEVENT\nUID:1234567890@brone.ub.ac.id\nSUMMARY:Tugas 1 - Analisis Algoritma is due\nDESCRIPTION:Kerjakan bab 1-3.\\n\\nSubmit sebelum deadline.\nCLASS:PUBLIC\nLAST-MODIFIED:20260810T031500Z\nDTSTAMP:20260810T031500Z\nDTSTART:20260822T170000Z\nDTEND:20260822T170000Z\nCATEGORIES:Desain dan Analisis Algoritma\nEND:VEVENT\nBEGIN:VEVENT\nUID:2234567890@brone.ub.ac.id\nSUMMARY:Kuis Jaringan Komputer closes\nDESCRIPTION:<p>Kuis online bab 4</p>\nCLASS:PUBLIC\nDTSTAMP:20260810T031500Z\nDTSTART;VALUE=DATE:20260825\nDTEND;VALUE=DATE:20260826\nCATEGORIES:Jaringan Komputer\nEND:VEVENT\nBEGIN:VEVENT\nUID:3234567890@brone.ub.ac.id\nSUMMARY:Praktikum Basis Data harus diserahkan\nDTSTAMP:20260810T031500Z\nDTSTART;TZID=Asia/Jakarta:20260821T235900\nDTEND;TZID=Asia/Jakarta:20260821T235900\nCATEGORIES:Basis Data\nEND:VEVENT\nEND:VCALENDAR\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "moodle sample, after the first deadlines",
+  "ics": "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Moodle Pty Ltd//NONSGML Moodle Version 2024042200//EN\nMETHOD:PUBLISH\nCALSCALE:GREGORIAN\nBEGIN:VEVENT\nUID:1234567890@brone.ub.ac.id\nSUMMARY:Tugas 1 - Analisis Algoritma is due\nDESCRIPTION:Kerjakan bab 1-3.\\n\\nSubmit sebelum deadline.\nCLASS:PUBLIC\nLAST-MODIFIED:20260810T031500Z\nDTSTAMP:20260810T031500Z\nDTSTART:20260822T170000Z\nDTEND:20260822T170000Z\nCATEGORIES:Desain dan Analisis Algoritma\nEND:VEVENT\nBEGIN:VEVENT\nUID:2234567890@brone.ub.ac.id\nSUMMARY:Kuis Jaringan Komputer closes\nDESCRIPTION:<p>Kuis online bab 4</p>\nCLASS:PUBLIC\nDTSTAMP:20260810T031500Z\nDTSTART;VALUE=DATE:20260825\nDTEND;VALUE=DATE:20260826\nCATEGORIES:Jaringan Komputer\nEND:VEVENT\nBEGIN:VEVENT\nUID:3234567890@brone.ub.ac.id\nSUMMARY:Praktikum Basis Data harus diserahkan\nDTSTAMP:20260810T031500Z\nDTSTART;TZID=Asia/Jakarta:20260821T235900\nDTEND;TZID=Asia/Jakarta:20260821T235900\nCATEGORIES:Basis Data\nEND:VEVENT\nEND:VCALENDAR\n",
+  "nowMs": 1787443200000
+ },
+ {
+  "name": "moodle sample, limit 2",
+  "ics": "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Moodle Pty Ltd//NONSGML Moodle Version 2024042200//EN\nMETHOD:PUBLISH\nCALSCALE:GREGORIAN\nBEGIN:VEVENT\nUID:1234567890@brone.ub.ac.id\nSUMMARY:Tugas 1 - Analisis Algoritma is due\nDESCRIPTION:Kerjakan bab 1-3.\\n\\nSubmit sebelum deadline.\nCLASS:PUBLIC\nLAST-MODIFIED:20260810T031500Z\nDTSTAMP:20260810T031500Z\nDTSTART:20260822T170000Z\nDTEND:20260822T170000Z\nCATEGORIES:Desain dan Analisis Algoritma\nEND:VEVENT\nBEGIN:VEVENT\nUID:2234567890@brone.ub.ac.id\nSUMMARY:Kuis Jaringan Komputer closes\nDESCRIPTION:<p>Kuis online bab 4</p>\nCLASS:PUBLIC\nDTSTAMP:20260810T031500Z\nDTSTART;VALUE=DATE:20260825\nDTEND;VALUE=DATE:20260826\nCATEGORIES:Jaringan Komputer\nEND:VEVENT\nBEGIN:VEVENT\nUID:3234567890@brone.ub.ac.id\nSUMMARY:Praktikum Basis Data harus diserahkan\nDTSTAMP:20260810T031500Z\nDTSTART;TZID=Asia/Jakarta:20260821T235900\nDTEND;TZID=Asia/Jakarta:20260821T235900\nCATEGORIES:Basis Data\nEND:VEVENT\nEND:VCALENDAR\n",
+  "nowMs": 1786924800000,
+  "limit": 2
+ },
+ {
+  "name": "empty",
+  "ics": "",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "whitespace",
+  "ics": "   \r\n  ",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "no VCALENDAR",
+  "ics": "BEGIN:VEVENT\r\nUID:x\r\nSUMMARY:A\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "calendar with no events",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "LF line endings",
+  "ics": "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nUID:u1\nSUMMARY:Task is due\nDTSTART:20260822T170000Z\nEND:VEVENT\nEND:VCALENDAR\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "folded with space and tab",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:fold\r\nSUMMARY:Very long\r\n title that\r\n\twraps is due\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "escapes in summary",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:esc\r\nSUMMARY:A\\, B\\; C\\\\ D\\nE is due\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "trailing backslash",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:bs\r\nSUMMARY:Ends with slash\\\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "lowercase markers and names",
+  "ics": "begin:vcalendar\r\nBEGIN:vevent\r\nuid:low\r\nsummary:lower is due\r\ndtstart:20260822T170000Z\r\nend:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "non-event blocks are ignored",
+  "ics": "BEGIN:VCALENDAR\r\nBEGIN:VTODO\r\nUID:t\r\nSUMMARY:todo\r\nDTSTART:20260822T170000Z\r\nEND:VTODO\r\nBEGIN:VEVENT\r\nUID:e\r\nSUMMARY:real is due\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "quoted parameter containing a colon",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:q\r\nSUMMARY:Quoted is due\r\nDTSTART;TZID=\"Asia/Jakarta\":20260822T170000\r\nATTENDEE;CN=\"a:b\":mailto:x@y.z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "parameter values and case",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:p\r\nSUMMARY;LANGUAGE=en:Param is due\r\ndtstart;tzid=Asia/Jakarta:20260822T170000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "suffix: is due for grading",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:sfx\r\nSUMMARY:Name is due for grading\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "suffix: should be submitted",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:sfx\r\nSUMMARY:Name should be submitted\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "suffix: harus diserahkan",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:sfx\r\nSUMMARY:Name harus diserahkan\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "suffix: is due",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:sfx\r\nSUMMARY:Name is due\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "suffix: tenggat",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:sfx\r\nSUMMARY:Name tenggat\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "suffix: closes",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:sfx\r\nSUMMARY:Name closes\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "suffix: ditutup",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:sfx\r\nSUMMARY:Name ditutup\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "suffix: opens",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:sfx\r\nSUMMARY:Name opens\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "suffix: dibuka",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:sfx\r\nSUMMARY:Name dibuka\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "suffix: IS DUE",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:sfx\r\nSUMMARY:Name IS DUE\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "suffix: Is Due For Grading",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:sfx\r\nSUMMARY:Name Is Due For Grading\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "summary that is only a suffix",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:s1\r\nSUMMARY:is due\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "summary with HTML and entities",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:s2\r\nSUMMARY:Tugas &amp; <b>Kuis</b> &#8211; bab&nbsp;1 is due\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "unicode title",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:uni\r\nSUMMARY:Ujian Akhir Semester – Pemrograman éü中文 is due\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "description with HTML",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:d1\r\nSUMMARY:D is due\r\nDTSTART:20260822T170000Z\r\nDESCRIPTION:<p>Kuis online bab 4</p><br/>Baris&nbsp;dua &amp; &quot;kutipan&quot; &unknown; &#169; &#0;\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "description over 240 characters",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:d2\r\nSUMMARY:D is due\r\nDTSTART:20260822T170000Z\r\nDESCRIPTION:Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. Paragraf panjang dengan kata-kata. \r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "description exactly 240",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:d3\r\nSUMMARY:D is due\r\nDTSTART:20260822T170000Z\r\nDESCRIPTION:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "description 241 with spaces at the cut",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:d4\r\nSUMMARY:D is due\r\nDTSTART:20260822T170000Z\r\nDESCRIPTION:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   yy\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "description with an emoji well before the cut",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:d5\r\nSUMMARY:D is due\r\nDTSTART:20260822T170000Z\r\nDESCRIPTION:😀 yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "course from CATEGORIES with pipe and year",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:c1\r\nSUMMARY:C is due\r\nDTSTART:20260822T170000Z\r\nCATEGORIES:CS101 Algorithms|extra part_2026\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "course with trailing _2026",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:c2\r\nSUMMARY:C is due\r\nDTSTART:20260822T170000Z\r\nCATEGORIES:Basis Data_2026\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "course: empty first category then a real one",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:c3\r\nSUMMARY:C is due\r\nDTSTART:20260822T170000Z\r\nCATEGORIES:_2026\r\nCATEGORIES:Jaringan Komputer\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "course from description (English)",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:c4\r\nSUMMARY:C is due\r\nDTSTART:20260822T170000Z\r\nDESCRIPTION:Submit now. Course: Data Structures. More text\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "course from description (Indonesian)",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:c5\r\nSUMMARY:C is due\r\nDTSTART:20260822T170000Z\r\nDESCRIPTION:Mata kuliah - Basis Data; lainnya\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "course from description, kelas",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:c6\r\nSUMMARY:C is due\r\nDTSTART:20260822T170000Z\r\nDESCRIPTION:KELAS: Fisika Dasar 2\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "no course anywhere",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:c7\r\nSUMMARY:C is due\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "url https",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:l1\r\nSUMMARY:L is due\r\nDTSTART:20260822T170000Z\r\nURL:https://brone.ub.ac.id/mod/assign/view.php?id=1\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "url http is ignored",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:l2\r\nSUMMARY:L is due\r\nDTSTART:20260822T170000Z\r\nURL:http://example.edu/a\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "url uppercase scheme",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:l3\r\nSUMMARY:L is due\r\nDTSTART:20260822T170000Z\r\nURL:HTTPS://example.edu/a\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "url with a space is ignored",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:l4\r\nSUMMARY:L is due\r\nDTSTART:20260822T170000Z\r\nURL:https://example.edu/a b\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "link only in description is ignored",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:l5\r\nSUMMARY:L is due\r\nDTSTART:20260822T170000Z\r\nDESCRIPTION:see https://drive.google.com/x\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "url javascript is ignored",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:l6\r\nSUMMARY:L is due\r\nDTSTART:20260822T170000Z\r\nURL:javascript:alert(1)\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "start: UTC",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "start: floating",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20260822T170000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "start: date only (VALUE=DATE)",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART;VALUE=DATE:20260825\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "start: date only (8 digits)",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20260825\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "start: VALUE=DATE-TIME",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART;VALUE=DATE-TIME:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "start: no seconds is treated as midnight, not all-day",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20260822T1700\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "start: lowercase t",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20260822t170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "start: dashes are invalid",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:2026-08-25\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "start: garbage",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:soon\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "start: hour 24 rolls to next day",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20260822T240000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "start: month 13 rolls to next year",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20261301T000000Z\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:u2\r\nSUMMARY:Task is due\r\nDTSTART:20260822T000000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1797724800000,
+  "horizonMs": 5184000000
+ },
+ {
+  "name": "start: Feb 30 rolls into March",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20260230T120000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1771545600000
+ },
+ {
+  "name": "missing DTSTART is skipped",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:n\r\nSUMMARY:No start is due\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "missing SUMMARY is skipped",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:n\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "missing UID falls back to title|phase",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nSUMMARY:Nameless is due\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "blank UID falls back to title|phase",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:   \r\nSUMMARY:Blank is due\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "tzid Asia/Jakarta",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:tz\r\nSUMMARY:Zone is due\r\nDTSTART;TZID=Asia/Jakarta:20260822T170000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "tzid America/New_York ordinary",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:tz\r\nSUMMARY:Zone is due\r\nDTSTART;TZID=America/New_York:20260822T170000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "tzid America/New_York spring gap (02:30 does not exist)",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:tz\r\nSUMMARY:Zone is due\r\nDTSTART;TZID=America/New_York:20260308T023000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1772323200000
+ },
+ {
+  "name": "tzid America/New_York fall overlap (01:30 happens twice)",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:tz\r\nSUMMARY:Zone is due\r\nDTSTART;TZID=America/New_York:20261101T013000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1792886400000
+ },
+ {
+  "name": "tzid America/New_York just after the fall change",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:tz\r\nSUMMARY:Zone is due\r\nDTSTART;TZID=America/New_York:20261101T020000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1792886400000
+ },
+ {
+  "name": "tzid Europe/London spring gap",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:tz\r\nSUMMARY:Zone is due\r\nDTSTART;TZID=Europe/London:20260329T013000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1773964800000
+ },
+ {
+  "name": "tzid Europe/London autumn overlap",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:tz\r\nSUMMARY:Zone is due\r\nDTSTART;TZID=Europe/London:20261025T013000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1792454400000
+ },
+ {
+  "name": "tzid Australia/Lord_Howe (30 minute shift) gap",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:tz\r\nSUMMARY:Zone is due\r\nDTSTART;TZID=Australia/Lord_Howe:20261004T021500\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1790553600000
+ },
+ {
+  "name": "tzid Australia/Lord_Howe overlap",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:tz\r\nSUMMARY:Zone is due\r\nDTSTART;TZID=Australia/Lord_Howe:20260405T014500\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1774828800000
+ },
+ {
+  "name": "tzid Asia/Kolkata (+5:30)",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:tz\r\nSUMMARY:Zone is due\r\nDTSTART;TZID=Asia/Kolkata:20260822T170000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "tzid Pacific/Chatham (+12:45/+13:45)",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:tz\r\nSUMMARY:Zone is due\r\nDTSTART;TZID=Pacific/Chatham:20260822T170000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "tzid Asia/Calcutta (old alias)",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:tz\r\nSUMMARY:Zone is due\r\nDTSTART;TZID=Asia/Calcutta:20260822T170000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "tzid US/Eastern (alias)",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:tz\r\nSUMMARY:Zone is due\r\nDTSTART;TZID=US/Eastern:20260822T170000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "tzid lowercase",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:tz\r\nSUMMARY:Zone is due\r\nDTSTART;TZID=asia/jakarta:20260822T170000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "tzid unknown is skipped",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:tz\r\nSUMMARY:Zone is due\r\nDTSTART;TZID=Mars/Phobos:20260822T170000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "tzid Windows name is skipped",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:tz\r\nSUMMARY:Zone is due\r\nDTSTART;TZID=Eastern Standard Time:20260822T170000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "tzid with UTC suffix Z wins",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART;TZID=Asia/Jakarta:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "floating at a daylight-saving edge: US spring gap",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20260308T023000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1771459200000
+ },
+ {
+  "name": "all-day on a daylight-saving day: US spring gap",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART;VALUE=DATE:20260308\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1771459200000
+ },
+ {
+  "name": "floating at a daylight-saving edge: US fall overlap",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20261101T013000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1792627200000
+ },
+ {
+  "name": "all-day on a daylight-saving day: US fall overlap",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART;VALUE=DATE:20261101\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1792627200000
+ },
+ {
+  "name": "floating at a daylight-saving edge: EU spring gap",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20260329T013000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1771459200000
+ },
+ {
+  "name": "all-day on a daylight-saving day: EU spring gap",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART;VALUE=DATE:20260329\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1771459200000
+ },
+ {
+  "name": "floating at a daylight-saving edge: EU autumn overlap",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20261025T013000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1789948800000
+ },
+ {
+  "name": "all-day on a daylight-saving day: EU autumn overlap",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART;VALUE=DATE:20261025\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1789948800000
+ },
+ {
+  "name": "floating at a daylight-saving edge: Lord Howe gap",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20261004T021500\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1789948800000
+ },
+ {
+  "name": "all-day on a daylight-saving day: Lord Howe gap",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART;VALUE=DATE:20261004\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1789948800000
+ },
+ {
+  "name": "floating at a daylight-saving edge: Lord Howe overlap",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20260405T014500\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1774137600000
+ },
+ {
+  "name": "all-day on a daylight-saving day: Lord Howe overlap",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART;VALUE=DATE:20260405\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1774137600000
+ },
+ {
+  "name": "duplicate uid and time is kept once",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:dup\r\nSUMMARY:First is due\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:dup\r\nSUMMARY:Second is due\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "same uid different time is kept twice",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:same\r\nSUMMARY:A is due\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:same\r\nSUMMARY:A is due\r\nDTSTART:20260823T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "same time orders by title",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:x1\r\nSUMMARY:Beta is due\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:x2\r\nSUMMARY:Alpha is due\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:x3\r\nSUMMARY:Gamma is due\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "ordering by time",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:o1\r\nSUMMARY:Task is due\r\nDTSTART:20260901T000000Z\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:o2\r\nSUMMARY:Task is due\r\nDTSTART:20260820T000000Z\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:o3\r\nSUMMARY:Task is due\r\nDTSTART:20260825T000000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "overdue within the default window",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20260815T000000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "overdue past the default window",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20260813T000000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "overdue with a longer window",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20260813T000000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000,
+  "keepOverdueMs": 864000000
+ },
+ {
+  "name": "beyond the horizon",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20261216T000000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000
+ },
+ {
+  "name": "inside a longer horizon",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:u1\r\nSUMMARY:Task is due\r\nDTSTART:20261216T000000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000,
+  "horizonMs": 17280000000
+ },
+ {
+  "name": "limit 1",
+  "ics": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:a1\r\nSUMMARY:Task is due\r\nDTSTART:20260822T170000Z\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:a2\r\nSUMMARY:Task is due\r\nDTSTART:20260823T170000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+  "nowMs": 1786924800000,
+  "limit": 1
+ }
+]

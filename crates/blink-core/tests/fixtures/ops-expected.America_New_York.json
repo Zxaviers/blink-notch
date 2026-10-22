@@ -1,0 +1,1666 @@
+[
+ {
+  "value": [
+   24,
+   6,
+   1
+  ]
+ },
+ {
+  "value": [
+   24,
+   6,
+   1
+  ]
+ },
+ {
+  "value": [
+   6
+  ]
+ },
+ {
+  "value": [
+   24,
+   6,
+   1
+  ]
+ },
+ {
+  "value": [
+   5
+  ]
+ },
+ {
+  "value": [
+   336,
+   335.5
+  ]
+ },
+ {
+  "value": [
+   0.5,
+   0.25
+  ]
+ },
+ {
+  "value": [
+   24,
+   6,
+   1
+  ]
+ },
+ {
+  "value": [
+   1
+  ]
+ },
+ {
+  "value": [
+   24,
+   6,
+   1
+  ]
+ },
+ {
+  "value": [
+   24,
+   6,
+   1
+  ]
+ },
+ {
+  "value": [
+   24,
+   6,
+   1
+  ]
+ },
+ {
+  "value": [
+   24,
+   6,
+   1
+  ]
+ },
+ {
+  "value": [
+   24,
+   6,
+   1
+  ]
+ },
+ {
+  "value": [
+   16,
+   12,
+   10
+  ]
+ },
+ {
+  "value": [
+   24,
+   6,
+   1
+  ]
+ },
+ {
+  "value": [
+   6,
+   5
+  ]
+ },
+ {
+  "value": [
+   2,
+   1.5
+  ]
+ },
+ {
+  "value": true
+ },
+ {
+  "value": true
+ },
+ {
+  "value": true
+ },
+ {
+  "value": true
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": true
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": true
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": true
+ },
+ {
+  "value": "moodle"
+ },
+ {
+  "value": "google"
+ },
+ {
+  "value": "ics"
+ },
+ {
+  "value": "ics"
+ },
+ {
+  "value": null
+ },
+ {
+  "value": null
+ },
+ {
+  "value": null
+ },
+ {
+  "value": {
+   "ok": true,
+   "feed": {
+    "id": "x1",
+    "kind": "moodle",
+    "label": "x1",
+    "url": "https://example.com/cal.ics?token=secret",
+    "enabled": true
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "feed": {
+    "id": "x1",
+    "kind": "google",
+    "label": "Kelas",
+    "url": "https://example.com/cal.ics?token=secret",
+    "enabled": false
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "ID_INVALID"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "KIND_INVALID"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "URL_INVALID"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "URL_INVALID"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "URL_INVALID"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "URL_INVALID"
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "feed": {
+    "id": "a",
+    "kind": "ics",
+    "label": "a",
+    "url": "http://localhost:8765/cal.ics",
+    "enabled": true
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "feed": {
+    "id": "a",
+    "kind": "ics",
+    "label": "a",
+    "url": "https://example.com/x",
+    "enabled": true
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "URL_INVALID"
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "feed": {
+    "id": "5",
+    "kind": "ics",
+    "label": "5",
+    "url": "https://example.com/cal.ics?token=secret",
+    "enabled": true
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "feed": {
+    "id": "g1",
+    "kind": "google",
+    "label": "g1",
+    "url": "https://calendar.google.com/x",
+    "enabled": true
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "feed": {
+    "id": "g1",
+    "kind": "google",
+    "label": "g1",
+    "url": "https://calendar.google.com/x",
+    "enabled": true
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "feed": {
+    "id": "g1",
+    "kind": "google",
+    "label": "g1",
+    "url": "https://calendar.google.com/x",
+    "enabled": true
+   }
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "error": "ID_INVALID"
+  }
+ },
+ {
+  "value": {
+   "id": "g1",
+   "kind": "google",
+   "label": "Kelas",
+   "enabled": true
+  }
+ },
+ {
+  "value": {
+   "id": "g1",
+   "kind": "ics",
+   "label": "x",
+   "enabled": false
+  }
+ },
+ {
+  "value": {
+   "id": "g1",
+   "kind": "ics",
+   "label": "x",
+   "enabled": true
+  }
+ },
+ {
+  "value": [
+   {
+    "id": "moodle",
+    "kind": "moodle",
+    "label": "M",
+    "enabled": true
+   },
+   {
+    "id": "g1",
+    "kind": "google",
+    "label": "K",
+    "enabled": true
+   }
+  ]
+ },
+ {
+  "value": [
+   {
+    "id": "g1",
+    "kind": "google",
+    "label": "Baru",
+    "enabled": false
+   }
+  ]
+ },
+ {
+  "value": [
+   {
+    "id": "g1",
+    "kind": "ics",
+    "label": "x",
+    "enabled": true
+   }
+  ]
+ },
+ {
+  "value": [
+   {
+    "id": "g1",
+    "kind": "ics",
+    "label": "x",
+    "enabled": true
+   }
+  ]
+ },
+ {
+  "value": 900000
+ },
+ {
+  "value": 900000
+ },
+ {
+  "value": 900000
+ },
+ {
+  "value": 1200000
+ },
+ {
+  "value": 1800000
+ },
+ {
+  "value": 1800000
+ },
+ {
+  "value": 900000
+ },
+ {
+  "value": 900000
+ },
+ {
+  "value": 1200000
+ },
+ {
+  "value": 1200000
+ },
+ {
+  "value": 1800000
+ },
+ {
+  "value": 900000
+ },
+ {
+  "value": 1800000
+ },
+ {
+  "value": "https://x.edu/calendar/export_execute.php"
+ },
+ {
+  "value": "http://h:8080/p"
+ },
+ {
+  "value": "https://h/p"
+ },
+ {
+  "value": "http://h/"
+ },
+ {
+  "value": "https://h/p"
+ },
+ {
+  "value": "<invalid url>"
+ },
+ {
+  "value": "<invalid url>"
+ },
+ {
+  "value": "https://[::1]:3000/a"
+ },
+ {
+  "value": "https://example.edu/a.ics"
+ },
+ {
+  "value": "https://example.edu/a.ics"
+ },
+ {
+  "error": "URL_MISSING"
+ },
+ {
+  "error": "URL_MISSING"
+ },
+ {
+  "error": "URL_MISSING"
+ },
+ {
+  "error": "URL_MISSING"
+ },
+ {
+  "error": "URL_INVALID"
+ },
+ {
+  "error": "URL_PROTOCOL"
+ },
+ {
+  "error": "URL_PROTOCOL"
+ },
+ {
+  "error": "URL_PROTOCOL"
+ },
+ {
+  "value": "https://example.edu/A"
+ },
+ {
+  "value": "https://example.edu/"
+ },
+ {
+  "value": "http://h/x"
+ },
+ {
+  "value": "https://h/a%20b"
+ },
+ {
+  "value": 1200000
+ },
+ {
+  "value": 60000
+ },
+ {
+  "value": 120000
+ },
+ {
+  "value": 480000
+ },
+ {
+  "value": 1200000
+ },
+ {
+  "value": 1200000
+ },
+ {
+  "value": 900000
+ },
+ {
+  "value": 1800000
+ },
+ {
+  "value": 240000
+ },
+ {
+  "value": {
+   "ok": true,
+   "hint": null
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "hint": "moodle_dashboard"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "hint": "moodle_dashboard"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "hint": "moodle_calendar_page"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "hint": "moodle_course_page"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "hint": "moodle_activity_page"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "hint": "moodle_home"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "hint": "moodle_home"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "hint": "moodle_missing_token"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "hint": "moodle_not_export"
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "hint": null
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "hint": null
+  }
+ },
+ {
+  "value": {
+   "ok": true,
+   "hint": null
+  }
+ },
+ {
+  "value": {
+   "ok": false,
+   "hint": "moodle_missing_token"
+  }
+ },
+ {
+  "value": true
+ },
+ {
+  "value": true
+ },
+ {
+  "value": true
+ },
+ {
+  "value": true
+ },
+ {
+  "value": true
+ },
+ {
+  "value": true
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": true
+ },
+ {
+  "value": true
+ },
+ {
+  "value": true
+ },
+ {
+  "value": true
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": false
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "id",
+   "theme": "auto",
+   "restingStyle": "hover",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 1000,
+   "refreshMinutes": 15,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 0,
+   "monitor": 0,
+   "offsetX": 2000,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 30,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 25,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 15,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 17.5,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 1,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 1,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 336,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 48,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 3,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 1,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 151,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 200,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 1,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": -2,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": -300,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 3,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": false,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": true,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+K",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": [
+    {
+     "id": "a",
+     "kind": "moodle",
+     "label": "BRONE",
+     "enabled": true
+    },
+    {
+     "id": "c",
+     "kind": "ics",
+     "label": "c",
+     "enabled": false
+    },
+    {
+     "id": "d",
+     "kind": "ics",
+     "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "enabled": true
+    },
+    {
+     "id": "e",
+     "kind": "ics",
+     "label": "e",
+     "enabled": true
+    },
+    {
+     "id": "f",
+     "kind": "ics",
+     "label": "42",
+     "enabled": true
+    },
+    {
+     "id": " g ",
+     "kind": "ics",
+     "label": " g ",
+     "enabled": true
+    }
+   ]
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ },
+ {
+  "value": {
+   "version": 1,
+   "language": "auto",
+   "theme": "dark",
+   "restingStyle": "always",
+   "dueHorizonHours": 72,
+   "hoverDelayMs": 150,
+   "refreshMinutes": 20,
+   "thresholdsHours": [
+    24,
+    6,
+    1
+   ],
+   "toast": true,
+   "hotkey": "Ctrl+Alt+D",
+   "keepOverdueDays": 3,
+   "monitor": 0,
+   "offsetX": 0,
+   "onboarded": false,
+   "feeds": []
+  }
+ }
+]
