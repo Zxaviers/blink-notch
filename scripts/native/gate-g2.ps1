@@ -145,6 +145,7 @@ try {
 'single instance'
 $exe = if ($env:BLINK_EXE) { $env:BLINK_EXE } else { Join-Path $PSScriptRoot '..\..\target\debug\blink.exe' }
 $env:BLINK_DATA_DIR = $data
+$env:BLINK_SETTINGS_EXE = 'none'   # a notch with no feeds would otherwise open the settings program
 $a = Start-Process -FilePath $exe -ArgumentList '--seconds', '6' -PassThru
 Start-Sleep -Milliseconds 800
 $b = Start-Process -FilePath $exe -ArgumentList '--seconds', '6' -PassThru

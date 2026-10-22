@@ -16,6 +16,10 @@ pub const PAGE_FILES: &[&str] = &["settings", "done", "fired", "snoozed", "local
 pub const APP_DIR_NAME: &str = "dev.riski.deadlinenotch";
 
 pub fn default_dir() -> Option<PathBuf> {
+    // Tests (and the settings program they start) point this at a scratch folder.
+    if let Some(dir) = std::env::var_os("BLINK_DATA_DIR").filter(|d| !d.is_empty()) {
+        return Some(PathBuf::from(dir));
+    }
     std::env::var_os("APPDATA").map(|p| PathBuf::from(p).join(APP_DIR_NAME))
 }
 

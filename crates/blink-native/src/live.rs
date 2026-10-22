@@ -188,11 +188,15 @@ impl LiveSource {
         LiveSource { inner: Arc::new(Mutex::new(inner)), fetcher, store: Arc::new(store), wake, tz, threaded, wall_hint: Arc::new(AtomicI64::new(0)) }
     }
 
-    /// Re-read the personal events file (the settings program changed it).
+    /// Re-read personal events, done, snooze and reminder state (the settings program changed them).
     pub fn reload_local(&mut self) {
         let events = read_local_events(&self.store);
+        let (done, fired, snoozed) = (read_done(&self.store), read_fired(&self.store), read_snoozed(&self.store));
         let mut g = lock(&self.inner);
         g.local = events;
+        g.done = done;
+        g.fired = fired;
+        g.snoozed = snoozed;
         g.dirty = true;
     }
 

@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The settings window. The page has no network access; feeds, links and the notch go through app commands.",
+  "windows": ["settings"],
+  "permissions": ["core:default"]
+}

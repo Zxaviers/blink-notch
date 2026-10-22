@@ -40,7 +40,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
     WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
 };
 
-use super::control::{self, Request, WM_CONTROL};
+use super::control::{self, Request, WM_CONTROL, WM_IPC};
 use super::focus;
 use super::system::{self, WM_SHOW_ME};
 use super::tray::{self, MenuLabels, Tray, WM_TRAY};
@@ -545,12 +545,87 @@ impl Runtime {
 
     /// The settings program is a separate executable next to this one (Phase 4).
     fn open_settings(&mut self) {
-        if self.control {
+        let path = std::env::var_os("BLINK_SETTINGS_EXE")
+            .map(std::path::PathBuf::from)
+            .or_else(|| std::env::current_exe().ok().map(|p| p.with_file_name("blink-settings.exe")))
+            .filter(|p| p.exists());
+        // Scripted runs only log it, unless they name a settings program to start.
+        if self.control && std::env::var_os("BLINK_SETTINGS_EXE").is_none() {
             self.effects_log.push("open_settings".into());
             return;
         }
-        if let Some(path) = std::env::current_exe().ok().map(|p| p.with_file_name("blink-settings.exe")).filter(|p| p.exists()) {
+        // A second launch of the settings program just brings the open one to the front.
+        if let Some(path) = path {
             let _ = std::process::Command::new(path).spawn();
+        }
+    }
+
+    /// The settings program changed `settings.json`: take it in, as if it had just been loaded.
+    /// Returns the hotkey status ("ok", "HOTKEY_IN_USE", "HOTKEY_INVALID").
+    fn reload_settings(&mut self) -> &'static str {
+        let settings = normalize_settings(self.store.get_json("settings").ok().flatten().as_ref());
+        let accelerator = settings.hotkey.clone();
+        self.app.apply_settings(settings, &system_language());
+        self.place();
+        let status = self.register_hotkey(&accelerator);
+        self.dirty = true;
+        status
+    }
+
+    /// Redacted facts about the running notch, appended to the settings program's report.
+    fn diagnostics(&mut self) -> String {
+        let state = self.app.state_json();
+        let module = &state["module"];
+        format!(
+            "Notch: running, version {}, scale {:.2}\n  mode={} resting={} hidden={} paused={} fullscreen={}\n  hotkey={} tray={}\n  deadlines: {} upcoming, {} overdue, sync={}\n  frames drawn: {}\n",
+            env!("CARGO_PKG_VERSION"),
+            self.scale(),
+            state["mode"].as_str().unwrap_or("?"),
+            state["restStyle"].as_str().unwrap_or("?"),
+            self.hidden,
+            self.paused,
+            self.fullscreen,
+            if self.hotkey.is_empty() { "off" } else { self.hotkey.as_str() },
+            self.tray.is_some(),
+            module["upcoming"].as_array().map_or(0, Vec::len),
+            module["overdue"].as_array().map_or(0, Vec::len),
+            module["sync"]["kind"].as_str().unwrap_or("?"),
+            self.frames,
+        )
+    }
+
+    /// Requests from the settings program (the notch pipe). A small, fixed set.
+    fn ipc_command(&mut self, line: &str) -> String {
+        let reply = match serde_json::from_str::<Value>(line) {
+            Ok(v) => match v["cmd"].as_str().unwrap_or("") {
+                "ping" => Ok(json!({ "version": env!("CARGO_PKG_VERSION") })),
+                "reload_settings" => match self.reload_settings() {
+                    "ok" => Ok(json!({ "hotkey": "ok" })),
+                    code => Ok(json!({ "hotkey": code })),
+                },
+                "reload_local" => {
+                    self.app.reload_local_events();
+                    Ok(json!({}))
+                }
+                "set_hotkey" => match self.register_hotkey(v["accelerator"].as_str().unwrap_or("")) {
+                    "ok" => Ok(json!({})),
+                    code => Err(code.to_string()),
+                },
+                "refresh_now" => {
+                    self.app.refresh_sources();
+                    Ok(json!({}))
+                }
+                "diagnostics" => Ok(json!({ "text": self.diagnostics() })),
+                other => Err(format!("UNKNOWN_COMMAND {other}")),
+            },
+            Err(_) => Err("BAD_JSON".to_string()),
+        };
+        match reply {
+            Ok(mut v) => {
+                v["ok"] = Value::Bool(true);
+                v.to_string()
+            }
+            Err(e) => json!({ "ok": false, "error": e }).to_string(),
         }
     }
 
@@ -676,6 +751,13 @@ impl Runtime {
             WM_CONTROL => {
                 let request = unsafe { Box::from_raw(lparam.0 as *mut Request) };
                 let answer = self.command(&request.line);
+                let _ = request.reply.send(answer);
+                self.after();
+                return Some(LRESULT(0));
+            }
+            WM_IPC => {
+                let request = unsafe { Box::from_raw(lparam.0 as *mut Request) };
+                let answer = self.ipc_command(&request.line);
                 let _ = request.reply.send(answer);
                 self.after();
                 return Some(LRESULT(0));
@@ -838,6 +920,7 @@ impl Runtime {
                 let shown = self.toast(title, body, v["url"].as_str().map(String::from));
                 return Ok(json!({ "handedToWindows": shown }));
             }
+            "open_settings" => self.open_settings(),
             "refresh" => self.app.refresh_sources(),
             "reload_local" => self.app.reload_local_events(),
             "pause" => {
@@ -1086,6 +1169,15 @@ pub fn run(opts: Options) -> Result<(), String> {
     unsafe { SetTimer(Some(hwnd), TIMER_POLL, POLL_MS, None) };
     if let Some(name) = &opts.control {
         control::start(name, hwnd);
+    }
+    control::start_at(&blink_core::ipc::pipe_path(), hwnd, WM_IPC);
+    if !control {
+        blink_core::autostart::migrate_legacy();
+        // First run: no feeds and never set up. Open the settings program, which shows its wizard.
+        let first_run = with_rt(|rt| !rt.app.settings().onboarded && rt.app.settings().feeds.is_empty()).unwrap_or(false);
+        if first_run {
+            with_rt(|rt| rt.open_settings());
+        }
     }
     if let Some(seconds) = opts.seconds {
         unsafe { SetTimer(Some(hwnd), TIMER_QUIT, (seconds * 1000).min(u64::from(u32::MAX)) as u32, None) };

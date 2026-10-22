@@ -1,9 +1,13 @@
-//! The control pipe: lets a test (or a script) drive the running app without a
-//! real mouse or keyboard. Off unless `BLINK_CONTROL=<name>` is set; then it
-//! listens on `\\.\pipe\blink-control-<name>`, owner only, one JSON command per
-//! line, one JSON reply per line.
+//! Named-pipe servers. Two of them use this code:
 //!
-//! The pipe thread never touches app state: it posts each command to the window
+//! - the **notch pipe** (`\\.\pipe\blink-ipc-<tag>`, always on): how the settings
+//!   program talks to the running notch, see `blink_core::ipc`;
+//! - the **control pipe** (`\\.\pipe\blink-control-<name>`, only when
+//!   `BLINK_CONTROL=<name>` is set): lets a test drive the app without a real
+//!   mouse or keyboard. It understands many more commands.
+//!
+//! Both are owner only, one JSON command per line, one JSON reply per line. A
+//! pipe thread never touches app state: it posts each command to the window
 //! thread (where all state lives) and waits for the answer.
 
 use std::ffi::c_void;
@@ -15,11 +19,15 @@ use windows::Win32::Foundation::{CloseHandle, HANDLE, HLOCAL, HWND, INVALID_HAND
 use windows::Win32::Security::Authorization::{ConvertStringSecurityDescriptorToSecurityDescriptorW, SDDL_REVISION_1};
 use windows::Win32::Security::{PSECURITY_DESCRIPTOR, SECURITY_ATTRIBUTES};
 use windows::Win32::Storage::FileSystem::{ReadFile, WriteFile, PIPE_ACCESS_DUPLEX};
-use windows::Win32::System::Pipes::{ConnectNamedPipe, CreateNamedPipeW, DisconnectNamedPipe, PIPE_READMODE_BYTE, PIPE_TYPE_BYTE, PIPE_WAIT};
+use windows::Win32::System::Pipes::{
+    ConnectNamedPipe, CreateNamedPipeW, DisconnectNamedPipe, PIPE_READMODE_BYTE, PIPE_TYPE_BYTE, PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
+};
 use windows::Win32::UI::WindowsAndMessaging::PostMessageW;
 
-/// Posted to the window thread; `lparam` is a `Box<Request>` raw pointer.
+/// Posted to the window thread for the control pipe; `lparam` is a `Box<Request>` raw pointer.
 pub const WM_CONTROL: u32 = 0x8000 + 1; // WM_APP + 1
+/// The same for the notch pipe.
+pub const WM_IPC: u32 = 0x8000 + 6;
 
 pub struct Request {
     pub line: String,
@@ -30,15 +38,19 @@ pub fn pipe_path(name: &str) -> String {
     format!(r"\\.\pipe\blink-control-{name}")
 }
 
-/// Start the listener thread. `hwnd` is the window that handles `WM_CONTROL`.
+/// Start the control pipe. `hwnd` is the window that handles `WM_CONTROL`.
 pub fn start(name: &str, hwnd: HWND) {
-    let path: Vec<u16> = pipe_path(name).encode_utf16().chain(Some(0)).collect();
-    let raw_hwnd = hwnd.0 as isize;
-    std::thread::spawn(move || serve(path, raw_hwnd));
+    start_at(&pipe_path(name), hwnd, WM_CONTROL);
 }
 
-fn serve(path: Vec<u16>, raw_hwnd: isize) {
-    let hwnd = HWND(raw_hwnd as *mut c_void);
+/// Start a pipe at `path`; every line received is posted to `hwnd` as `message`.
+pub fn start_at(path: &str, hwnd: HWND, message: u32) {
+    let path: Vec<u16> = path.encode_utf16().chain(Some(0)).collect();
+    let raw_hwnd = hwnd.0 as isize;
+    std::thread::spawn(move || serve(path, raw_hwnd, message));
+}
+
+fn serve(path: Vec<u16>, raw_hwnd: isize, message: u32) {
     loop {
         // Owner-only access: D = DACL, P = protected, GA = generic all, OW = owner rights.
         let mut sd = PSECURITY_DESCRIPTOR::default();
@@ -53,7 +65,7 @@ fn serve(path: Vec<u16>, raw_hwnd: isize) {
                 PCWSTR(path.as_ptr()),
                 PIPE_ACCESS_DUPLEX,
                 PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
-                1,
+                PIPE_UNLIMITED_INSTANCES,
                 64 * 1024,
                 64 * 1024,
                 0,
@@ -71,15 +83,21 @@ fn serve(path: Vec<u16>, raw_hwnd: isize) {
         }
         // Blocks until a client connects (ERROR_PIPE_CONNECTED means it already did).
         let _ = unsafe { ConnectNamedPipe(pipe, None) };
-        talk(pipe, hwnd);
-        unsafe {
-            let _ = DisconnectNamedPipe(pipe);
-            let _ = CloseHandle(pipe);
-        }
+        // Hand the connection to its own thread and go back to listening, so a client that
+        // keeps its connection open cannot lock the others out.
+        let raw_pipe = pipe.0 as isize;
+        std::thread::spawn(move || {
+            let pipe = HANDLE(raw_pipe as *mut c_void);
+            talk(pipe, HWND(raw_hwnd as *mut c_void), message);
+            unsafe {
+                let _ = DisconnectNamedPipe(pipe);
+                let _ = CloseHandle(pipe);
+            }
+        });
     }
 }
 
-fn talk(pipe: HANDLE, hwnd: HWND) {
+fn talk(pipe: HANDLE, hwnd: HWND, message: u32) {
     let mut pending: Vec<u8> = Vec::new();
     let mut buf = [0u8; 4096];
     loop {
@@ -97,7 +115,7 @@ fn talk(pipe: HANDLE, hwnd: HWND) {
             }
             let (tx, rx) = channel();
             let request = Box::into_raw(Box::new(Request { line, reply: tx }));
-            if unsafe { PostMessageW(Some(hwnd), WM_CONTROL, WPARAM(0), LPARAM(request as isize)) }.is_err() {
+            if unsafe { PostMessageW(Some(hwnd), message, WPARAM(0), LPARAM(request as isize)) }.is_err() {
                 drop(unsafe { Box::from_raw(request) });
                 return;
             }

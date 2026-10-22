@@ -12,3 +12,5 @@ src-tauri/gen/
 scripts/out/
 spikes/*/target/
 /target/
+
+crates/blink-settings/gen/

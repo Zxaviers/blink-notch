@@ -31,11 +31,19 @@ export const api = {
   enterKeyboardMode: () => invoke('enter_keyboard_mode'),
   exitKeyboardMode: () => invoke('exit_keyboard_mode'),
 
-  autostart: {
-    isEnabled: () => invoke('plugin:autostart|is_enabled'),
-    enable: () => invoke('plugin:autostart|enable'),
-    disable: () => invoke('plugin:autostart|disable')
-  },
+  // The native settings program (blink-settings) sets __BLINK_SETTINGS__ and has its own
+  // commands; the WebView2 app used the autostart plugin. The plugin path goes at cutover.
+  autostart: window.__BLINK_SETTINGS__
+    ? {
+        isEnabled: () => invoke('autostart_is_enabled'),
+        enable: () => invoke('autostart_enable'),
+        disable: () => invoke('autostart_disable')
+      }
+    : {
+        isEnabled: () => invoke('plugin:autostart|is_enabled'),
+        enable: () => invoke('plugin:autostart|enable'),
+        disable: () => invoke('plugin:autostart|disable')
+      },
 
   version: () => window.__TAURI__.app.getVersion(),
 

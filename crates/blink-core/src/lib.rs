@@ -4,6 +4,8 @@
 //! retired, `tests/` runs both implementations on the same inputs and requires
 //! identical output.
 
+#[cfg(windows)]
+pub mod autostart;
 pub mod countdown;
 pub mod done;
 pub mod feed;
@@ -13,6 +15,7 @@ pub mod format;
 pub mod hotkey;
 pub mod i18n;
 mod i18n_data;
+pub mod ipc;
 pub mod ics;
 pub mod jsval;
 pub mod local_events;

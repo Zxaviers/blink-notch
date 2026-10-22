@@ -1,6 +1,6 @@
 # Plan: moving the notch (now called Blink) to native, settings on WebView2 on demand
 
-Status: Phases 0 to 2 are done and Phase 3 is built, waiting on a look at a real notification (see Progress at the end). Phase 4 (the settings program) is next. It follows the native spike (`spikes/native-notch`, commit 832b127) and the measurements in the README.
+Status: Phases 0 to 4 are built (Phase 2 and 3 have a few checks that need a person, see Progress). Phase 5 (accessibility, installer, soak) is next. It follows the native spike (`spikes/native-notch`, commit 832b127) and the measurements in the README.
 
 ## 1. Why, and what "native" means here
 
@@ -203,3 +203,21 @@ Not done yet in Phase 2: tray menu clicks by hand, fullscreen against a real gam
 Decision to confirm: notifications use the tray icon's balloon (`Shell_NotifyIconW`, drawn by Windows 10/11 as a toast, clicking it opens the task page) rather than WinRT toasts. It adds no DLLs and needs no AppUserModelID or Start Menu shortcut; the cost is a plainer look and no action buttons. WinRT toasts can be added later behind the same call.
 
 Not verified: a notification actually appearing on screen (Windows holds them back while a fullscreen app is in front, which is the case right now, so the capture was empty); the toast click opening the page; the real fullscreen hide and a second monitor, as in Phase 2. Not done by design: adding personal events and the first-run prompt belong to the settings program (Phase 4).
+
+### Phase 4: settings as a separate program, built; Gate G4 passed on scripted checks (2026-10-23)
+`crates/blink-settings` is a small Tauri program that shows the existing `src/settings.html` and exits when its window closes. It uses `blink-core` for the files, Credential Manager, feed testing and autostart, and talks to the running notch over the notch pipe (`\.\pipe\blink-ipc-main`, owner-only, JSON lines; client in `blink_core::ipc`, server in `blink-native`). The page keeps its own validation and is unchanged apart from one line in the bridge (`src/api.js` calls app commands for autostart when the program says it is the native one). The page's `settings-changed` and `data-changed` events become `reload_settings` and `reload_local` messages. Requests the notch answers: `ping`, `reload_settings`, `reload_local`, `set_hotkey` (ok, `HOTKEY_IN_USE`, `HOTKEY_INVALID`), `refresh_now`, `diagnostics`. The pipe server now hands each connection to its own thread, so a settings window can never lock another client out.
+
+| Gate G4 item | Result |
+|---|---|
+| Add and test a feed | `scripts/native/settings-e2e.mjs` drives the real page (WebView2 debugging port, hidden window, no cursor) through the first-run wizard: pick a type, "Test link" against a local calendar server (5 deadlines found), save; the link is in Credential Manager and not in `settings.json`; the running notch loads the deadlines |
+| Hotkey rebind and the in-use error | A second notch process owns the key: the page shows the error, nothing is saved; a free key is registered by the running notch and saved |
+| Language change reaches the notch | Footer text in the notch switches to Indonesian |
+| Personal events | Added in the page, shown by the notch |
+| Export, import, diagnostics, autostart | Export has no feeds or links; import applies theme and toast and keeps the feed; the diagnostics report covers settings and the running notch and contains no link, title or event name; autostart writes `blink.exe` (not the settings program) to the Run key and removes it again (scratch key via `BLINK_RUN_KEY`) |
+| Remove a feed | `settings.json`, Credential Manager and the notch all drop it; personal events stay |
+| No web engine when closed | With the window open the tree has 7 processes and 64 MB; 0.3 s after closing none are left and the notch has no child processes; the notch's own private memory ends at 3.7 MB |
+| Opening | Window up in 143 ms; a second launch does not start another program; first run (no feeds, not set up) opens it by itself; settings also works with the notch not running (an impossible hotkey is still rejected) |
+
+37 scripted checks in total. Gates G2 (47) and G3 (26) still pass after the pipe change.
+
+Decisions and notes: the page lives once, in `src/`, shared with the old app until cutover (the old app's own settings window still works). WebView2 starts with `--disable-gpu`, like before. Moving autostart into `blink-core` changed nothing for the old app. Not checked: a person clicking through the settings window (the checks drive the same page by script), a real click on the tray's Settings item, the page in a high-DPI window.
