@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deadline Notch</title>
+    <link rel="stylesheet" href="notch.css" />
+  </head>
+  <body>
+    <div id="notch" class="notch" data-state="rest" data-rest="full" data-surface="dark" data-urgency="later">
+      <div class="rest" id="rest" aria-live="off">
+        <span class="code" id="rest-code"></span>
+        <span class="count" id="rest-count"></span>
+      </div>
+      <div class="peek" id="peek"></div>
+      <div class="panel" id="panel"><div class="panel-inner" id="panel-inner"></div></div>
+    </div>
+    <script type="module" src="notch.js"></script>
+  </body>
+</html>

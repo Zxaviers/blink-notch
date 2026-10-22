@@ -1,0 +1,16 @@
+{
+  "name": "deadline-notch",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Deadline-first notch overlay for Windows (working title)",
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build:debug": "tauri build --debug --no-bundle",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

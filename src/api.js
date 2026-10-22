@@ -1,0 +1,38 @@
+// Thin wrapper over the Tauri bridge. The pages have no network access of
+// their own (CSP default-src 'self'); everything with side effects goes
+// through these commands.
+
+const { invoke } = window.__TAURI__.core
+const { listen, emit } = window.__TAURI__.event
+
+export const api = {
+  storeGet: (name) => invoke('store_get', { name }),
+  storeSet: (name, value) => invoke('store_set', { name, value }),
+
+  feedFetch: (id, force = false) => invoke('feed_fetch', { id, force }),
+  feedTest: (url) => invoke('feed_test', { url }),
+  feedSave: (id, url) => invoke('feed_save', { id, url }),
+  feedRemove: (id) => invoke('feed_remove', { id }),
+  feedHasSecret: (id) => invoke('feed_has_secret', { id }),
+
+  notify: (title, body) => invoke('notify', { title, body }),
+  openUrl: (url) => invoke('open_url', { url }),
+  openSettings: () => invoke('open_settings'),
+  diagnostics: () => invoke('diagnostics'),
+
+  listMonitors: () => invoke('list_monitors'),
+  setPlacement: (monitor, offsetX) => invoke('set_placement', { monitor, offsetX }),
+  setShape: (x, y, w, h) => invoke('set_shape', { x, y, w, h }),
+  setTrayLabels: (labels) => invoke('set_tray_labels', labels),
+
+  autostart: {
+    isEnabled: () => invoke('plugin:autostart|is_enabled'),
+    enable: () => invoke('plugin:autostart|enable'),
+    disable: () => invoke('plugin:autostart|disable')
+  },
+
+  version: () => window.__TAURI__.app.getVersion(),
+
+  on: (event, handler) => listen(event, (e) => handler(e.payload)),
+  emit: (event, payload) => emit(event, payload)
+}
