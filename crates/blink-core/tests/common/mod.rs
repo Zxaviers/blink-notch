@@ -1,6 +1,8 @@
 //! Shared helpers for the differential tests.
 #![allow(dead_code)]
 
+pub mod http;
+
 use std::fs;
 use std::path::PathBuf;
 

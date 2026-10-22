@@ -1,6 +1,6 @@
 # Plan: moving the notch (now called Blink) to native, settings on WebView2 on demand
 
-Status: proposal, 2026-10-23. Nothing in this plan has been started. It follows the native spike (`spikes/native-notch`, commit 832b127) and the measurements in the README.
+Status: Phases 0 and 1 are done (see Progress at the end); Phase 2 is next. It follows the native spike (`spikes/native-notch`, commit 832b127) and the measurements in the README.
 
 ## 1. Why, and what "native" means here
 
@@ -146,3 +146,24 @@ Stop and stay on WebView2 if any of these hold: the text rendering is rejected a
 2. **Screen readers:** the first release is keyboard-complete; UI Automation support for the open panel is planned for Phase 5 and can be pulled earlier if needed. Reminder toasts and the settings window are readable by screen readers from day one.
 3. **Installer:** unsigned for now, with a clear SmartScreen note on the download page.
 4. **Name:** the product is **Blink**. Crates are `blink-core`, `blink-native` and `blink-settings`; executables are `blink.exe` and `blink-settings.exe`. Internal identifiers stay as they are so installs upgrade in place: data folder `%APPDATA%\dev.riski.deadlinenotch`, Credential Manager service `deadline-notch`, autostart value migrated by the new build. Only user-visible text, window titles and the installer use "Blink". ("Blink" is also Chrome's rendering-engine name, which may make web searches noisy.)
+
+## 8. Progress
+
+### Phase 0: done (2026-10-23)
+`webview2-v0.1` tags the WebView2 app; work is on the `native` branch; the repo is a Cargo workspace with the old app and the spike excluded, so they still build as before.
+
+### Phase 1: done, Gate G1 passed (2026-10-23)
+`crates/blink-core` holds the ported logic, stores and feed fetching.
+
+| Gate G1 criterion | Result |
+|---|---|
+| Every ported behavior matches the JavaScript | 102 calendars in 4 machine zones and about 1,800 function calls in 4 zones produce identical output (daylight-saving gaps and overlaps, `Intl` month and weekday names, plural strings, window boundaries included) |
+| The tests can fail | Each module was deliberately broken in turn; the suite caught every break (one boundary case was missing at first and was added) |
+| Time zones | `jiff` with its bundled database reproduces `Intl` on the whole corpus; no need for a second library |
+| Feed fetching | 15 tests against a local server, including cache files written by the WebView2 app |
+| Credential Manager | Real round trip with the same service name as today |
+| Footprint of everything the core links | A release test program is 1.0 MB and about 0.8 MB of private memory while holding the parsed feed, so the logic costs almost nothing against the 15 MB budget |
+
+Differences kept on purpose are listed in `crates/blink-core/README.md`. The original 109 JavaScript unit tests were not ported one by one; the differential corpus covers the same behavior and more, and the JS tests keep running against the JS until it is retired.
+
+Not done in Phase 1: the Win32-specific parts of the hotkey (turning "Ctrl+Alt+D" into modifier flags and a virtual-key code) belong to the platform layer in Phase 2.

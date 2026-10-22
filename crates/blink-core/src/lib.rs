@@ -6,6 +6,7 @@
 
 pub mod countdown;
 pub mod done;
+pub mod feed;
 pub mod feed_url;
 pub mod feeds;
 pub mod format;
@@ -17,6 +18,8 @@ pub mod jsval;
 pub mod local_events;
 pub mod merge;
 pub mod planner;
+pub mod secret;
 pub mod settings;
+pub mod store;
 pub mod thresholds;
 pub mod view;

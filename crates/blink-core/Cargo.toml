@@ -14,3 +14,9 @@ jiff = { version = "0.2", default-features = false, features = ["std", "tz-syste
 regex-lite = "0.1"
 # WHATWG URL parsing, so links are judged the way the JS `new URL` judged them.
 url = "2"
+# Blocking HTTP on a worker thread: no async runtime in a process that should sleep.
+# Windows SChannel for TLS, so there is no extra crypto stack in the binary.
+ureq = { version = "3", default-features = false, features = ["native-tls"] }
+
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
