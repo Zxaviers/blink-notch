@@ -366,5 +366,14 @@ api.on('settings-changed', () => core.reloadSettings())
 api.on('data-changed', () => core.reloadLocal())
 
 applyShape()
-core.start().catch(() => {})
+api.debugLog('page script running').catch(() => {})
+core.start()
+  .then(() => api.debugLog('core ready (settings loaded, first feed sync done)'))
+  .catch(() => {})
 scheduleTick()
+
+// Debug-only: scripts/stress-cost.ps1 sets DN_STRESS to measure sustained
+// animation cost. stress.js is never loaded otherwise.
+api.debugFlags().then((flags) => {
+  if (flags?.stress) import('./stress.js').then((m) => m.start(flags.stress, { open: openNow, inner })).catch(() => {})
+}).catch(() => {})

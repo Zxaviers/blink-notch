@@ -93,9 +93,13 @@ struct NotchState {
 
 type SharedState = Arc<NotchState>;
 
+/// When the process started running `run()`, for startup-time logging.
+static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+
 fn dlog(msg: &str) {
     if std::env::var_os("DN_DEBUG").is_some() {
-        eprintln!("[notch] {msg}");
+        let ms = START.get().map_or(0, |s| s.elapsed().as_millis());
+        eprintln!("[notch +{ms}ms] {msg}");
     }
 }
 
@@ -238,6 +242,20 @@ fn exit_keyboard_mode(app: AppHandle, state: tauri::State<'_, SharedState>) {
 #[tauri::command]
 fn debug_log(msg: String) {
     dlog(&msg);
+}
+
+/// Debug-only switches read from the environment. `stress` names a sustained
+/// animation variant for scripts/stress-cost.ps1; it is None in normal use.
+#[derive(Serialize)]
+struct DebugFlags {
+    stress: Option<String>,
+}
+
+#[tauri::command]
+fn debug_flags() -> DebugFlags {
+    DebugFlags {
+        stress: std::env::var("DN_STRESS").ok().filter(|v| !v.is_empty()),
+    }
 }
 
 #[tauri::command]
@@ -534,6 +552,7 @@ fn build_tray(app: &tauri::App, state: &SharedState) -> tauri::Result<()> {
 // ---------------------------------------------------------------------- run
 
 pub fn run() {
+    let _ = START.set(std::time::Instant::now());
     tauri::Builder::default()
         // Must be first: a second launch opens the running app's settings.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -563,6 +582,7 @@ pub fn run() {
             enter_keyboard_mode,
             exit_keyboard_mode,
             debug_log,
+            debug_flags,
             notify,
             open_url,
             open_settings,
@@ -576,6 +596,7 @@ pub fn run() {
             feed::feed_has_secret,
         ])
         .setup(|app| {
+            dlog("setup start");
             let win = app
                 .get_webview_window("notch")
                 .expect("notch window is declared in tauri.conf.json");
@@ -588,6 +609,7 @@ pub fn run() {
             let _ = win.set_ignore_cursor_events(true);
             let _ = win.show();
             win32::make_overlay(&win);
+            dlog("window shown");
 
             build_tray(app, &state)?;
 

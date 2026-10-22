@@ -25,6 +25,7 @@ export const api = {
   setShape: (x, y, w, h) => invoke('set_shape', { x, y, w, h }),
   setTrayLabels: (labels) => invoke('set_tray_labels', labels),
   debugLog: (msg) => invoke('debug_log', { msg }),
+  debugFlags: () => invoke('debug_flags'),
 
   setHotkey: (accelerator) => invoke('set_hotkey', { accelerator }),
   enterKeyboardMode: () => invoke('enter_keyboard_mode'),

@@ -49,6 +49,7 @@ These move the real cursor for a few seconds, so keep your hands off the mouse.
 - `scripts/e2e-settings.ps1`: first-run wizard opens.
 - `scripts/e2e-hotkey.ps1`: sends the real hotkey and navigation keys, checks focus goes in and comes back, and that D marks a deadline done (real keystrokes, so keep your hands off the keyboard too).
 - `scripts/mem-probe.ps1` (memory by WebView2 process, flag trials) and `scripts/anim-cost.ps1` (CPU per expand and collapse).
+- `scripts/startup-time.ps1` (launch to window visible and to content ready) and `scripts/stress-cost.ps1` (CPU of sustained animation variants; `DN_STRESS` loads `src/stress.js`, which is never loaded otherwise). Both use the shared `scripts/profile.ps1` test profile and need no cursor movement.
 - `scripts/measure-idle.ps1 -Minutes 30`: samples CPU and memory of the app plus its WebView2 processes.
 
 All three back up and restore `%APPDATA%\dev.riski.deadlinenotch`.
@@ -63,5 +64,9 @@ Release exe, resting, one fixture feed loaded, 5 minutes (28 samples, 16 logical
 How memory got there: the first full build sat at about 97 MB. A breakdown by WebView2 process (`scripts/mem-probe.ps1`) showed the GPU process at 38 MB. Starting WebView2 with `--disable-gpu` (software rendering) took the total to 66 MB. On their own, `--in-process-gpu` reached 86 MB and `--enable-low-end-device-mode` changed nothing; on top of `--disable-gpu`, `--in-process-gpu` and extra `--disable-features` saved only 2 to 3 MB, so they were not adopted. The flags are in `src-tauri/tauri.conf.json` and `WEBVIEW_ARGS` in `lib.rs`; both windows must use the same string or WebView2 starts a second set of processes.
 
 What software rendering costs: an expand plus collapse uses about 0.3 to 0.4 CPU-seconds across the app and WebView2 (about 0.01 with the GPU), mostly in the GPU process doing software compositing. Frame pacing of the expand animation, measured in the app (DN_DEBUG=1 logs `frames open: ...`): median 6.9 ms between frames on a 144 Hz display, none over 20 ms. That is one machine; check a low-end laptop before calling it done.
+
+Startup (`scripts/startup-time.ps1`, five launches, release exe): the notch window is visible after a median 0.65 s and the page has its settings loaded and first feed synced after 0.9 s (PRD target: under 1.5 s). The first launch of a batch is slowest (1.2 s).
+
+Sustained animation (`scripts/stress-cost.ps1`, panel open and something moving every frame, 10 s windows, repeated; 100% = one full core of 16): with the shipped software rendering it costs about 9 to 13% of a core whatever is animating (transform, width, text, scrolling list). With the GPU enabled (a comparison build, not shipped) a transform or text animation costs 1 to 2%, a width animation still 11%, and the scrolling list 32 to 34%, so the GPU is not uniformly cheaper and memory goes back to about 97 MB. Only the open panel animates, so a resting notch with music playing would still draw nothing. Takeaway: a native build would mainly save memory; sustained animation under WebView2 is affordable if modules update coarsely (about once a second) except while the panel is open.
 
 Native checks on the release exe (`scripts/probe.ps1`, four runs in a row): click-through outside the notch, input on the pill and expanded area, no focus stolen by hover or a real click. Not yet checked on real hardware: fullscreen hiding, multi-monitor and DPI changes, Windows toasts, and a long soak (the full app has only been sampled for 5 minutes).
