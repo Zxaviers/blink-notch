@@ -10,3 +10,4 @@ src-tauri/gen/
 .idea/
 .claude/
 scripts/out/
+spikes/*/target/

@@ -70,3 +70,23 @@ Startup (`scripts/startup-time.ps1`, five launches, release exe): the notch wind
 Sustained animation (`scripts/stress-cost.ps1`, panel open and something moving every frame, 10 s windows, repeated; 100% = one full core of 16): with the shipped software rendering it costs about 9 to 13% of a core whatever is animating (transform, width, text, scrolling list). With the GPU enabled (a comparison build, not shipped) a transform or text animation costs 1 to 2%, a width animation still 11%, and the scrolling list 32 to 34%, so the GPU is not uniformly cheaper and memory goes back to about 97 MB. Only the open panel animates, so a resting notch with music playing would still draw nothing. Takeaway: a native build would mainly save memory; sustained animation under WebView2 is affordable if modules update coarsely (about once a second) except while the panel is open.
 
 Native checks on the release exe (`scripts/probe.ps1`, four runs in a row): click-through outside the notch, input on the pill and expanded area, no focus stolen by hover or a real click. Not yet checked on real hardware: fullscreen hiding, multi-monitor and DPI changes, Windows toasts, and a long soak (the full app has only been sampled for 5 minutes).
+
+## Native spike (spikes/native-notch)
+
+A throwaway program to answer "how much of the cost is WebView2?". No web engine, no GPU: a layered per-pixel-alpha window, tiny-skia drawing on the CPU, glyphs rasterized lazily from the system fonts with ttf-parser and cached. Fully transparent pixels let the mouse through, so there is no cursor polling, and a resting notch sleeps in `GetMessage`. It draws the same pill and open panel (232x32 to 420x340, 150 ms hover intent, 300 ms grace, 280 ms ease-out, a progress bar) with hard-coded text and no data, tray, settings or notifications.
+
+Measured with `scripts/native-spike.ps1` against the shipped WebView2 app (same machine, 16 logical cores; a game was running in the foreground, so treat CPU as noisy):
+
+| | WebView2 app | Native spike |
+|---|---|---|
+| Memory at rest (Task Manager private working set) | 62.7 MB | 3.9 MB |
+| Launch to window visible | 0.65 s (content ready 0.9 s) | 47 ms |
+| Idle CPU | 0.05% | 0% |
+| Panel open and still | about 2.8% of a core | 0.2% |
+| Progress bar moving every frame (144 Hz) | 9 to 13% of a core | 6.4% |
+| Expand frame pacing | median 6.9 ms | median 6.9 ms |
+| Executable | about 4 MB | 0.5 MB |
+
+Expand plus collapse CPU for the spike is not measured yet: that part needs the real cursor (`-Hover`).
+
+What the spike does not show: it holds none of the app's logic (feeds, planner, settings, notifications, Credential Manager), has no accessibility support and no ClearType (text is grayscale antialiased), and positions everything with hard-coded numbers. The first version used the fontdue crate, which parses every glyph of a font up front and cost about 28 MB for two fonts; reading outlines lazily brought that to almost nothing, so font handling matters a lot in a native build.
