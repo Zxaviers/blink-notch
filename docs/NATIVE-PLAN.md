@@ -1,6 +1,6 @@
 # Plan: moving the notch (now called Blink) to native, settings on WebView2 on demand
 
-Status: Phases 0 and 1 are done and Phase 2 is built and waiting on three real-input checks and your text approval (see Progress at the end). It follows the native spike (`spikes/native-notch`, commit 832b127) and the measurements in the README.
+Status: Phases 0 and 1 are done and Phase 2 is done apart from two hardware checks (see Progress at the end). It follows the native spike (`spikes/native-notch`, commit 832b127) and the measurements in the README.
 
 ## 1. Why, and what "native" means here
 
@@ -167,20 +167,20 @@ Stop and stay on WebView2 if any of these hold: the text rendering is rejected a
 Differences kept on purpose are listed in `crates/blink-core/README.md`. The original 109 JavaScript unit tests were not ported one by one; the differential corpus covers the same behavior and more, and the JS tests keep running against the JS until it is retired.
 
 Not done in Phase 1: the Win32-specific parts of the hotkey (turning "Ctrl+Alt+D" into modifier flags and a virtual-key code) belong to the platform layer in Phase 2.
-### Phase 2: built, Gate G2 half passed (2026-10-23)
+### Phase 2: done except a real fullscreen game and a second monitor (2026-10-23)
 `crates/blink-native` is the native notch: a layered window with per-pixel alpha, a pure state machine (`shell.rs`) and app (`app.rs`) that run under a manual clock in tests, a drawing kit on tiny-skia with lazily rasterized glyphs from the system fonts, and the Windows glue in `src/platform/` (window, focus, tray, system facts, control pipe). The deadlines panel is drawn from a demo data source; the real data source is Phase 3.
 
 | Gate G2 criterion | Result |
 |---|---|
 | Click-through | Passed, scripted without the cursor: `WindowFromPoint` reports another app's window over every transparent pixel (six points, corners, beside the open panel) and the notch only where it is drawn; the invisible hot strip is hit-testable at alpha 1 |
-| No focus theft | Window has no-activate and tool-window styles, is never the foreground window after launch or hover; **real click not yet run** (needs your hands off the mouse: `scripts/native/real-input.ps1`) |
+| No focus theft | Window has no-activate and tool-window styles, is never the foreground window after launch or hover; real click passed (`scripts/native/real-input.ps1`, 13 checks): a click on the pill opens it and the app underneath stays the foreground window; a click on a transparent part reaches the app underneath; the real hotkey takes keyboard focus, Escape closes and hands focus back |
 | Fullscreen hiding | Passed for the hide/show logic, driven by a simulated state; the real detector (`SHQueryUserNotificationState` plus a foreground hook and a 3 s poll) is wired but **not yet seen with a real fullscreen game** |
 | DPI scaling | Passed at 1.25, 1.5 and 2.0: window size, hit-testing and centring; **not yet tried on a second monitor with a different DPI** |
 | Resting memory at most 6 MB | 3.0 MB private working set (14 MB working set including shared system DLLs and the mapped fonts), 3.6 MB after ten open/close cycles |
 | Idle | 0 ms CPU over 20 s; startup 363 ms from process start to answering; 1.3 MB executable |
 | Frame pacing | Locked to the display: p50 6.93 ms and p95 7.58 ms on a 144 Hz screen, none over 20 ms across 780 frames |
-| You approve the text rendering | **Waiting on you**: screenshots below |
+| You approve the text rendering | Approved on screenshots (2026-10-23) |
 
 Also done: keyboard mode through the real hotkey registration (HOTKEY_IN_USE and HOTKEY_INVALID verified against a second process), tray icon and localized menu (drawn in code), single instance, autostart with migration of the old entry, reduced-motion and theme from Windows, monitor choice and offset, the control pipe and its 47 scripted checks (`scripts/native/gate-g2.ps1`), a measurement script and a capture script. One real bug found by the scripted checks and fixed with a test: changing the resting style did not take effect until the next timer.
 
-Not done yet in Phase 2: tray menu clicks and the hotkey's real-input path (need the real-input run), fullscreen against a real game, a second monitor.
+Not done yet in Phase 2: tray menu clicks by hand, fullscreen against a real game, a second monitor with a different DPI.
