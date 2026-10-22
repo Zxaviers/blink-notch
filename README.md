@@ -6,9 +6,13 @@ Requirements and plan live in the PRD ("PRD Deadline Notch (working title)") and
 
 ## Status: v0.1 in progress
 
-Built: notch shell (click-through, hover/peek/open, fullscreen hiding, multi-monitor placement), deadlines module, feed fetching with conditional requests, notifications at configurable thresholds, mark done, personal events, tray, settings window, first-run wizard, English and Indonesian.
+Built: notch shell (click-through, hover/peek/open, fullscreen hiding, multi-monitor placement), deadlines module, feed fetching with conditional requests, notifications at configurable thresholds, mark done, personal events, snooze, global hotkey with keyboard navigation, tray, settings window, first-run wizard, English and Indonesian.
 
-Not built yet: snooze, global hotkey, settings export/import, diagnostics, group by course, focus timer, to-do, media module, system peeks.
+Not built yet: group by course, focus timer, to-do, media module, system peeks.
+
+## Keyboard
+
+Ctrl+Alt+D (rebindable in Settings, Display; can be turned off) opens the notch and moves keyboard focus into it. Inside: Up/Down/Home/End select a deadline, Enter opens its page, D (or Space) marks it done, S then 1/2/3 snoozes it for 30 minutes, 2 hours or until tomorrow 08:00, Esc closes (the first Esc only closes the snooze chooser). Pressing the hotkey again, clicking another app or Alt+Tab also closes it, and focus goes back to the app you were in. Without the hotkey the notch never takes focus.
 
 ## Privacy
 
@@ -43,6 +47,8 @@ These move the real cursor for a few seconds, so keep your hands off the mouse.
 - `scripts/probe.ps1`: click-through, hover, focus-stealing checks.
 - `scripts/e2e.ps1`: seeds a throwaway profile and a fixture feed (`scripts/serve-fixture.mjs`), hovers the notch and saves screenshots to `scripts/out/`.
 - `scripts/e2e-settings.ps1`: first-run wizard opens.
+- `scripts/e2e-hotkey.ps1`: sends the real hotkey and navigation keys, checks focus goes in and comes back, and that D marks a deadline done (real keystrokes, so keep your hands off the keyboard too).
+- `scripts/mem-probe.ps1` (memory by WebView2 process, flag trials) and `scripts/anim-cost.ps1` (CPU per expand and collapse).
 - `scripts/measure-idle.ps1 -Minutes 30`: samples CPU and memory of the app plus its WebView2 processes.
 
 All three back up and restore `%APPDATA%\dev.riski.deadlinenotch`.

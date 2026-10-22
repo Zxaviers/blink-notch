@@ -25,6 +25,7 @@ use tauri::{
     AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindow,
     WebviewWindowBuilder, Wry,
 };
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 
@@ -84,6 +85,10 @@ struct NotchState {
     paused: AtomicBool,
     /// Effective: the window is currently hidden (fullscreen or paused).
     hidden: AtomicBool,
+    /// The accelerator currently registered ("" when the hotkey is off).
+    hotkey: Mutex<String>,
+    /// Ask the cursor loop to forget its hover state and re-evaluate.
+    resync: AtomicBool,
 }
 
 type SharedState = Arc<NotchState>;
@@ -153,6 +158,79 @@ fn set_tray_labels(
         let _ = items.refresh.set_text(refresh);
         let _ = items.settings.set_text(settings);
         let _ = items.quit.set_text(quit);
+    }
+}
+
+/// (Re)register the global hotkey. An empty string turns it off. Errors are
+/// codes the settings page translates: HOTKEY_INVALID (cannot be parsed) and
+/// HOTKEY_IN_USE (another app owns it). On failure the previous one stays.
+#[tauri::command]
+fn set_hotkey(
+    app: AppHandle,
+    state: tauri::State<'_, SharedState>,
+    accelerator: String,
+) -> Result<(), String> {
+    let wanted = accelerator.trim().to_string();
+    let mut current = state.hotkey.lock().unwrap();
+    if *current == wanted {
+        return Ok(());
+    }
+
+    let shortcuts = app.global_shortcut();
+    let parsed = if wanted.is_empty() {
+        None
+    } else {
+        Some(wanted.parse::<Shortcut>().map_err(|_| "HOTKEY_INVALID".to_string())?)
+    };
+
+    let previous = std::mem::take(&mut *current);
+    if !previous.is_empty() {
+        if let Ok(old) = previous.parse::<Shortcut>() {
+            let _ = shortcuts.unregister(old);
+        }
+    }
+    if let Some(new) = parsed {
+        if shortcuts.register(new).is_err() {
+            // Put the old one back so a failed rebind never leaves no hotkey.
+            if let Ok(old) = previous.parse::<Shortcut>() {
+                if shortcuts.register(old).is_ok() {
+                    *current = previous;
+                }
+            }
+            return Err("HOTKEY_IN_USE".to_string());
+        }
+        *current = wanted;
+    }
+    Ok(())
+}
+
+/// The hotkey was pressed: tell the page, which opens the panel and then asks
+/// for keyboard focus.
+fn on_hotkey(app: &AppHandle) {
+    let state = app.state::<SharedState>();
+    if state.hidden.load(Ordering::Relaxed) {
+        return; // paused or a fullscreen app is in front
+    }
+    let _ = app.emit("hotkey", ());
+}
+
+/// Let the notch take keyboard focus (called by the page after a hotkey).
+/// Returns whether the window really became the foreground window.
+#[tauri::command]
+fn enter_keyboard_mode(app: AppHandle) -> bool {
+    app.get_webview_window("notch")
+        .map(|win| win32::enter_keyboard_mode(&win))
+        .unwrap_or(false)
+}
+
+/// Back to a notch that never takes focus; focus returns to the previous app.
+#[tauri::command]
+fn exit_keyboard_mode(app: AppHandle, state: tauri::State<'_, SharedState>) {
+    if let Some(win) = app.get_webview_window("notch") {
+        win32::exit_keyboard_mode(&win);
+        // Focus handling may have toggled click-through; let the cursor loop re-decide.
+        let _ = win.set_ignore_cursor_events(true);
+        state.resync.store(true, Ordering::Relaxed);
     }
 }
 
@@ -335,6 +413,9 @@ fn spawn_cursor_loop(win: WebviewWindow, state: SharedState) {
         let mut inside = false;
         loop {
             let mut delay = Duration::from_millis(150);
+            if state.resync.swap(false, Ordering::Relaxed) {
+                inside = false;
+            }
             if state.hidden.load(Ordering::Relaxed) {
                 if inside {
                     inside = false;
@@ -458,6 +539,15 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             show_settings(app);
         }))
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _shortcut, event| {
+                    if event.state() == ShortcutState::Pressed {
+                        on_hotkey(app);
+                    }
+                })
+                .build(),
+        )
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(
@@ -469,6 +559,9 @@ pub fn run() {
             list_monitors,
             set_placement,
             set_tray_labels,
+            set_hotkey,
+            enter_keyboard_mode,
+            exit_keyboard_mode,
             debug_log,
             notify,
             open_url,

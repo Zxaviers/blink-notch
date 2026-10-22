@@ -66,3 +66,11 @@ test('moodle url diagnostics return hint codes', () => {
   assert.equal(inspectMoodleUrl('https://x.edu/other').hint, 'moodle_not_export')
   assert.equal(inspectMoodleUrl('not a url').hint, null)
 })
+
+test('hotkey: valid kept, empty means off, unusable falls back to the default', () => {
+  assert.equal(normalizeSettings({ hotkey: 'Ctrl+Alt+K' }).hotkey, 'Ctrl+Alt+K')
+  assert.equal(normalizeSettings({ hotkey: '' }).hotkey, '')
+  assert.equal(normalizeSettings({ hotkey: 'D' }).hotkey, 'Ctrl+Alt+D')
+  assert.equal(normalizeSettings({ hotkey: 42 }).hotkey, 'Ctrl+Alt+D')
+  assert.equal(normalizeSettings({}).hotkey, 'Ctrl+Alt+D')
+})

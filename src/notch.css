@@ -215,6 +215,21 @@ body {
 .row:hover {
   background: var(--line);
 }
+/* Row selected with the keyboard. */
+.row.kbd {
+  background: var(--line);
+  outline: 2px solid var(--fg);
+  outline-offset: -2px;
+}
+.row.kbd .actions {
+  opacity: 1;
+}
+.panel:focus {
+  outline: none;
+}
+.sync.hint {
+  color: var(--dim);
+}
 .row.linked {
   cursor: pointer;
 }

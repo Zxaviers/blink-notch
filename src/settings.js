@@ -11,6 +11,7 @@ import { validateUrl, inspectMoodleUrl } from './lib/feedUrl.js'
 import { parseTasks, DAY_MS } from './lib/parseTasks.js'
 import { normalizeLocalEvent } from './lib/localEvents.js'
 import { dueLabel } from './lib/countdown.js'
+import { acceleratorFromEvent, DEFAULT_HOTKEY } from './lib/hotkey.js'
 
 const SECTIONS = ['feeds', 'notifications', 'display', 'events', 'general']
 
@@ -239,6 +240,67 @@ function notificationsSection () {
     field(t('notifications.keepOverdue'), numberInput(settings.keepOverdueDays, { min: 0, max: 30 }, (v) => save({ keepOverdueDays: v }).then(renderAll))))
 }
 
+/** Press-to-record field for the global hotkey. Tries to register before saving. */
+function hotkeyControl () {
+  const out = status()
+  const label = () => settings.hotkey || t('hotkey.off')
+  const shown = h('input', { type: 'text', readonly: true, class: 'hotkey-input', value: label(), 'aria-label': t('hotkey.label') })
+  let capturing = false
+
+  const stop = () => {
+    capturing = false
+    shown.value = label()
+  }
+  const apply = async (accelerator) => {
+    try {
+      await api.setHotkey(accelerator)
+    } catch (e) {
+      out.set('error', errorText(e))
+      stop()
+      return
+    }
+    const saved = await save({ hotkey: accelerator })
+    out.set(saved ? 'ok' : 'error', saved ? t('hotkey.saved') : t('error.STORE'))
+    stop()
+  }
+
+  shown.addEventListener('keydown', (event) => {
+    if (!capturing) return
+    event.preventDefault()
+    if (event.key === 'Escape') {
+      out.set('', '')
+      stop()
+      return
+    }
+    const result = acceleratorFromEvent(event)
+    if (result.error === 'PARTIAL') return
+    if (result.error === 'MODIFIER') return out.set('error', t('hotkey.needModifier'))
+    if (result.error === 'KEY') return out.set('error', t('hotkey.unsupportedKey'))
+    apply(result.accelerator)
+  })
+  shown.addEventListener('blur', () => { if (capturing) stop() })
+
+  const change = h('button', {
+    class: 'btn', type: 'button',
+    onclick: () => {
+      capturing = true
+      out.set('', '')
+      shown.value = t('hotkey.press')
+      shown.focus()
+    }
+  }, t('hotkey.change'))
+
+  return h('div', { class: 'field' },
+    h('span', { class: 'label' }, t('hotkey.label')),
+    h('div', { class: 'inline' },
+      shown,
+      change,
+      h('button', { class: 'btn', type: 'button', onclick: () => apply('') }, t('hotkey.turnOff')),
+      h('button', { class: 'btn', type: 'button', onclick: () => apply(DEFAULT_HOTKEY) }, t('hotkey.reset'))),
+    h('span', { class: 'hint' }, t('hotkey.hint')),
+    out)
+}
+
 function displaySection () {
   const monitorField = h('div', {})
   api.listMonitors().then((monitors) => {
@@ -263,7 +325,8 @@ function displaySection () {
     field(t('display.dueHorizon'), numberInput(settings.dueHorizonHours, { min: 1, max: 336 }, (v) => save({ dueHorizonHours: v }))),
     field(t('display.hoverDelay'), numberInput(settings.hoverDelayMs, { min: 0, max: 1000, step: 10 }, (v) => save({ hoverDelayMs: v }))),
     monitorField,
-    field(t('display.offset'), numberInput(settings.offsetX, { min: -2000, max: 2000, step: 10 }, (v) => save({ offsetX: v }))))
+    field(t('display.offset'), numberInput(settings.offsetX, { min: -2000, max: 2000, step: 10 }, (v) => save({ offsetX: v }))),
+    hotkeyControl())
 }
 
 function eventsSection () {

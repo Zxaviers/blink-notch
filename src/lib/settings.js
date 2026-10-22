@@ -10,6 +10,7 @@
 import { normalizeThresholdsHours } from './notifyConfig.js'
 import { clampInterval, MINUTE_MS, DEFAULT_REFRESH_MS } from './feedUrl.js'
 import { FEED_KINDS, isValidFeedId } from './feeds.js'
+import { DEFAULT_HOTKEY, isValidAccelerator } from './hotkey.js'
 
 export const THEMES = ['dark', 'light', 'auto']
 export const LANGUAGE_SETTINGS = ['auto', 'en', 'id']
@@ -25,6 +26,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   refreshMinutes: DEFAULT_REFRESH_MS / MINUTE_MS,
   thresholdsHours: [24, 6, 1],
   toast: true,
+  hotkey: DEFAULT_HOTKEY,
   keepOverdueDays: 3,
   monitor: 0,
   offsetX: 0,
@@ -72,6 +74,8 @@ export function normalizeSettings (raw) {
     refreshMinutes: clampInterval(Number(s.refreshMinutes) * MINUTE_MS) / MINUTE_MS,
     thresholdsHours: normalizeThresholdsHours(s.thresholdsHours),
     toast: s.toast !== false,
+    // '' turns the hotkey off; anything unusable falls back to the default.
+    hotkey: isValidAccelerator(s.hotkey) ? s.hotkey : d.hotkey,
     keepOverdueDays: int(s.keepOverdueDays, 0, 30, d.keepOverdueDays),
     monitor: int(s.monitor, 0, 15, d.monitor),
     offsetX: int(s.offsetX, -2000, 2000, d.offsetX),

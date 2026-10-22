@@ -5,9 +5,10 @@
 import { api } from './api.js'
 import { createCore } from './core.js'
 import { clear } from './dom.js'
-import { deadlinesModule } from './modules/deadlines.js'
+import { deadlinesModule, selectableIds } from './modules/deadlines.js'
 import { restModeFor } from './lib/view.js'
-import { HOUR_MS } from './lib/countdown.js'
+import { HOUR_MS, urgencyOf } from './lib/countdown.js'
+import { keyAction, nextSelection } from './lib/hotkey.js'
 
 const active = deadlinesModule
 
@@ -34,6 +35,10 @@ let openHeight = 120
 let doneOpen = false
 let snoozeFor = null
 let hovering = false
+// Keyboard mode: opened with the global hotkey, the notch holds keyboard focus
+// and the arrow keys move a selection through the rows.
+let keyboard = false
+let selectedId = null
 let intentTimer = null
 let graceTimer = null
 let peekTimer = null
@@ -64,6 +69,8 @@ function makeCtx (nowMs = Date.now()) {
     doneOpen,
     snoozed: s.snoozed,
     snoozeFor,
+    keyboard,
+    selectedId: keyboard ? selectedId : null,
     actions
   }
 }
@@ -114,13 +121,23 @@ function renderPanel () {
   openHeight = Math.min(inner.offsetHeight, OPEN_MAX_H)
   panel.scrollTop = scrollTop
   if (state === 'open') applyShape()
+  if (keyboard) inner.querySelector('.row.kbd')?.scrollIntoView({ block: 'nearest' })
 }
 
 function renderPeek (task) {
   clear(peekEl).append(active.peek(task, makeCtx()))
 }
 
+/** Keep the selection on a row that still exists after the data changed. */
+function reconcileSelection () {
+  if (!keyboard) return
+  const ids = selectableIds(core.view())
+  if (!ids.includes(selectedId)) selectedId = ids[0] ?? null
+  if (snoozeFor !== null && !ids.includes(snoozeFor)) snoozeFor = null
+}
+
 function render () {
+  reconcileSelection()
   const ctx = makeCtx()
   renderRest(ctx)
   if (state === 'open') renderPanel()
@@ -189,7 +206,7 @@ function onHover (inside) {
   } else {
     clearTimeout(intentTimer)
     intentTimer = null
-    if (state === 'open' && graceTimer === null) {
+    if (state === 'open' && graceTimer === null && !keyboard) {
       graceTimer = setTimeout(() => {
         graceTimer = null
         if (!hovering) setState('rest')
@@ -206,6 +223,95 @@ function peek (task) {
   peekTimer = setTimeout(() => {
     if (state === 'peek') setState('rest')
   }, PEEK_MS)
+}
+
+// ----------------------------------------------------------------- keyboard
+
+function findTask (id) {
+  const { upcoming, overdue } = core.view()
+  return [...upcoming, ...overdue].find((task) => task.id === id) ?? null
+}
+
+/** Hotkey: open the panel and take keyboard focus. */
+async function enterKeyboard () {
+  openNow()
+  let focused = false
+  try {
+    focused = await api.enterKeyboardMode()
+  } catch { /* handled below */ }
+
+  if (!focused) {
+    // Windows refused to hand over focus: behave like a plain open and close
+    // again by itself, since no key presses will reach us.
+    api.exitKeyboardMode().catch(() => {})
+    setTimeout(() => { if (!hovering && !keyboard) setState('rest') }, 4000)
+    return
+  }
+  keyboard = true
+  selectedId = selectableIds(core.view())[0] ?? null
+  renderPanel()
+  panel.focus()
+}
+
+function exitKeyboard () {
+  if (!keyboard) return
+  keyboard = false
+  selectedId = null
+  snoozeFor = null
+  api.exitKeyboardMode().catch(() => {})
+  setState('rest')
+}
+
+function onKeyDown (event) {
+  if (!keyboard) {
+    if (event.key === 'Escape') setState('rest')
+    return
+  }
+  const action = keyAction(event.key, { snoozing: snoozeFor !== null })
+  if (!action) return
+  event.preventDefault()
+
+  const ids = selectableIds(core.view())
+  const task = selectedId ? findTask(selectedId) : null
+  switch (action.type) {
+    case 'move':
+      selectedId = nextSelection(ids, selectedId, action.key)
+      renderPanel()
+      break
+    case 'open':
+      if (task?.url) actions.openUrl(task.url)
+      break
+    case 'done':
+      if (task) {
+        const at = ids.indexOf(task.id)
+        const id = task.id
+        selectedId = ids[at + 1] ?? ids[at - 1] ?? null // move on before the row disappears
+        core.markDone(id)
+      }
+      break
+    case 'snooze-menu':
+      if (task && urgencyOf(task.dueMs, Date.now()) !== 'overdue') {
+        snoozeFor = task.id
+        renderPanel()
+      }
+      break
+    case 'snooze':
+      if (snoozeFor !== null) {
+        const id = snoozeFor
+        snoozeFor = null
+        core.snooze(id, action.kind)
+        renderPanel()
+      }
+      break
+    case 'snooze-cancel':
+      snoozeFor = null
+      renderPanel()
+      break
+    case 'close':
+      exitKeyboard()
+      break
+    default:
+  }
 }
 
 // -------------------------------------------------------------------- tick
@@ -241,9 +347,9 @@ function onTick () {
 notch.addEventListener('click', () => {
   if (state !== 'open') openNow()
 })
-window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') setState('rest')
-})
+window.addEventListener('keydown', onKeyDown)
+// Clicking another app (or Alt+Tab) while the notch holds keyboard focus ends keyboard mode.
+window.addEventListener('blur', () => exitKeyboard())
 window.addEventListener('resize', applyShape)
 darkQuery.addEventListener('change', render)
 
@@ -254,6 +360,7 @@ core.subscribe(() => {
 core.onPeek(peek)
 
 api.on('notch-hover', onHover)
+api.on('hotkey', () => (keyboard ? exitKeyboard() : enterKeyboard()))
 api.on('refresh-now', () => core.syncAll(true))
 api.on('settings-changed', () => core.reloadSettings())
 api.on('data-changed', () => core.reloadLocal())

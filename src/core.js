@@ -251,6 +251,8 @@ export function createCore ({ api }) {
     state.settings = normalizeSettings(raw)
     applyLanguage()
     await api.setPlacement(state.settings.monitor, state.settings.offsetX).catch(() => {})
+    // A taken or unsupported hotkey just stays unbound here; the settings page reports why.
+    await api.setHotkey(state.settings.hotkey).catch(() => {})
     await pushTrayLabels()
   }
 

@@ -62,9 +62,12 @@ function taskRow (task, ctx, { hero = false } = {}) {
     actionButton(ctx.t('row.done'), '✓', () => ctx.actions.markDone(task.id))
   )
 
+  const selected = ctx.selectedId === task.id
   return h('li', {
-    class: `row ${urgency}${hero ? ' hero' : ''}${canOpen ? ' linked' : ''}`,
+    class: `row ${urgency}${hero ? ' hero' : ''}${canOpen ? ' linked' : ''}${selected ? ' kbd' : ''}`,
     dataset: { id: task.id },
+    role: 'option',
+    'aria-selected': String(selected),
     onclick: canOpen ? () => ctx.actions.openUrl(task.url) : null
   },
   hero
@@ -99,13 +102,22 @@ function doneRow (task, ctx) {
 
 function footer (ctx) {
   const summary = syncSummary(ctx.feeds, ctx.t, ctx.language)
+  // With keyboard focus the footer teaches the keys instead of showing sync status.
+  const left = ctx.keyboard
+    ? h('span', { class: 'sync hint' }, ctx.snoozeFor ? ctx.t('kbd.snooze') : ctx.t('kbd.hint'))
+    : h('span', { class: `sync ${summary.kind}` }, summary.text)
   return h('div', { class: 'footer' },
-    h('span', { class: `sync ${summary.kind}` }, summary.text),
+    left,
     h('span', { class: 'footer-actions' },
       ctx.hasFeeds && actionButton(ctx.t('footer.refresh'), '↻', () => ctx.actions.refresh()),
       actionButton(ctx.t('footer.settings'), '⚙', () => ctx.actions.openSettings())
     )
   )
+}
+
+/** Rows the keyboard can select, in display order (hero first, then overdue). */
+export function selectableIds (view) {
+  return [...view.upcoming.slice(0, MAX_UPCOMING_ROWS), ...view.overdue.slice(0, MAX_OVERDUE_ROWS)].map((task) => task.id)
 }
 
 export const deadlinesModule = {
@@ -152,14 +164,14 @@ export const deadlinesModule = {
     } else if (upcoming.length === 0 && overdue.length === 0) {
       root.append(h('div', { class: 'empty' }, h('p', {}, ctx.t('list.empty'))))
     } else {
-      const list = h('ul', { class: 'rows' })
+      const list = h('ul', { class: 'rows', role: 'listbox', 'aria-label': ctx.t('kbd.list') })
       const rest = hero && upcoming[0] === hero ? upcoming.slice(1) : upcoming
       if (hero && upcoming[0] === hero) list.append(taskRow(hero, ctx, { hero: true }))
       for (const task of rest.slice(0, MAX_UPCOMING_ROWS)) list.append(taskRow(task, ctx))
       root.append(list)
 
       if (overdue.length > 0) {
-        const late = h('ul', { class: 'rows overdue-rows' })
+        const late = h('ul', { class: 'rows overdue-rows', role: 'listbox', 'aria-label': ctx.t('section.overdue') })
         const heroIsOverdue = hero && overdue[0] === hero
         overdue.slice(0, MAX_OVERDUE_ROWS).forEach((task, i) => {
           late.append(taskRow(task, ctx, { hero: heroIsOverdue && i === 0 }))

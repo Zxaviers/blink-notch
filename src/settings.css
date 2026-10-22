@@ -126,6 +126,14 @@ input[type="text"].wide,
 textarea.wide {
   width: 100%;
 }
+.hotkey-input {
+  width: 14em;
+  font-family: var(--mono) !important;
+  cursor: default;
+}
+.hotkey-input:focus {
+  border-color: var(--brand);
+}
 textarea {
   font: 12.5px/1.4 var(--mono);
   color: var(--fg);

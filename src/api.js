@@ -26,6 +26,10 @@ export const api = {
   setTrayLabels: (labels) => invoke('set_tray_labels', labels),
   debugLog: (msg) => invoke('debug_log', { msg }),
 
+  setHotkey: (accelerator) => invoke('set_hotkey', { accelerator }),
+  enterKeyboardMode: () => invoke('enter_keyboard_mode'),
+  exitKeyboardMode: () => invoke('exit_keyboard_mode'),
+
   autostart: {
     isEnabled: () => invoke('plugin:autostart|is_enabled'),
     enable: () => invoke('plugin:autostart|enable'),

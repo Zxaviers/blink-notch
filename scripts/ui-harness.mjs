@@ -77,6 +77,14 @@ const STUB = `
     set_placement: (a) => log('set_placement', a),
     set_shape: (a) => { window.__shape = a },
     set_tray_labels: (a) => log('tray', a),
+    // Ctrl+Alt+X plays "taken by another app" so the error path can be driven.
+    set_hotkey: ({ accelerator }) => {
+      if (accelerator === 'Ctrl+Alt+X') throw 'HOTKEY_IN_USE'
+      set('hotkey', accelerator); log('set_hotkey', accelerator)
+    },
+    enter_keyboard_mode: () => { log('enter_keyboard_mode'); return true },
+    exit_keyboard_mode: () => { log('exit_keyboard_mode') },
+    debug_log: () => {},
     'plugin:autostart|is_enabled': () => get('autostart', false),
     'plugin:autostart|enable': () => set('autostart', true),
     'plugin:autostart|disable': () => set('autostart', false)
@@ -95,6 +103,7 @@ const STUB = `
     app: { getVersion: async () => '0.1.0-harness' }
   }
   window.__hover = (inside) => dispatch('notch-hover', inside)
+  window.__hotkey = () => dispatch('hotkey', null)
   window.__reset = () => { Object.keys(localStorage).filter((k) => k.startsWith('dn:')).forEach((k) => localStorage.removeItem(k)) }
 })()
 `

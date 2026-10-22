@@ -7,7 +7,7 @@
 
 #![cfg(windows)]
 
-use std::sync::atomic::{AtomicIsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
 
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::UI::Shell::{DefSubclassProc, SHQueryUserNotificationState, SetWindowSubclass};
@@ -62,33 +62,78 @@ unsafe extern "system" fn no_activate_proc(
         return LRESULT(MA_NOACTIVATE as isize);
     }
     // WebView2 still calls SetFocus on click, which activates the top-level
-    // window anyway. Hand the foreground straight back to the app that had it.
-    if msg == WM_ACTIVATE && (wparam.0 & 0xFFFF) as u32 != WA_INACTIVE {
+    // window anyway. Hand the foreground straight back to the app that had it,
+    // unless the user asked for keyboard focus with the hotkey.
+    if msg == WM_ACTIVATE
+        && (wparam.0 & 0xFFFF) as u32 != WA_INACTIVE
+        && !KEYBOARD_MODE.load(Ordering::Relaxed)
+    {
         let prev = PREV_FOREGROUND.load(Ordering::Relaxed);
         if prev != 0 && prev != hwnd.0 as isize {
-            // Restoring inside the message is overridden by the activation
-            // still in progress, so do it just after it settles.
-            // One attempt can lose a race with the activation, so retry
-            // until the previous app really is the foreground window again.
-            std::thread::spawn(move || {
-                let target = HWND(prev as *mut _);
-                let mut ok = false;
-                for wait_ms in [10u64, 40, 100, 250] {
-                    std::thread::sleep(std::time::Duration::from_millis(wait_ms));
-                    let _ = SetForegroundWindow(target);
-                    if GetForegroundWindow() == target {
-                        ok = true;
-                        break;
-                    }
-                }
-                if std::env::var_os("DN_DEBUG").is_some() {
-                    eprintln!("[notch] restore foreground ok={ok}");
-                }
-            });
+            restore_foreground(prev);
         }
         return LRESULT(0);
     }
     DefSubclassProc(hwnd, msg, wparam, lparam)
+}
+
+/// Give the foreground back to `prev` shortly after, retrying until it sticks.
+/// Restoring inside the activation message is overridden by the activation
+/// still in progress, and one attempt can lose the race, hence the retries.
+fn restore_foreground(prev: isize) {
+    std::thread::spawn(move || {
+        let target = HWND(prev as *mut _);
+        let mut ok = false;
+        for wait_ms in [10u64, 40, 100, 250] {
+            std::thread::sleep(std::time::Duration::from_millis(wait_ms));
+            let _ = unsafe { SetForegroundWindow(target) };
+            if unsafe { GetForegroundWindow() } == target {
+                ok = true;
+                break;
+            }
+        }
+        if std::env::var_os("DN_DEBUG").is_some() {
+            eprintln!("[notch] restore foreground ok={ok}");
+        }
+    });
+}
+
+/// True from the hotkey until the notch is dismissed: the window is allowed
+/// to take focus so the keyboard works inside the panel.
+static KEYBOARD_MODE: AtomicBool = AtomicBool::new(false);
+
+/// Let the notch take keyboard focus (hotkey). Remembers the app that had it.
+/// Returns whether the notch really became the foreground window.
+pub fn enter_keyboard_mode(win: &tauri::WebviewWindow) -> bool {
+    let Some(hwnd) = hwnd_of(win) else {
+        return false;
+    };
+    remember_foreground(win);
+    KEYBOARD_MODE.store(true, Ordering::Relaxed);
+    unsafe {
+        let current = WINDOW_EX_STYLE(GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32);
+        let updated = current & !WS_EX_NOACTIVATE;
+        if current != updated {
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, updated.0 as isize);
+        }
+        let _ = SetForegroundWindow(hwnd);
+    }
+    let _ = win.set_focus();
+    unsafe { GetForegroundWindow() == hwnd }
+}
+
+/// Dismiss keyboard mode: back to a window that never takes focus, and give
+/// the foreground back to the app that had it.
+pub fn exit_keyboard_mode(win: &tauri::WebviewWindow) {
+    if !KEYBOARD_MODE.swap(false, Ordering::Relaxed) {
+        return;
+    }
+    make_overlay(win);
+    let prev = PREV_FOREGROUND.load(Ordering::Relaxed);
+    let own = hwnd_of(win).map_or(0, |h| h.0 as isize);
+    if prev != 0 && prev != own && unsafe { GetForegroundWindow() }.0 as isize == own {
+        restore_foreground(prev);
+    }
 }
 
 /// Foreground window recorded just before the cursor entered the notch.
