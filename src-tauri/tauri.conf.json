@@ -23,7 +23,8 @@
         "visible": false,
         "focus": false,
         "maximizable": false,
-        "minimizable": false
+        "minimizable": false,
+        "additionalBrowserArgs": "--disable-gpu --disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection"
       }
     ],
     "security": {

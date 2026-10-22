@@ -49,8 +49,13 @@ All three back up and restore `%APPDATA%\dev.riski.deadlinenotch`.
 
 ## Measured so far
 
-Release exe, resting, one fixture feed loaded, 3 minutes (16 samples, 16 logical cores): CPU 0.03% average (0.15% peak). Memory as Task Manager's Memory column shows it (private working set summed over the app and its six WebView2 processes): 97 MB average, 103 MB peak. The PRD targets are under 0.5% CPU and under 80 MB, so CPU passes and memory is over. The exe alone is about 4 MB; the rest is WebView2.
+Release exe, resting, one fixture feed loaded, 5 minutes (28 samples, 16 logical cores):
 
-Earlier, on the spike shell with mock data (25 minutes): 0.07% CPU, about 90 MB, flat. A 30-minute soak of the full app has not been run yet.
+- CPU 0.05% average, 0.17% peak (PRD target: under 0.5%).
+- Memory as Task Manager's Memory column shows it (private working set summed over the app and its six WebView2 processes): 62.7 MB average, 66.2 MB peak (PRD target: under 80 MB).
 
-Native checks on the release exe (`scripts/probe.ps1`): click-through outside the notch, input on the pill and expanded area, no focus stolen by hover or a real click. Not yet checked on real hardware: fullscreen hiding, multi-monitor and DPI changes, Windows toasts.
+How memory got there: the first full build sat at about 97 MB. A breakdown by WebView2 process (`scripts/mem-probe.ps1`) showed the GPU process at 38 MB. Starting WebView2 with `--disable-gpu` (software rendering) took the total to 66 MB. On their own, `--in-process-gpu` reached 86 MB and `--enable-low-end-device-mode` changed nothing; on top of `--disable-gpu`, `--in-process-gpu` and extra `--disable-features` saved only 2 to 3 MB, so they were not adopted. The flags are in `src-tauri/tauri.conf.json` and `WEBVIEW_ARGS` in `lib.rs`; both windows must use the same string or WebView2 starts a second set of processes.
+
+What software rendering costs: an expand plus collapse uses about 0.3 to 0.4 CPU-seconds across the app and WebView2 (about 0.01 with the GPU), mostly in the GPU process doing software compositing. Frame pacing of the expand animation, measured in the app (DN_DEBUG=1 logs `frames open: ...`): median 6.9 ms between frames on a 144 Hz display, none over 20 ms. That is one machine; check a low-end laptop before calling it done.
+
+Native checks on the release exe (`scripts/probe.ps1`, four runs in a row): click-through outside the notch, input on the pill and expanded area, no focus stolen by hover or a real click. Not yet checked on real hardware: fullscreen hiding, multi-monitor and DPI changes, Windows toasts, and a long soak (the full app has only been sampled for 5 minutes).

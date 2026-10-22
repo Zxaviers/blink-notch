@@ -130,11 +130,39 @@ function render () {
 
 // ------------------------------------------------------------------- state
 
+/**
+ * Frame pacing of the expand animation, written to the debug log (DN_DEBUG=1
+ * only; otherwise the Rust side drops it). The app runs with software
+ * rendering, so this is how to check the animation still holds ~60 fps.
+ */
+function measureFrames (label) {
+  const stamps = []
+  const start = performance.now()
+  const report = () => {
+    const gaps = stamps.slice(1).map((t, i) => t - stamps[i]).sort((a, b) => a - b)
+    if (gaps.length === 0) return
+    const q = (p) => gaps[Math.min(gaps.length - 1, Math.floor(p * gaps.length))]
+    api.debugLog(
+      `frames ${label}: n=${gaps.length} p50=${q(0.5).toFixed(1)}ms p95=${q(0.95).toFixed(1)}ms ` +
+      `max=${gaps[gaps.length - 1].toFixed(1)}ms slow(>20ms)=${gaps.filter((g) => g > 20).length}`
+    ).catch(() => {})
+  }
+  const step = (t) => {
+    stamps.push(t)
+    if (t - start < 450) requestAnimationFrame(step)
+    else report()
+  }
+  requestAnimationFrame(step)
+}
+
 function setState (next) {
   if (state === next) return
   state = next
   notch.dataset.state = next
-  if (next === 'open') renderPanel()
+  if (next === 'open') {
+    measureFrames('open')
+    renderPanel()
+  }
   notch.dataset.surface = effectiveSurface()
   applyShape()
   scheduleTick()

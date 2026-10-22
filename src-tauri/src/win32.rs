@@ -68,9 +68,19 @@ unsafe extern "system" fn no_activate_proc(
         if prev != 0 && prev != hwnd.0 as isize {
             // Restoring inside the message is overridden by the activation
             // still in progress, so do it just after it settles.
+            // One attempt can lose a race with the activation, so retry
+            // until the previous app really is the foreground window again.
             std::thread::spawn(move || {
-                std::thread::sleep(std::time::Duration::from_millis(10));
-                let ok = SetForegroundWindow(HWND(prev as *mut _)).as_bool();
+                let target = HWND(prev as *mut _);
+                let mut ok = false;
+                for wait_ms in [10u64, 40, 100, 250] {
+                    std::thread::sleep(std::time::Duration::from_millis(wait_ms));
+                    let _ = SetForegroundWindow(target);
+                    if GetForegroundWindow() == target {
+                        ok = true;
+                        break;
+                    }
+                }
                 if std::env::var_os("DN_DEBUG").is_some() {
                     eprintln!("[notch] restore foreground ok={ok}");
                 }

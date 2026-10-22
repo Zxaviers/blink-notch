@@ -27,20 +27,26 @@ body {
   --soon: #e0b25a;
   --late: #ec7f72;
 
+  --r: 16px;
+
+  /* The element is always the largest size and only its clip animates. Growing
+     the box itself would re-run layout and paint every frame, which is costly
+     with software rendering (the app runs WebView2 with --disable-gpu to save
+     about 30 MB). The shape bounds Rust uses for click-through are separate. */
   position: absolute;
   top: 0;
   left: 50%;
-  width: var(--w);
-  height: var(--h);
+  width: 420px;
+  height: 340px;
   transform: translateX(-50%);
   background: var(--bg);
   color: var(--fg);
-  border-radius: 0 0 16px 16px;
-  overflow: hidden;
+  clip-path: inset(
+    0 calc((420px - var(--w)) / 2) calc(340px - var(--h)) calc((420px - var(--w)) / 2)
+    round 0 0 var(--r) var(--r)
+  );
   transition:
-    width var(--dur) var(--ease),
-    height var(--dur) var(--ease),
-    border-radius var(--dur) var(--ease),
+    clip-path var(--dur) var(--ease),
     background-color 160ms ease;
 }
 
@@ -55,10 +61,10 @@ body {
 }
 
 .notch[data-state="peek"] {
-  border-radius: 0 0 18px 18px;
+  --r: 18px;
 }
 .notch[data-state="open"] {
-  border-radius: 0 0 24px 24px;
+  --r: 24px;
 }
 
 /* Hidden-until-hover: an invisible strip along the top edge. */
@@ -66,7 +72,7 @@ body {
   background: transparent;
 }
 .notch[data-state="rest"][data-rest="mini"] {
-  border-radius: 0 0 6px 6px;
+  --r: 6px;
 }
 
 .rest,
@@ -132,6 +138,8 @@ body {
 .peek {
   display: flex;
   align-items: center;
+  bottom: auto;
+  height: 56px;
   padding: 0 18px;
 }
 .peek-body {
@@ -172,6 +180,8 @@ body {
 /* -------------------------------------------------------------------- panel */
 
 .panel {
+  bottom: auto;
+  height: var(--h);
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: thin;

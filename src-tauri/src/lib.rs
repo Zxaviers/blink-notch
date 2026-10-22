@@ -28,6 +28,14 @@ use tauri::{
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 
+/// WebView2 flags. `--disable-gpu` (software rendering) removes most of the
+/// GPU process's memory: about 98 MB down to 66 MB at rest, measured with
+/// scripts/mem-probe.ps1. The page animates a clip-path so it stays cheap
+/// without the GPU. Must match "additionalBrowserArgs" in tauri.conf.json.
+#[cfg(windows)]
+const WEBVIEW_ARGS: &str =
+    "--disable-gpu --disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
+
 /// Margin (logical px) around the shape inside which the cursor loop polls fast.
 const NEAR_MARGIN: f64 = 24.0;
 /// The notch window is fixed in logical px; the shape animates inside it.
@@ -148,6 +156,12 @@ fn set_tray_labels(
     }
 }
 
+/// Lets the page add a line to the debug log (DN_DEBUG=1); otherwise a no-op.
+#[tauri::command]
+fn debug_log(msg: String) {
+    dlog(&msg);
+}
+
 #[tauri::command]
 fn notify(app: AppHandle, title: String, body: String) {
     let _ = app.notification().builder().title(title).body(body).show();
@@ -236,12 +250,16 @@ fn show_settings(app: &AppHandle) {
         let _ = w.set_focus();
         return;
     }
-    let _ = WebviewWindowBuilder::new(app, "settings", WebviewUrl::App("settings.html".into()))
+    let builder = WebviewWindowBuilder::new(app, "settings", WebviewUrl::App("settings.html".into()))
         .title("Deadline Notch")
         .inner_size(900.0, 660.0)
         .min_inner_size(700.0, 520.0)
-        .center()
-        .build();
+        .center();
+    // Same browser args as the notch window (tauri.conf.json): WebView2 starts
+    // a separate set of processes for each distinct set of args.
+    #[cfg(windows)]
+    let builder = builder.additional_browser_args(WEBVIEW_ARGS);
+    let _ = builder.build();
 }
 
 #[tauri::command]
@@ -451,6 +469,7 @@ pub fn run() {
             list_monitors,
             set_placement,
             set_tray_labels,
+            debug_log,
             notify,
             open_url,
             open_settings,

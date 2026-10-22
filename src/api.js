@@ -24,6 +24,7 @@ export const api = {
   setPlacement: (monitor, offsetX) => invoke('set_placement', { monitor, offsetX }),
   setShape: (x, y, w, h) => invoke('set_shape', { x, y, w, h }),
   setTrayLabels: (labels) => invoke('set_tray_labels', labels),
+  debugLog: (msg) => invoke('debug_log', { msg }),
 
   autostart: {
     isEnabled: () => invoke('plugin:autostart|is_enabled'),
