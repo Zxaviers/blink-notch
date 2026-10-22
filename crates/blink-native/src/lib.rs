@@ -6,6 +6,7 @@
 
 pub mod app;
 pub mod clock;
+pub mod live;
 pub mod modules;
 #[cfg(windows)]
 pub mod platform;

@@ -2,6 +2,7 @@
 //!
 //!   blink                 run
 //!   blink --pin-open      start with the panel open (screenshots, tests)
+//!   blink --demo          show sample deadlines instead of your feeds (or BLINK_DEMO=1)
 //!   blink --seconds N     quit after N seconds
 //!   blink --dump FILE     write a PNG of the last frame on exit
 //!
@@ -20,12 +21,14 @@ fn main() {
         manual_clock: std::env::var_os("BLINK_MANUAL_CLOCK").is_some(),
         data_dir: std::env::var_os("BLINK_DATA_DIR").map(Into::into),
         scale: std::env::var("BLINK_SCALE").ok().and_then(|s| s.parse().ok()),
+        demo: std::env::var_os("BLINK_DEMO").is_some(),
         ..Options::default()
     };
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--pin-open" => opts.pin_open = true,
+            "--demo" => opts.demo = true,
             "--seconds" => opts.seconds = args.next().and_then(|s| s.parse().ok()),
             "--dump" => opts.dump = args.next(),
             _ => {}

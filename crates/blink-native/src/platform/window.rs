@@ -9,6 +9,7 @@ use std::cell::RefCell;
 use std::ffi::c_void;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicIsize, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use blink_core::settings::{normalize_settings, Settings};
@@ -30,7 +31,7 @@ use windows::Win32::UI::Accessibility::{SetWinEventHook, HWINEVENTHOOK};
 use windows::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, TrackMouseEvent, UnregisterHotKey, HOT_KEY_MODIFIERS, TME_LEAVE, TRACKMOUSEEVENT};
 use windows::Win32::UI::Shell::ShellExecuteW;
 use windows::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetClassNameW, GetForegroundWindow, GetMessageW, GetQueueStatus,
+    RegisterWindowMessageW, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetClassNameW, GetForegroundWindow, GetMessageW, GetQueueStatus,
     GetWindowLongPtrW, GetWindowRect, IsWindowVisible, KillTimer, LoadCursorW, PeekMessageW, PostMessageW, PostQuitMessage,
     RegisterClassExW, SetTimer, ShowWindow, SystemParametersInfoW, TranslateMessage, UpdateLayeredWindow, WindowFromPoint, CS_HREDRAW,
     CS_VREDRAW, GWL_EXSTYLE, IDC_ARROW, MSG, PM_REMOVE, QS_ALLINPUT, SPI_GETCLIENTAREAANIMATION, SW_SHOWNOACTIVATE, SW_SHOWNORMAL,
@@ -45,7 +46,8 @@ use super::system::{self, WM_SHOW_ME};
 use super::tray::{self, MenuLabels, Tray, WM_TRAY};
 use crate::app::{App, AppEffect};
 use crate::clock::Clock;
-use crate::modules::deadlines::{DeadlinesModule, DemoSource};
+use crate::live::LiveSource;
+use crate::modules::deadlines::{DeadlineSource, DeadlinesModule, DemoSource};
 use crate::modules::{Key, Module, PointerKind};
 use crate::shell::{WINDOW_H, WINDOW_W};
 
@@ -59,6 +61,13 @@ const POLL_MS: u32 = 3000;
 /// Posted by the foreground hook.
 const WM_FOREGROUND: u32 = 0x8000 + 4;
 const HOTKEY_ID: i32 = 1;
+/// Posted by a feed worker when it has new data.
+const WM_DATA: u32 = 0x8000 + 5;
+const WM_POWERBROADCAST: u32 = 0x0218;
+const WM_TIMECHANGE: u32 = 0x001E;
+const PBT_RESUME: usize = 0x0012; // PBT_APMRESUMEAUTOMATIC
+const PBT_RESUME_SUSPEND: usize = 0x0007;
+const NIN_BALLOONUSERCLICK: u32 = 0x0405;
 static HOOK_TARGET: AtomicIsize = AtomicIsize::new(0);
 /// Logical px scrolled per wheel notch.
 const WHEEL_STEP: f32 = 48.0;
@@ -76,6 +85,8 @@ pub struct Options {
     pub manual_clock: bool,
     pub data_dir: Option<PathBuf>,
     pub scale: Option<f32>,
+    /// Show the sample deadlines instead of the user's feeds (screenshots, tests).
+    pub demo: bool,
 }
 
 // -------------------------------------------------------------- the surface
@@ -235,6 +246,9 @@ struct Runtime {
     fullscreen_sim: Option<bool>,
     hidden: bool,
     tray: Option<Tray>,
+    /// What clicking the last notification opens.
+    toast_url: Option<String>,
+    taskbar_created: u32,
     hotkey: String,
     /// Time between consecutive animation frames (ms), for the pacing check.
     frame_times: Vec<f32>,
@@ -393,6 +407,13 @@ impl Runtime {
                 }
                 AppEffect::OpenSettings => self.open_settings(),
                 AppEffect::RefreshFeeds => self.effects_log.push("refresh_feeds".into()),
+                AppEffect::Toast { title, body, url } => {
+                    if self.control {
+                        self.effects_log.push(format!("toast:{title}|{body}"));
+                    } else {
+                        let _ = self.toast(&title, &body, url);
+                    }
+                }
                 AppEffect::KeyboardFocus(on) => {
                     if self.control && self.sim_focus {
                         self.effects_log.push(format!("keyboard_focus:{on}"));
@@ -490,7 +511,7 @@ impl Runtime {
                 self.paused = !self.paused;
                 self.update_hidden();
             }
-            tray::CMD_REFRESH => self.effects_log.push("refresh_feeds".into()),
+            tray::CMD_REFRESH => self.app.refresh_sources(),
             tray::CMD_SETTINGS => self.open_settings(),
             tray::CMD_QUIT => unsafe {
                 let _ = PostMessageW(Some(self.hwnd), windows::Win32::UI::WindowsAndMessaging::WM_CLOSE, WPARAM(0), LPARAM(0));
@@ -498,6 +519,28 @@ impl Runtime {
             _ => {}
         }
         self.after();
+    }
+
+    /// A system notification, unless the notch is paused.
+    fn toast(&mut self, title: &str, body: &str, url: Option<String>) -> bool {
+        if self.paused {
+            return false;
+        }
+        self.toast_url = url;
+        self.tray.as_ref().is_some_and(|tray| tray.balloon(title, body))
+    }
+
+    fn open_toast_url(&mut self) {
+        if let Some(url) = self.toast_url.take() {
+            open_url(&url);
+        }
+    }
+
+    /// Explorer restarted: its tray is empty again, so add ours back.
+    fn restore_tray(&mut self) {
+        self.tray = None;
+        let tooltip = self.app.translator().t("tray.show", &[]);
+        self.tray = Tray::add(self.hwnd, &tooltip);
     }
 
     /// The settings program is a separate executable next to this one (Phase 4).
@@ -595,6 +638,20 @@ impl Runtime {
                 }
             }
             WM_FOREGROUND => self.refresh_fullscreen(),
+            WM_DATA => {
+                self.app.data_changed();
+                self.after();
+            }
+            WM_POWERBROADCAST if wparam.0 == PBT_RESUME || wparam.0 == PBT_RESUME_SUSPEND => {
+                // Back from sleep: timers did not run, and the clock jumped.
+                self.app.tick();
+                self.after();
+            }
+            WM_TIMECHANGE => {
+                self.app.tick();
+                self.after();
+            }
+            m if m == self.taskbar_created => self.restore_tray(),
             WM_SHOW_ME => {
                 self.paused = false;
                 self.update_hidden();
@@ -774,6 +831,15 @@ impl Runtime {
                 let status = self.register_hotkey(v["accelerator"].as_str().unwrap_or(""));
                 return Ok(json!({ "hotkey": status }));
             }
+            "toast" => {
+                // Really show a system notification (control mode normally only logs them).
+                let title = v["title"].as_str().unwrap_or("Blink");
+                let body = v["body"].as_str().unwrap_or("");
+                let shown = self.toast(title, body, v["url"].as_str().map(String::from));
+                return Ok(json!({ "handedToWindows": shown }));
+            }
+            "refresh" => self.app.refresh_sources(),
+            "reload_local" => self.app.reload_local_events(),
             "pause" => {
                 self.paused = v["on"].as_bool().unwrap_or(true);
                 self.update_hidden();
@@ -842,6 +908,9 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: 
                     with_rt(|rt| rt.tray_command(cmd));
                 }
             }
+            NIN_BALLOONUSERCLICK => {
+                with_rt(|rt| rt.open_toast_url());
+            }
             0x0202 => {
                 with_rt(|rt| {
                     rt.paused = false;
@@ -862,6 +931,36 @@ unsafe extern "system" fn on_foreground(_hook: HWINEVENTHOOK, _event: u32, _hwnd
     if target != 0 {
         let _ = PostMessageW(Some(HWND(target as *mut c_void)), WM_FOREGROUND, WPARAM(0), LPARAM(0));
     }
+}
+
+/// The user's feeds: Credential Manager for the links, worker threads for the fetching.
+/// Tests can seed links with BLINK_TEST_FEEDS="id=url;id=url" instead (control mode only).
+fn live_source(opts: &Options, store: &Store, settings: &Settings, tz: TimeZone, hwnd: Arc<AtomicIsize>) -> Result<LiveSource, String> {
+    use blink_core::feed::FeedService;
+    use blink_core::secret::{CredentialManager, MemorySecrets, Secrets};
+
+    let dir = store.dir().to_path_buf();
+    let fetcher: Arc<dyn crate::live::FeedFetcher> = match std::env::var("BLINK_TEST_FEEDS").ok().filter(|_| opts.control.is_some()) {
+        Some(list) => {
+            let secrets = MemorySecrets::default();
+            for pair in list.split(';').filter(|p| !p.is_empty()) {
+                if let Some((id, url)) = pair.split_once('=') {
+                    let _ = secrets.set(id, url);
+                }
+            }
+            Arc::new(FeedService::new(Store::new(&dir), secrets))
+        }
+        None => Arc::new(FeedService::new(Store::new(&dir), CredentialManager)),
+    };
+    let wake: Arc<dyn Fn() + Send + Sync> = Arc::new(move || {
+        let h = hwnd.load(Ordering::Relaxed);
+        if h != 0 {
+            unsafe {
+                let _ = PostMessageW(Some(HWND(h as *mut c_void)), WM_DATA, WPARAM(0), LPARAM(0));
+            }
+        }
+    });
+    Ok(LiveSource::new(Store::new(&dir), fetcher, settings, tz, wake, true))
 }
 
 fn create_window(width: i32, height: i32, x: i32, y: i32) -> Result<HWND, String> {
@@ -915,8 +1014,13 @@ pub fn run(opts: Options) -> Result<(), String> {
 
     let tz = std::env::var("BLINK_TZ").ok().and_then(|n| TimeZone::get(&n).ok()).unwrap_or_else(TimeZone::system);
     let clock = if opts.manual_clock { Clock::manual(MANUAL_WALL_BASE) } else { Clock::real() };
-    let source = DemoSource::new(clock.wall_ms());
-    let modules: Vec<Box<dyn Module>> = vec![Box::new(DeadlinesModule::new(Box::new(source)))];
+    let target = Arc::new(AtomicIsize::new(0));
+    let source: Box<dyn DeadlineSource> = if opts.demo {
+        Box::new(DemoSource::new(clock.wall_ms()))
+    } else {
+        Box::new(live_source(&opts, &store, &settings, tz.clone(), target.clone())?)
+    };
+    let modules: Vec<Box<dyn Module>> = vec![Box::new(DeadlinesModule::new(source))];
     let mut app = App::new(clock, settings, tz, scale, &system_language(), modules)?;
     app.set_reduced_motion(!animations_enabled());
     app.set_windows_light_theme(apps_use_light_theme());
@@ -926,6 +1030,7 @@ pub fn run(opts: Options) -> Result<(), String> {
 
     let (pw, ph) = ((WINDOW_W * scale).round() as i32, (WINDOW_H * scale).round() as i32);
     let hwnd = create_window(pw, ph, 0, 0)?;
+    target.store(hwnd.0 as isize, Ordering::Relaxed);
     let surface = Surface::new(pw as u32, ph as u32)?;
     let control = opts.control.is_some();
     RT.with(|cell| {
@@ -947,14 +1052,21 @@ pub fn run(opts: Options) -> Result<(), String> {
             dump_on_exit: opts.dump.clone(),
             paused: false,
             fullscreen: false,
-            fullscreen_sim: None,
+            // Scripted runs must not depend on what the machine is doing; they ask for fullscreen explicitly.
+            fullscreen_sim: control.then_some(false),
             hidden: false,
             tray: None,
+            toast_url: None,
+            taskbar_created: unsafe { RegisterWindowMessageW(w!("TaskbarCreated")) },
             hotkey: String::new(),
             frame_times: Vec::new(),
             last_frame: None,
         });
     });
+    // Show first: the checks below may hide it again (a fullscreen app is already in front).
+    unsafe {
+        let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+    }
     HOOK_TARGET.store(hwnd.0 as isize, Ordering::Relaxed);
     let _hook = unsafe { SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, None, Some(on_foreground), 0, 0, WINEVENT_OUTOFCONTEXT) };
     with_rt(|rt| {
@@ -972,9 +1084,6 @@ pub fn run(opts: Options) -> Result<(), String> {
         let _ = &rt.store;
     });
     unsafe { SetTimer(Some(hwnd), TIMER_POLL, POLL_MS, None) };
-    unsafe {
-        let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
-    }
     if let Some(name) = &opts.control {
         control::start(name, hwnd);
     }

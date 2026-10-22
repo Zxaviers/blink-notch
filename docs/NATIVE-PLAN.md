@@ -1,6 +1,6 @@
 # Plan: moving the notch (now called Blink) to native, settings on WebView2 on demand
 
-Status: Phases 0 and 1 are done and Phase 2 is done apart from two hardware checks (see Progress at the end). It follows the native spike (`spikes/native-notch`, commit 832b127) and the measurements in the README.
+Status: Phases 0 to 2 are done and Phase 3 is built, waiting on a look at a real notification (see Progress at the end). Phase 4 (the settings program) is next. It follows the native spike (`spikes/native-notch`, commit 832b127) and the measurements in the README.
 
 ## 1. Why, and what "native" means here
 
@@ -184,3 +184,22 @@ Not done in Phase 1: the Win32-specific parts of the hotkey (turning "Ctrl+Alt+D
 Also done: keyboard mode through the real hotkey registration (HOTKEY_IN_USE and HOTKEY_INVALID verified against a second process), tray icon and localized menu (drawn in code), single instance, autostart with migration of the old entry, reduced-motion and theme from Windows, monitor choice and offset, the control pipe and its 47 scripted checks (`scripts/native/gate-g2.ps1`), a measurement script and a capture script. One real bug found by the scripted checks and fixed with a test: changing the resting style did not take effect until the next timer.
 
 Not done yet in Phase 2: tray menu clicks by hand, fullscreen against a real game, a second monitor with a different DPI.
+
+### Phase 3: deadlines on real data, built; waiting on three things only you can see (2026-10-23)
+`crates/blink-native/src/live.rs` is the real data source behind the same trait the demo used. Feeds are fetched on short-lived worker threads (`FeedService`: conditional GET, 15 minute floor, cache fallback with the offline retry ladder), parsed against the app's clock, and published under one mutex; the worker then posts a message so the window redraws and the planner runs. Done, snooze, fired and personal events are read and written in the same files as the WebView2 app, so an install upgrades in place. The planner runs from `next_wake` (exact threshold crossing, snooze end, refresh), never on a poll. Run `blink --demo` to see the sample deadlines instead.
+
+| Gate G3 item | Result |
+|---|---|
+| Deadlines from feeds, countdowns, urgency | 26 scripted checks (`scripts/native/gate-g3.ps1`) against a local calendar server with the real clock and real files: fetch, parse, order, pill, footer, cache file |
+| Done, restore, snooze, personal events | Done and snooze from clicks on the real panel, files written in the old format, kept across a restart; personal events reload; removing the feed in settings drops its deadlines only |
+| Reminders | One per threshold, tightest first, at most three plus a summary; not repeated after a refresh or a restart; toast off still records them (12 unit tests) |
+| Offline and recovery | Server stopped: footer says so, cached deadlines stay; server back: next refresh recovers |
+| Credential Manager | A feed whose link exists only in Credential Manager is fetched (throwaway entry, removed afterwards) |
+| Resting memory with a feed loaded, at most 15 MB | 3.5 MB private at rest, 4.0 MB after ten open/close cycles (15 MB working set including shared DLLs and fonts) |
+| Idle CPU | 62 ms of CPU in 30 s with a feed (0.013 % of the machine); startup answer in 171 ms |
+| Animation | p50 6.9 ms, p95 7.5 ms, nothing over 20 ms on a 144 Hz display |
+| Keyboard, hotkey, resting styles, themes, languages | Carried over from Phase 2 and the i18n parity test |
+
+Decision to confirm: notifications use the tray icon's balloon (`Shell_NotifyIconW`, drawn by Windows 10/11 as a toast, clicking it opens the task page) rather than WinRT toasts. It adds no DLLs and needs no AppUserModelID or Start Menu shortcut; the cost is a plainer look and no action buttons. WinRT toasts can be added later behind the same call.
+
+Not verified: a notification actually appearing on screen (Windows holds them back while a fullscreen app is in front, which is the case right now, so the capture was empty); the toast click opening the page; the real fullscreen hide and a second monitor, as in Phase 2. Not done by design: adding personal events and the first-run prompt belong to the settings program (Phase 4).

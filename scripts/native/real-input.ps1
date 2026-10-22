@@ -55,7 +55,7 @@ try {
   [void][Win]::SetWindowPos($np, [IntPtr]::Zero, 100, 0, 1400, 500, 0x0040)
   [void][Win]::SetForegroundWindow($np); Start-Sleep -Milliseconds 400
 
-  $blink = Start-Blink 'real' @{ BLINK_DATA_DIR = $data; BLINK_TZ = 'Asia/Jakarta' }
+  $blink = Start-Blink 'real' @{ BLINK_DATA_DIR = $data; BLINK_TZ = 'Asia/Jakarta'; BLINK_DEMO = '1' }
   $c = Connect-Blink 'real'
   Send-Blink $c @{cmd='focus_mode'; real=$true} | Out-Null   # control mode simulates focus unless told otherwise
   Send-Blink $c @{cmd='settings'; patch=@{hotkey='Ctrl+Alt+Shift+F8'}} | Out-Null

@@ -66,6 +66,10 @@ pub enum Effect {
     RefreshFeeds,
     /// The panel's content changed size or data; redraw.
     Redraw,
+    /// A reminder: a system notification (when the user wants them).
+    Toast { title: String, body: String, url: Option<String> },
+    /// The module has something to peek about (see `Module::peek`).
+    Peek,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -118,6 +122,11 @@ pub trait Module {
     /// The resting pill form for the user's setting and this module's data.
     fn rest_style(&mut self, env: &Env, resting_style: &str, due_horizon_hours: f64) -> crate::shell::RestStyle;
 
+    /// Like `debug`, with the clock available (what the lists hold right now).
+    fn debug_now(&mut self, _env: &Env) -> serde_json::Value {
+        self.debug()
+    }
+
     /// A snapshot of internal state for the control pipe and tests.
     fn debug(&self) -> serde_json::Value {
         serde_json::Value::Null
@@ -142,6 +151,20 @@ pub trait Module {
 
     /// Keyboard mode started or ended.
     fn keyboard_mode(&mut self, on: bool, env: &Env);
+
+    /// Fetch fresh data now.
+    fn refresh(&mut self) {}
+
+    /// The personal events file was rewritten.
+    fn reload_local(&mut self) {}
+
+    /// The user's settings changed (or arrived).
+    fn configure(&mut self, _settings: &blink_core::settings::Settings) {}
+
+    /// Called on every wake: sync what is due, run reminders.
+    fn tick(&mut self, _env: &Env) -> Vec<Effect> {
+        Vec::new()
+    }
 
     /// When this module next needs to run without any input (countdown ticks).
     fn next_wake(&mut self, env: &Env, panel_open: bool) -> Option<u64>;

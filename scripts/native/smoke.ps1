@@ -1,7 +1,7 @@
 . "$PSScriptRoot\blink-ctl.ps1"
 $out = Join-Path $PSScriptRoot '..\out'; New-Item -ItemType Directory -Force $out | Out-Null
 $data = Join-Path $env:TEMP 'blink-smoke-data'; New-Item -ItemType Directory -Force $data | Out-Null
-$p = Start-Blink 'smoke' @{ BLINK_MANUAL_CLOCK = '1'; BLINK_DATA_DIR = $data; BLINK_TZ = 'Asia/Jakarta' }
+$p = Start-Blink 'smoke' @{ BLINK_MANUAL_CLOCK = '1'; BLINK_DATA_DIR = $data; BLINK_TZ = 'Asia/Jakarta'; BLINK_DEMO = '1' }
 try {
   $c = Connect-Blink 'smoke'
   $s = Send-Blink $c @{cmd='state'}

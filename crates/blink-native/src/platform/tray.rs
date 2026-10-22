@@ -7,7 +7,9 @@ use tiny_skia::{Color, FillRule, Paint, PathBuilder, Pixmap, Transform};
 use windows::core::PCWSTR;
 use windows::Win32::Foundation::{HWND, LPARAM, POINT, WPARAM};
 use windows::Win32::Graphics::Gdi::{CreateBitmap, CreateDIBSection, DeleteObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, HBITMAP};
-use windows::Win32::UI::Shell::{Shell_NotifyIconW, NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE, NOTIFYICONDATAW};
+use windows::Win32::UI::Shell::{
+    Shell_NotifyIconW, NIF_ICON, NIF_INFO, NIF_MESSAGE, NIF_TIP, NIIF_USER, NIM_ADD, NIM_DELETE, NIM_MODIFY, NOTIFYICONDATAW,
+};
 use windows::Win32::UI::WindowsAndMessaging::{
     AppendMenuW, CreateIconIndirect, CreatePopupMenu, DestroyIcon, DestroyMenu, GetCursorPos, PostMessageW, SetForegroundWindow, TrackPopupMenu,
     HICON, ICONINFO, MF_CHECKED, MF_SEPARATOR, MF_STRING, TPM_RETURNCMD, TPM_RIGHTBUTTON, WM_NULL,
@@ -86,9 +88,9 @@ fn make_icon() -> Option<HICON> {
     }
 }
 
-fn tip(text: &str) -> [u16; 128] {
-    let mut out = [0u16; 128];
-    for (i, c) in text.encode_utf16().take(127).enumerate() {
+fn fixed<const N: usize>(text: &str) -> [u16; N] {
+    let mut out = [0u16; N];
+    for (i, c) in text.encode_utf16().take(N - 1).enumerate() {
         out[i] = c;
     }
     out
@@ -104,7 +106,7 @@ impl Tray {
             uFlags: NIF_ICON | NIF_MESSAGE | NIF_TIP,
             uCallbackMessage: WM_TRAY,
             hIcon: icon,
-            szTip: tip(tooltip),
+            szTip: fixed::<128>(tooltip),
             ..Default::default()
         };
         if unsafe { Shell_NotifyIconW(NIM_ADD, &data) }.as_bool() {
@@ -115,6 +117,24 @@ impl Tray {
             }
             None
         }
+    }
+}
+
+impl Tray {
+    /// Show a system notification from the tray icon. Windows 10 and 11 draw it as a toast,
+    /// with no extra DLLs loaded, and report a click as NIN_BALLOONUSERCLICK.
+    pub fn balloon(&self, title: &str, body: &str) -> bool {
+        let data = NOTIFYICONDATAW {
+            cbSize: std::mem::size_of::<NOTIFYICONDATAW>() as u32,
+            hWnd: self.hwnd,
+            uID: ICON_ID,
+            uFlags: NIF_INFO,
+            szInfo: fixed::<256>(body),
+            szInfoTitle: fixed::<64>(title),
+            dwInfoFlags: NIIF_USER,
+            ..Default::default()
+        };
+        unsafe { Shell_NotifyIconW(NIM_MODIFY, &data) }.as_bool()
     }
 }
 

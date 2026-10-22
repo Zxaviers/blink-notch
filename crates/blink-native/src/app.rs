@@ -22,6 +22,8 @@ pub enum AppEffect {
     RefreshFeeds,
     /// Take (true) or give back (false) real keyboard focus.
     KeyboardFocus(bool),
+    /// A system notification; `url` is what clicking it opens.
+    Toast { title: String, body: String, url: Option<String> },
 }
 
 pub struct App {
@@ -54,6 +56,10 @@ impl App {
         let lang = resolve_language(&settings.language, system_language);
         let cfg = ShellConfig { hover_delay_ms: settings.hover_delay_ms as u64, ..ShellConfig::default() };
         let (w, h) = ((WINDOW_W * scale).round() as u32, (WINDOW_H * scale).round() as u32);
+        let mut modules = modules;
+        for m in modules.iter_mut() {
+            m.configure(&settings);
+        }
         Ok(App {
             clock,
             shell: Shell::new(cfg),
@@ -119,7 +125,11 @@ impl App {
         cfg.hover_delay_ms = settings.hover_delay_ms as u64;
         self.shell.set_config(cfg);
         self.settings = settings;
+        for m in self.modules.iter_mut() {
+            m.configure(&self.settings);
+        }
         self.update_rest_style();
+        self.run_module_tick();
     }
 
     pub fn set_reduced_motion(&mut self, on: bool) {
@@ -164,12 +174,19 @@ impl App {
     }
 
     fn apply_module_effects(&mut self, effects: Vec<Effect>) {
+        let mut want_peek = false;
         for e in effects {
             match e {
                 Effect::OpenUrl(u) => self.effects.push(AppEffect::OpenUrl(u)),
                 Effect::OpenSettings => self.effects.push(AppEffect::OpenSettings),
                 Effect::RefreshFeeds => self.effects.push(AppEffect::RefreshFeeds),
                 Effect::Redraw => {}
+                Effect::Toast { title, body, url } => {
+                    if self.settings.toast {
+                        self.effects.push(AppEffect::Toast { title, body, url });
+                    }
+                }
+                Effect::Peek => want_peek = true,
             }
         }
         if self.shell.mode() == Mode::Open {
@@ -177,6 +194,9 @@ impl App {
         }
         // Marking something done can change what the resting pill shows.
         self.update_rest_style();
+        if want_peek {
+            self.peek();
+        }
     }
 
     // ---------------------------------------------------------------- input
@@ -317,12 +337,48 @@ impl App {
     /// Run whatever is due. Returns true if anything visible may have changed.
     pub fn tick(&mut self) -> bool {
         let now = self.clock.now_ms();
+        self.run_module_tick();
         self.update_rest_style();
         let changed = self.shell.tick(now);
         if changed && self.shell.mode() == Mode::Open {
             self.refresh_panel_height();
         }
         changed
+    }
+
+    /// Let the active module sync and announce what is due.
+    fn run_module_tick(&mut self) {
+        let tz = self.tz.clone();
+        let env = self.env(&tz);
+        let effects = self.modules[self.active].tick(&env);
+        if !effects.is_empty() {
+            self.apply_module_effects(effects);
+        }
+    }
+
+    /// New data arrived from a worker thread: redraw and re-run reminders.
+    pub fn data_changed(&mut self) {
+        self.run_module_tick();
+        self.update_rest_style();
+        if self.shell.mode() == Mode::Open {
+            self.refresh_panel_height();
+        }
+    }
+
+    /// Fetch the feeds now (tray "Refresh now", footer button).
+    pub fn refresh_sources(&mut self) {
+        if let Some(m) = self.modules.get_mut(self.active) {
+            m.refresh();
+        }
+        self.run_module_tick();
+    }
+
+    /// The personal events file changed.
+    pub fn reload_local_events(&mut self) {
+        if let Some(m) = self.modules.get_mut(self.active) {
+            m.reload_local();
+        }
+        self.data_changed();
     }
 
     /// The next moment (app ms) something needs to run without any input.
@@ -454,6 +510,7 @@ impl App {
         let tz = self.tz.clone();
         let env = self.env(&tz);
         let rest = self.modules[self.active].rest(&env);
+        let module_debug = self.modules[self.active].debug_now(&env);
         json!({
             "mode": format!("{:?}", self.shell.mode()).to_lowercase(),
             "restStyle": format!("{:?}", self.shell.rest_style()).to_lowercase(),
@@ -471,7 +528,7 @@ impl App {
             "panelHeight": self.last_panel_h,
             "nextWake": self.next_wake(),
             "cachedGlyphs": self.fonts.cached_glyphs(),
-            "module": self.modules[self.active].debug(),
+            "module": module_debug,
         })
     }
 

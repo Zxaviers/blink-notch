@@ -14,7 +14,7 @@ function Check([string]$what, [bool]$ok, [string]$detail = '') {
 function Cmd($c, $o) { Send-Blink $c $o }
 
 $data = Join-Path $env:TEMP 'blink-g2-data'; New-Item -ItemType Directory -Force $data | Out-Null
-$envs = @{ BLINK_MANUAL_CLOCK = '1'; BLINK_DATA_DIR = $data; BLINK_TZ = 'Asia/Jakarta' }
+$envs = @{ BLINK_MANUAL_CLOCK = '1'; BLINK_DATA_DIR = $data; BLINK_TZ = 'Asia/Jakarta'; BLINK_DEMO = '1' }
 
 # ------------------------------------------------------------ window and click-through
 'window and click-through'

@@ -16,6 +16,7 @@ use blink_core::ics::Task;
 use blink_core::local_events::LocalEvent;
 use blink_core::merge::FeedResult;
 use blink_core::planner::{is_snoozed, snooze_until, SNOOZE_KINDS};
+use blink_core::settings::Settings;
 use blink_core::view::{build_view, View};
 
 use super::{Action, Effect, Env, Key, KeyResult, Kit, Module, PanelFrame, PeekView, PointerKind, RestView};
@@ -38,6 +39,32 @@ pub trait DeadlineSource {
     fn restore(&mut self, id: &str);
     fn snooze(&mut self, id: &str, kind: &str, wall_ms: i64, tz: &jiff::tz::TimeZone);
     fn refresh(&mut self);
+
+    // The rest is for real sources; the demo has nothing to fetch or announce.
+
+    /// The user's settings changed (or arrived): feeds, thresholds, refresh interval.
+    fn configure(&mut self, _settings: &Settings) {}
+    /// Re-read the personal events file.
+    fn reload_local(&mut self) {}
+    /// Start whatever syncs are due. Called on every wake.
+    fn poll(&mut self, _wall_ms: i64) {}
+    /// The next wall-clock moment this source needs a wake: a refresh, a threshold crossing, a snooze ending.
+    fn next_wake_wall(&self, _wall_ms: i64) -> Option<i64> {
+        None
+    }
+    /// Run the notification planner; what comes back must be announced exactly once.
+    fn announce(&mut self, _wall_ms: i64) -> Vec<Announcement> {
+        Vec::new()
+    }
+}
+
+/// A reminder the planner says is due.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Announcement {
+    /// One task crossed a threshold.
+    Task(Task),
+    /// More came due at once than are worth a notification each.
+    Summary(usize),
 }
 
 /// Sample data relative to the clock, for the demo and the tests.
@@ -680,6 +707,22 @@ impl Module for DeadlinesModule {
         }
     }
 
+    fn debug_now(&mut self, env: &Env) -> serde_json::Value {
+        let model = self.model(env);
+        let titles = |tasks: &[Task]| tasks.iter().map(|t| t.title.clone()).collect::<Vec<_>>();
+        let sync = sync_summary(&model.sync, &env.t, env.tz);
+        let mut v = self.debug();
+        if let Some(o) = v.as_object_mut() {
+            o.insert("upcoming".into(), serde_json::json!(titles(&model.view.upcoming)));
+            o.insert("overdue".into(), serde_json::json!(titles(&model.view.overdue)));
+            o.insert("doneList".into(), serde_json::json!(titles(&model.view.done_list)));
+            o.insert("upcomingIds".into(), serde_json::json!(model.view.upcoming.iter().map(|t| t.id.clone()).collect::<Vec<_>>()));
+            o.insert("sync".into(), serde_json::json!({ "kind": sync.kind, "text": sync.text }));
+            o.insert("hasFeeds".into(), serde_json::json!(model.has_feeds));
+        }
+        v
+    }
+
     fn debug(&self) -> serde_json::Value {
         let action = |a: &Option<Action>| match a {
             Some(Action::OpenUrl(u)) => format!("OpenUrl:{u}"),
@@ -857,7 +900,58 @@ impl Module for DeadlinesModule {
         self.state.selected = if on { Self::selectable(&self.model(env)).first().cloned() } else { None };
     }
 
+    fn configure(&mut self, settings: &Settings) {
+        self.source.configure(settings);
+    }
+
+    fn refresh(&mut self) {
+        self.source.refresh();
+    }
+
+    fn reload_local(&mut self) {
+        self.source.reload_local();
+    }
+
+    fn tick(&mut self, env: &Env) -> Vec<Effect> {
+        self.source.poll(env.wall_ms);
+        let mut effects = Vec::new();
+        for item in self.source.announce(env.wall_ms) {
+            match item {
+                Announcement::Task(task) => {
+                    effects.push(Effect::Toast {
+                        title: env.t.t("toast.title", &[("title", task.title.as_str())]),
+                        body: env.t.t(
+                            "toast.body",
+                            &[("course", task.course.as_deref().unwrap_or("")), ("left", compact_countdown(task.due_ms, env.wall_ms, &env.t, false).as_str())],
+                        ),
+                        url: task.url.clone(),
+                    });
+                    // The tightest one (the planner sorts by time left) also peeks from the notch.
+                    if self.peek_task.is_none() {
+                        self.peek_task = Some(task.id.clone());
+                        effects.push(Effect::Peek);
+                    }
+                }
+                Announcement::Summary(n) => effects.push(Effect::Toast {
+                    title: env.t.t("toast.summary.title", &[("n", n.to_string().as_str())]),
+                    body: env.t.t("toast.summary.body", &[]),
+                    url: None,
+                }),
+            }
+        }
+        effects
+    }
+
     fn next_wake(&mut self, env: &Env, panel_open: bool) -> Option<u64> {
+        let source_wake = self.source.next_wake_wall(env.wall_ms).map(|at| env.now_ms + (at - env.wall_ms).max(1) as u64);
+        let own = self.display_wake(env, panel_open);
+        [own, source_wake].into_iter().flatten().min()
+    }
+}
+
+impl DeadlinesModule {
+    /// When the countdown text on screen next changes.
+    fn display_wake(&mut self, env: &Env, panel_open: bool) -> Option<u64> {
         let model = self.model(env);
         let hero_id = model.view.hero.as_ref().map(|h| h.id.clone());
         let mut soonest: Option<u64> = None;

@@ -20,7 +20,7 @@ function Shot($state, [string]$name) {
   $g.Dispose(); $bmp.Save((Join-Path $out $name), [System.Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
 }
 
-$p = Start-Blink 'cap' @{ BLINK_MANUAL_CLOCK = '1'; BLINK_DATA_DIR = $data; BLINK_TZ = 'Asia/Jakarta' }
+$p = Start-Blink 'cap' @{ BLINK_MANUAL_CLOCK = '1'; BLINK_DATA_DIR = $data; BLINK_TZ = 'Asia/Jakarta'; BLINK_DEMO = '1' }
 try {
   $c = Connect-Blink 'cap'
   Start-Sleep -Milliseconds 400

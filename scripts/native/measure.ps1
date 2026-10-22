@@ -1,7 +1,7 @@
 # Resting cost of the native notch: memory, idle CPU, startup, frame pacing.
 # Uses the control pipe only (no cursor, no keyboard).
 #   powershell -File scripts\native\measure.ps1 [-Exe target\release\blink.exe]
-param([string]$Exe = "$PSScriptRoot\..\..\target\release\blink.exe", [int]$IdleSeconds = 20)
+param([string]$Exe = "$PSScriptRoot\..\..\target\release\blink.exe", [int]$IdleSeconds = 20, [switch]$Live)
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\blink-ctl.ps1"
 $env:BLINK_EXE = (Resolve-Path $Exe).Path
@@ -12,8 +12,19 @@ function Mem($id) {
   [pscustomobject]@{ PrivateMB = [math]::Round($p.WorkingSetPrivate / 1MB, 2); WorkingSetMB = [math]::Round($p.WorkingSet / 1MB, 2) }
 }
 
+$server = $null
+$envs = @{ BLINK_DATA_DIR = $data; BLINK_TZ = 'Asia/Jakarta'; BLINK_DEMO = '1' }
+if ($Live) {
+  # A fixture calendar over HTTP and one saved feed: the real data path, with a feed loaded.
+  $server = Start-Process node -ArgumentList "`"$PSScriptRoot\..\serve-fixture.mjs`" 8792" -PassThru -WindowStyle Hidden
+  Start-Sleep -Milliseconds 800
+  $utf8 = New-Object System.Text.UTF8Encoding($false)
+  [System.IO.File]::WriteAllText((Join-Path $data 'settings.json'), '{"version":1,"onboarded":true,"toast":false,"feeds":[{"id":"ics-m","kind":"ics","label":"Fixture","enabled":true}]}', $utf8)
+  $envs = @{ BLINK_DATA_DIR = $data; BLINK_TZ = 'Asia/Jakarta'; BLINK_TEST_FEEDS = 'ics-m=http://127.0.0.1:8792/cal.ics' }
+  'mode: live feed (fixture server)'
+}
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
-$proc = Start-Blink 'measure' @{ BLINK_DATA_DIR = $data; BLINK_TZ = 'Asia/Jakarta' }
+$proc = Start-Blink 'measure' $envs
 try {
   $c = Connect-Blink 'measure'
   $s = Send-Blink $c @{cmd='state'}
@@ -47,4 +58,4 @@ try {
   $m2 = Mem $proc.Id
   "memory 5 s later (settled): private $($m2.PrivateMB) MB   working set $($m2.WorkingSetMB) MB"
   Send-Blink $c @{cmd='quit'} | Out-Null
-} finally { Start-Sleep -Milliseconds 300; if (-not $proc.HasExited) { $proc.Kill() } }
+} finally { Start-Sleep -Milliseconds 300; if (-not $proc.HasExited) { $proc.Kill() }; if ($server -and -not $server.HasExited) { $server.Kill() } }
