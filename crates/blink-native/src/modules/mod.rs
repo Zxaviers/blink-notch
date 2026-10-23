@@ -5,6 +5,7 @@
 pub mod clock;
 pub mod controls;
 pub mod deadlines;
+pub mod music;
 pub mod system;
 
 use blink_core::i18n::Translator;
@@ -81,6 +82,7 @@ pub enum Action {
     Refresh,
     OpenSettings,
     Control(controls::ControlCommand),
+    Music(music::MusicAction),
 }
 
 /// What the host must do for a module.
@@ -185,6 +187,16 @@ pub trait Module {
     }
 
     /// The name on the module's tab.
+    /// Something is playing (the header's bars move while it is).
+    fn playing(&self) -> bool {
+        false
+    }
+
+    /// The page is in the middle of an animation and wants a frame as soon as the last one is done.
+    fn wants_frames(&self) -> bool {
+        false
+    }
+
     /// Whether the host draws the round buttons that turn the page. A page showing a sub-page of its own
     /// (with a back button where the arrow would be) says no.
     fn page_arrows(&self) -> bool {

@@ -19,6 +19,7 @@ pub mod ipc;
 pub mod ics;
 pub mod jsval;
 pub mod local_events;
+pub mod lyrics;
 pub mod merge;
 pub mod planner;
 pub mod secret;

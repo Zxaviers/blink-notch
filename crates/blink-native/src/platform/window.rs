@@ -52,6 +52,7 @@ use crate::clock::Clock;
 use crate::live::LiveSource;
 use crate::modules::clock::ClockModule;
 use crate::modules::controls::{ControlsModule, FakeControls};
+use crate::modules::music::{FakeLyrics, FakeMedia, MediaBackend, MusicModule};
 use crate::modules::system::SystemModule;
 use crate::modules::deadlines::{DeadlineSource, DeadlinesModule, DemoSource};
 use crate::modules::{Key, Module, PointerKind};
@@ -277,6 +278,7 @@ struct Runtime {
     media_keys: bool,
     winctl: Option<std::sync::Arc<super::winctl::WinControls>>,
     fake_controls: Option<std::sync::Arc<FakeControls>>,
+    fake_media: Option<std::sync::Arc<FakeMedia>>,
     caps_last: bool,
     /// Whether the key timer should look at Caps Lock when it fires.
     key_checks: u8,
@@ -1256,6 +1258,40 @@ impl Runtime {
                     _ => {}
                 }
             }
+            "media" => {
+                // Scripted runs: change what the stand-in player says (title, artist, playing, position in ms, duration in ms, active).
+                let Some(fake) = &self.fake_media else { return Err("the real player is in use".into()) };
+                let wall = self.app.clock.wall_ms();
+                fake.set(|s| {
+                    if let Some(t) = v["title"].as_str() {
+                        s.title = t.into();
+                        s.track += 1;
+                    }
+                    if let Some(a) = v["artist"].as_str() {
+                        s.artist = a.into();
+                    }
+                    if let Some(a) = v["active"].as_bool() {
+                        s.active = a;
+                    }
+                    if let Some(p) = v["playing"].as_bool() {
+                        s.position_ms = s.position_at(wall);
+                        s.sampled_wall_ms = wall;
+                        s.playing = p;
+                    }
+                    if let Some(p) = v["position"].as_u64() {
+                        s.position_ms = p;
+                        s.sampled_wall_ms = wall;
+                    }
+                    if let Some(d) = v["duration"].as_u64() {
+                        s.duration_ms = d;
+                    }
+                });
+                self.app.data_changed();
+            }
+            "media_log" => {
+                let log = self.fake_media.as_ref().map(|f| f.take_log().iter().map(|c| format!("{c:?}")).collect::<Vec<_>>()).unwrap_or_default();
+                return Ok(json!({ "commands": log }));
+            }
             "controls_log" => {
                 let log = self.fake_controls.as_ref().map(|f| f.take_log().iter().map(|c| format!("{c:?}")).collect::<Vec<_>>()).unwrap_or_default();
                 return Ok(json!({ "commands": log }));
@@ -1499,11 +1535,36 @@ pub fn run(opts: Options) -> Result<(), String> {
         (None, Some(fake)) => fake.clone(),
         _ => unreachable!("one of the two exists"),
     };
+    // What is playing comes from Windows, and lyrics from the internet; scripted runs get stand-ins.
+    let media_wake: std::sync::Arc<dyn Fn() + Send + Sync> = {
+        let target = target.clone();
+        std::sync::Arc::new(move || {
+            let h = target.load(Ordering::Relaxed);
+            if h != 0 {
+                unsafe {
+                    let _ = PostMessageW(Some(HWND(h as *mut c_void)), WM_DATA, WPARAM(0), LPARAM(0));
+                }
+            }
+        })
+    };
+    let real_media = !opts.control.is_some() || std::env::var_os("BLINK_REAL_SOURCES").is_some();
+    // The stand-in starts with nothing playing (a playing song keeps the bars moving, which scripted runs do not want
+    // unless they ask: the `media` command starts one).
+    let fake_media = (!real_media).then(|| {
+        let fake = FakeMedia::new(clock.wall_ms());
+        fake.set(|s| s.active = false);
+        fake
+    });
+    let (media_backend, lyrics_source): (std::sync::Arc<dyn MediaBackend>, std::sync::Arc<dyn blink_core::lyrics::LyricsSource>) = match &fake_media {
+        Some(fake) => (fake.clone(), std::sync::Arc::new(FakeLyrics)),
+        None => (super::media::WinMedia::start(media_wake.clone()), std::sync::Arc::new(blink_core::lyrics::LrcLib::new())),
+    };
     let modules: Vec<Box<dyn Module>> = vec![
-        // The pages in the order they turn: time and calendar, then deadlines, then the controls.
+        // The pages in the order they turn: time and calendar, then deadlines, then the controls, then music.
         Box::new(ClockModule::new()),
         Box::new(DeadlinesModule::new(source)),
         Box::new(ControlsModule::new(controls_backend)),
+        Box::new(MusicModule::new(media_backend, lyrics_source, media_wake)),
         Box::new(SystemModule::new()),
     ];
     let mut app = App::new(clock, settings, tz, scale, &system_language(), modules)?;
@@ -1556,6 +1617,7 @@ pub fn run(opts: Options) -> Result<(), String> {
             media_keys: false,
             winctl,
             fake_controls,
+            fake_media,
             caps_last: false,
             key_checks: 0,
         });

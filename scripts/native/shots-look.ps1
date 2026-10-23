@@ -30,6 +30,13 @@ try {
   Ctl @{cmd='mouse'; kind='move'; x=320; y=10} | Out-Null; Ctl @{cmd='advance'; ms=900} | Out-Null
   Shot 'page-deadlines'
   Ctl @{cmd='switch'; to='controls'} | Out-Null; Ctl @{cmd='advance'; ms=500} | Out-Null; Shot 'page-controls'
+  Ctl @{cmd='switch'; to='music'} | Out-Null; Ctl @{cmd='advance'; ms=400} | Out-Null; Shot 'page-music-empty'
+  Ctl @{cmd='media'; active=$true; title='Paper Sky'; artist='Lumen Coast'; playing=$true; position=75000; duration=216000} | Out-Null; Ctl @{cmd='advance'; ms=400} | Out-Null; Shot 'page-music'
+  $h = (Ctl @{cmd='state'}).state.module.hits | Where-Object { $_.target -eq 'ToggleLyrics' } | Select-Object -First 1
+  $x = $h.x + $h.w / 2; $y = $h.y + $h.h / 2
+  Ctl @{cmd='mouse'; kind='move'; x=$x; y=$y} | Out-Null; Ctl @{cmd='mouse'; kind='down'; x=$x; y=$y} | Out-Null; Ctl @{cmd='mouse'; kind='up'; x=$x; y=$y} | Out-Null
+  Start-Sleep -Milliseconds 600; Ctl @{cmd='advance'; ms=900} | Out-Null; Shot 'page-music-lyrics'
+  Ctl @{cmd='media'; playing=$false} | Out-Null
   Ctl @{cmd='switch'; to='clock'} | Out-Null; Ctl @{cmd='advance'; ms=500} | Out-Null; Shot 'page-clock'
   Ctl @{cmd='mouse'; kind='leave'} | Out-Null; Ctl @{cmd='advance'; ms=1500} | Out-Null
 
@@ -46,7 +53,7 @@ $py = @"
 import glob, os
 from PIL import Image
 out = r'$out'
-names = ['rest-deadline','rest-clock','eyes-open','eyes-blink','eyes-doze','peek-charger','peek-wifi','peek-bluetooth','peek-volume','peek-caps','peek-battery-low','peek-deadline','page-deadlines','page-controls','page-clock']
+names = ['rest-deadline','rest-clock','eyes-open','eyes-blink','eyes-doze','peek-charger','peek-wifi','peek-bluetooth','peek-volume','peek-caps','peek-battery-low','peek-deadline','page-deadlines','page-controls','page-music','page-music-lyrics','page-music-empty','page-clock']
 tiles = []
 for n in names:
     f = os.path.join(out, 'look-' + n + '.png')

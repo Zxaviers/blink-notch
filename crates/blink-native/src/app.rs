@@ -753,6 +753,10 @@ impl App {
         let mut wake = self.shell.next_wake();
         let now = self.clock.now_ms();
         wake = [wake, self.eyes_wake(now, &env)].into_iter().flatten().min();
+        // The bars move with the music: redraw a few times a second, but only while it plays and the notch shows them.
+        if self.music_playing() && (self.shell.mode() == Mode::Open || (self.shell.mode() == Mode::Rest && self.shell.rest_style() == RestStyle::Full)) {
+            wake = [wake, Some(now + 120)].into_iter().flatten().min();
+        }
         for i in self.enabled_indices() {
             let w = self.slots[i].module.next_wake(&env, showing && i == self.active);
             wake = [wake, w].into_iter().flatten().min();
@@ -761,7 +765,7 @@ impl App {
     }
 
     pub fn wants_frames(&self) -> bool {
-        self.shell.is_animating(self.clock.now_ms()) || self.eyes_moving
+        self.shell.is_animating(self.clock.now_ms()) || self.eyes_moving || (self.shell.mode() == Mode::Open && self.slots[self.active].module.wants_frames())
     }
 
     // -------------------------------------------------------------- drawing
@@ -909,6 +913,10 @@ impl App {
         for i in 0..3 {
             self.canvas.circle(mx + mw / 2.0 + (i as f32 - 1.0) * 5.5, my + mh / 2.0, 1.7, theme.fg, alpha * if over { 1.0 } else { 0.75 });
         }
+        // While a song plays, bars that move with it sit to the left of the button.
+        if self.music_playing() {
+            self.draw_bars(mx - 22.0, cy, theme.fg, alpha * 0.9, env.now_ms);
+        }
         let _ = right;
     }
 
@@ -1006,6 +1014,19 @@ impl App {
 
     // --------------------------------------------------------- pill and peek
 
+    /// Whether any page that is on has a song playing.
+    fn music_playing(&self) -> bool {
+        self.slots.iter().any(|s| s.enabled && s.module.playing())
+    }
+
+    /// Four small bars: flat when `now_ms` is `u64::MAX`, otherwise rising and falling with the time.
+    fn draw_bars(&mut self, x: f32, cy: f32, color: Rgb, alpha: f32, now_ms: u64) {
+        for i in 0..4 {
+            let h = if now_ms == u64::MAX { 4.0 } else { 4.0 + 9.0 * ((now_ms as f32 / 170.0 + i as f32 * 1.7).sin().abs()) };
+            self.canvas.rrect(x + i as f32 * 4.0, cy - h / 2.0, 2.0, h, 1.0, color, alpha);
+        }
+    }
+
     /// The ring in the header and the pill: the battery when there is one, otherwise how much of the day has gone.
     fn ring_state(&self, theme: &Theme, wall_ms: i64, accent: Rgb) -> (f32, Rgb) {
         match self.battery {
@@ -1025,9 +1046,8 @@ impl App {
         let faint = f32::from(theme.line.1) / 255.0 * alpha * 1.6;
         self.canvas.arc(left, cy, 5.8, 2.2, -90.0, 359.0, theme.line.0, faint);
         self.canvas.arc(left, cy, 5.8, 2.2, -90.0, 360.0 * fraction.max(0.03), color, alpha);
-        for (i, h) in [4.0_f32, 4.0, 4.0, 4.0].iter().enumerate() {
-            self.canvas.rrect(right - 12.0 + i as f32 * 4.0, cy - h / 2.0, 2.0, *h, 1.0, theme.fg, alpha * 0.6);
-        }
+        let playing = self.music_playing();
+        self.draw_bars(right - 12.0, cy, theme.fg, alpha * if playing { 0.9 } else { 0.6 }, if playing { env.now_ms } else { u64::MAX });
 
         let room = right - left - 40.0;
         let label = self.fonts.ellipsize(Face::Mono, &rv.label, 11.5 * s, 0.0, (room - 50.0).max(30.0).min(96.0) * s);

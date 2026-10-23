@@ -2,6 +2,7 @@
 
 pub mod control;
 pub mod focus;
+pub mod media;
 pub mod mediakeys;
 pub mod sysevents;
 pub mod system;

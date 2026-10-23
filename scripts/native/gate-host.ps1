@@ -17,7 +17,7 @@ try {
 
   'modules and the pill'
   $m = Ctl @{cmd='modules'}
-  Check 'the clock, deadlines, controls and the system peeks are on, in that order' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'clock:True,deadlines:True,controls:True,system:True') (($m.modules | ConvertTo-Json -Compress))
+  Check 'the clock, deadlines, controls, music and the system peeks are on, in that order' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'clock:True,deadlines:True,controls:True,music:True,system:True') (($m.modules | ConvertTo-Json -Compress))
   Check 'the nearest deadline owns the pill' ($m.restOwner -eq 'deadlines')
   Ctl @{cmd='settings'; patch=@{restingStyle='when-due'; dueHorizonHours=1}} | Out-Null
   Ctl @{cmd='advance'; ms=600} | Out-Null
@@ -30,15 +30,15 @@ try {
   Check 'hovering the clock pill opens the clock' ((Ctl @{cmd='modules'}).active -eq 'clock' -and $s.mode -eq 'open')
   Check 'with two modules on, the panel has tabs' ($s.tabs -eq $true)
   Ctl @{cmd='key'; key='left'} | Out-Null
-  Check 'the left arrow goes to the previous tab' ((Ctl @{cmd='modules'}).active -eq 'controls')
+  Check 'the left arrow goes to the previous tab' ((Ctl @{cmd='modules'}).active -eq 'music')
   Ctl @{cmd='switch'; to='clock'} | Out-Null
   Check 'switching by name works, and a wrong name is refused' (((Ctl @{cmd='modules'}).active -eq 'clock') -and (Send-Blink $c @{cmd='switch'; to='nope'}).ok -eq $false)
 
   'turning modules off from the host file'
   Ctl @{cmd='mouse'; kind='leave'} | Out-Null; Ctl @{cmd='advance'; ms=1500} | Out-Null
-  Ctl @{cmd='host'; config=@{ modules = @(@{id='clock'; enabled=$true}, @{id='deadlines'; enabled=$false}, @{id='controls'; enabled=$false}) }} | Out-Null
+  Ctl @{cmd='host'; config=@{ modules = @(@{id='clock'; enabled=$true}, @{id='deadlines'; enabled=$false}, @{id='controls'; enabled=$false}, @{id='music'; enabled=$false}) }} | Out-Null
   $m = Ctl @{cmd='modules'}
-  Check 'the order and flags are applied' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'clock:True,deadlines:False,controls:False,system:True')
+  Check 'the order and flags are applied' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'clock:True,deadlines:False,controls:False,music:False,system:True')
   Check 'host.json was written' (Test-Path (Join-Path $data 'host.json'))
   Check 'with one module on there are no tabs and the clock owns the pill' ((St).tabs -eq $false -and $m.restOwner -eq 'clock')
   Ctl @{cmd='host'; config=@{ modules = @(@{id='clock'; enabled=$false}, @{id='deadlines'; enabled=$false}, @{id='controls'; enabled=$false}) }} | Out-Null

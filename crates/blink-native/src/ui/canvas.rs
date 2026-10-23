@@ -1,7 +1,7 @@
 //! A canvas on a CPU pixmap. Everything is addressed in logical pixels and
 //! scaled to the display here, so the layout code never thinks about DPI.
 
-use tiny_skia::{Color, FillRule, GradientStop, LineCap, LineJoin, LinearGradient, Mask, Paint, PathBuilder, Pixmap, Point, RadialGradient, SpreadMode, Stroke, Transform};
+use tiny_skia::{Color, FillRule, FilterQuality, GradientStop, LineCap, LineJoin, LinearGradient, Mask, Paint, PathBuilder, Pattern, Pixmap, Point, RadialGradient, SpreadMode, Stroke, Transform};
 
 use super::text::{Face, Fonts};
 use super::theme::Rgb;
@@ -39,6 +39,11 @@ pub enum Icon {
     ArrowUp,
     Battery,
     Music,
+    Play,
+    Pause,
+    SkipBack,
+    SkipForward,
+    Message,
 }
 
 type ClipState = (Option<(i32, i32, i32, i32)>, Option<Mask>);
@@ -258,6 +263,38 @@ impl Canvas {
         self.pm.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), self.mask.as_ref());
     }
 
+    /// A rounded rectangle whose colour and opacity change from one end to the other.
+    #[allow(clippy::too_many_arguments)]
+    pub fn gradient_rrect_alpha(&mut self, x: f32, y: f32, w: f32, h: f32, radius: f32, a: (Rgb, f32), b: (Rgb, f32), vertical: bool) {
+        let s = self.scale;
+        let (x, y, w, h) = (x * s, y * s, w * s, h * s);
+        let Some(path) = Self::rrect_path(x, y, w, h, radius * s) else { return };
+        let (p0, p1) = if vertical { (Point::from_xy(x, y), Point::from_xy(x, y + h)) } else { (Point::from_xy(x, y), Point::from_xy(x + w, y)) };
+        let stops = vec![GradientStop::new(0.0, Self::color_of(a.0, a.1)), GradientStop::new(1.0, Self::color_of(b.0, b.1))];
+        let Some(shader) = LinearGradient::new(p0, p1, stops, SpreadMode::Pad, Transform::identity()) else { return };
+        let mut paint = Paint::default();
+        paint.shader = shader;
+        paint.anti_alias = true;
+        self.pm.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), self.mask.as_ref());
+    }
+
+    /// A picture (album art) scaled into a rounded rectangle.
+    #[allow(clippy::too_many_arguments)]
+    pub fn image_rrect(&mut self, x: f32, y: f32, w: f32, h: f32, radius: f32, image: &Pixmap, alpha: f32) {
+        let s = self.scale;
+        let (x, y, w, h) = (x * s, y * s, w * s, h * s);
+        if image.width() == 0 || image.height() == 0 {
+            return;
+        }
+        let Some(path) = Self::rrect_path(x, y, w, h, radius * s) else { return };
+        let (sx, sy) = (w / image.width() as f32, h / image.height() as f32);
+        let shader = Pattern::new(image.as_ref(), SpreadMode::Pad, FilterQuality::Bilinear, alpha.clamp(0.0, 1.0), Transform::from_row(sx, 0.0, 0.0, sy, x, y));
+        let mut paint = Paint::default();
+        paint.shader = shader;
+        paint.anti_alias = true;
+        self.pm.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), self.mask.as_ref());
+    }
+
     /// A circle that fades from `color` at the centre to nothing at the edge: a soft glow.
     pub fn glow(&mut self, cx: f32, cy: f32, radius: f32, color: Rgb, alpha: f32) {
         let s = self.scale;
@@ -356,6 +393,13 @@ impl Canvas {
                 let (x, y) = p(center.0 + r * a.cos(), center.1 + r * a.sin());
                 if i == 0 { pb.move_to(x, y) } else { pb.line_to(x, y) }
             }
+        };
+        let polygon = |pb: &mut PathBuilder, pts: &[(f32, f32)]| {
+            for (i, pt) in pts.iter().enumerate() {
+                let (x, y) = p(pt.0, pt.1);
+                if i == 0 { pb.move_to(x, y) } else { pb.line_to(x, y) }
+            }
+            pb.close();
         };
         match icon {
             Icon::Check => {
@@ -544,6 +588,31 @@ impl Canvas {
                 arc(&mut pb, (-3.0, 4.2), 2.0, 0.0, 360.0);
                 arc(&mut pb, (3.0, 2.6), 2.0, 0.0, 360.0);
             }
+            Icon::Play => {
+                polygon(&mut pb, &[(-3.2, -5.2), (5.2, 0.0), (-3.2, 5.2)]);
+            }
+            Icon::Pause => {
+                polygon(&mut pb, &[(-4.4, -5.0), (-1.4, -5.0), (-1.4, 5.0), (-4.4, 5.0)]);
+                polygon(&mut pb, &[(1.4, -5.0), (4.4, -5.0), (4.4, 5.0), (1.4, 5.0)]);
+            }
+            Icon::SkipBack => {
+                polygon(&mut pb, &[(-5.6, -5.0), (-3.6, -5.0), (-3.6, 5.0), (-5.6, 5.0)]);
+                polygon(&mut pb, &[(5.6, -5.0), (-2.4, 0.0), (5.6, 5.0)]);
+            }
+            Icon::SkipForward => {
+                polygon(&mut pb, &[(5.6, -5.0), (3.6, -5.0), (3.6, 5.0), (5.6, 5.0)]);
+                polygon(&mut pb, &[(-5.6, -5.0), (2.4, 0.0), (-5.6, 5.0)]);
+            }
+            Icon::Message => {
+                line(&mut pb, (-6.0, -4.6), (6.0, -4.6));
+                line(&mut pb, (6.0, -4.6), (6.0, 3.0));
+                line(&mut pb, (6.0, 3.0), (0.8, 3.0));
+                line(&mut pb, (0.8, 3.0), (-2.4, 6.0));
+                line(&mut pb, (-2.4, 6.0), (-2.4, 3.0));
+                line(&mut pb, (-2.4, 3.0), (-6.0, 3.0));
+                line(&mut pb, (-6.0, 3.0), (-6.0, -4.6));
+                line(&mut pb, (-3.0, -1.0), (3.0, -1.0));
+            }
             Icon::Undo => {
                 arc(&mut pb, (0.5, 0.5), 4.2, 160.0, 400.0);
                 line(&mut pb, (-4.6, -2.3), (-3.7, -4.7));
@@ -551,7 +620,12 @@ impl Canvas {
             }
         }
         if let Some(path) = pb.finish() {
-            let stroke = Stroke { width: 1.5 * u, line_cap: LineCap::Round, line_join: LineJoin::Round, ..Stroke::default() };
+            // The transport symbols are solid shapes; the rest are strokes.
+            let solid = matches!(icon, Icon::Play | Icon::Pause | Icon::SkipBack | Icon::SkipForward);
+            if solid {
+                self.pm.fill_path(&path, &Self::paint(color, alpha), FillRule::Winding, Transform::identity(), self.mask.as_ref());
+            }
+            let stroke = Stroke { width: if solid { 1.2 } else { 1.5 } * u, line_cap: LineCap::Round, line_join: LineJoin::Round, ..Stroke::default() };
             self.pm.stroke_path(&path, &Self::paint(color, alpha), &stroke, Transform::identity(), self.mask.as_ref());
         }
     }
@@ -704,6 +778,7 @@ mod tests {
             Icon::Check, Icon::ArrowUpRight, Icon::Alarm, Icon::Refresh, Icon::Gear, Icon::Undo, Icon::Speaker, Icon::SpeakerMuted, Icon::Sun, Icon::Wifi,
             Icon::Bluetooth, Icon::Mic, Icon::MicMuted, Icon::Cast, Icon::Monitor, Icon::Lock, Icon::Crop, Icon::ChevronRight, Icon::ChevronLeft,
             Icon::Bolt, Icon::Headphones, Icon::Plus, Icon::Close, Icon::Folder, Icon::File, Icon::Download, Icon::ArrowUp, Icon::Battery, Icon::Music,
+            Icon::Play, Icon::Pause, Icon::SkipBack, Icon::SkipForward, Icon::Message,
         ] {
             let mut c = Canvas::new(40, 40, 2.0);
             c.icon(icon, 10.0, 10.0, 14.0, Rgb(255, 255, 255), 1.0);

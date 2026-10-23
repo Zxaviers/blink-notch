@@ -95,3 +95,9 @@ Scripted, with no mouse or keyboard (all in `scripts/native/`):
 ## Going back
 
 The WebView2 build is tagged `webview2-v0.1` and stays on `main` until the native build replaces it. To roll back, uninstall Blink (keep data) and install the old build: both read the same data.
+
+## Music and lyrics
+
+The Music page shows what Windows says is playing (the same list the volume flyout and the lock screen use), so it works with Spotify, a browser tab or any player that reports to Windows. It reads the title, artist, album, position and cover from Windows; none of that is stored or sent anywhere.
+
+**Lyrics are the one thing that goes online**, and only after you turn lyrics on for a song (the speech-bubble button): the song's title, artist, album and length are sent to [lrclib.net](https://lrclib.net), a free open lyrics service, to find matching lyrics. Nothing else is sent, and nothing is saved on disk (the answer is remembered while Blink runs). `"lyrics": false` in the music module's options in `host.json` forbids the lookup altogether.
