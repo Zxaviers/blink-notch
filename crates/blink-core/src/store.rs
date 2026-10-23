@@ -10,7 +10,7 @@ use std::sync::Mutex;
 use serde_json::Value;
 
 /// Names the settings program may read and write through the pipe later.
-pub const PAGE_FILES: &[&str] = &["settings", "done", "fired", "snoozed", "local_events"];
+pub const PAGE_FILES: &[&str] = &["settings", "done", "fired", "snoozed", "local_events", "host"];
 
 /// The folder the WebView2 app used: `%APPDATA%\dev.riski.deadlinenotch`.
 pub const APP_DIR_NAME: &str = "dev.riski.deadlinenotch";

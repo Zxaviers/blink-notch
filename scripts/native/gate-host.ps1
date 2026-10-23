@@ -1,0 +1,67 @@
+# The host with several modules, through the real window and the control pipe (manual clock):
+# which module owns the pill, tabs, switching, the module list written to host.json, and the
+# peek priority rules. No cursor, no keyboard.
+#   powershell -File scripts\native\gate-host.ps1 [-Exe path\to\blink.exe]
+param([string]$Exe = '')
+$ErrorActionPreference = 'Stop'
+. "$PSScriptRoot\blink-ctl.ps1"
+if ($Exe) { $env:BLINK_EXE = (Resolve-Path $Exe).Path }
+$script:pass = 0; $script:fail = 0
+function Check([string]$what, [bool]$ok, [string]$detail = '') { if ($ok) { $script:pass++; "  ok    $what" } else { $script:fail++; "  FAIL  $what  $detail" } }
+$data = Join-Path $env:TEMP 'blink-host-data'; if (Test-Path $data) { Remove-Item $data -Recurse -Force }; New-Item -ItemType Directory -Force $data | Out-Null
+$p = Start-Blink 'host' @{ BLINK_MANUAL_CLOCK = '1'; BLINK_DATA_DIR = $data; BLINK_TZ = 'Asia/Jakarta'; BLINK_DEMO = '1' }
+try {
+  $c = Connect-Blink 'host'
+  function Ctl($o) { Send-Blink $c $o }
+  function St() { (Ctl @{cmd='state'}).state }
+
+  'modules and the pill'
+  $m = Ctl @{cmd='modules'}
+  Check 'deadlines and the clock are both on, deadlines first' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'deadlines:True,clock:True') (($m.modules | ConvertTo-Json -Compress))
+  Check 'the nearest deadline owns the pill' ($m.restOwner -eq 'deadlines')
+  Ctl @{cmd='settings'; patch=@{restingStyle='when-due'; dueHorizonHours=1}} | Out-Null
+  Ctl @{cmd='advance'; ms=600} | Out-Null
+  $s = St
+  Check 'with nothing near, the clock takes the pill' ((Ctl @{cmd='modules'}).restOwner -eq 'clock' -and $s.rest.count -eq '19:00') "$($s.rest.count)"
+  Check 'and the pill keeps its normal size' ($s.shape.w -eq 232)
+  Ctl @{cmd='mouse'; kind='move'; x=320; y=10} | Out-Null
+  Ctl @{cmd='advance'; ms=800} | Out-Null
+  $s = St
+  Check 'hovering the clock pill opens the clock' ((Ctl @{cmd='modules'}).active -eq 'clock' -and $s.mode -eq 'open')
+  Check 'with two modules on, the panel has tabs' ($s.tabs -eq $true)
+  Ctl @{cmd='key'; key='left'} | Out-Null
+  Check 'the left arrow goes to the other module' ((Ctl @{cmd='modules'}).active -eq 'deadlines')
+  Ctl @{cmd='switch'; to='clock'} | Out-Null
+  Check 'switching by name works, and a wrong name is refused' (((Ctl @{cmd='modules'}).active -eq 'clock') -and (Send-Blink $c @{cmd='switch'; to='nope'}).ok -eq $false)
+
+  'turning modules off from the host file'
+  Ctl @{cmd='mouse'; kind='leave'} | Out-Null; Ctl @{cmd='advance'; ms=1500} | Out-Null
+  Ctl @{cmd='host'; config=@{ modules = @(@{id='clock'; enabled=$true}, @{id='deadlines'; enabled=$false}) }} | Out-Null
+  $m = Ctl @{cmd='modules'}
+  Check 'the order and flags are applied' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'clock:True,deadlines:False')
+  Check 'host.json was written' (Test-Path (Join-Path $data 'host.json'))
+  Check 'with one module on there are no tabs and the clock owns the pill' ((St).tabs -eq $false -and $m.restOwner -eq 'clock')
+  Ctl @{cmd='host'; config=@{ modules = @(@{id='clock'; enabled=$false}, @{id='deadlines'; enabled=$false}) }} | Out-Null
+  Check 'turning everything off still leaves one module' (@((Ctl @{cmd='modules'}).modules | Where-Object { $_.enabled }).Count -eq 1)
+  Ctl @{cmd='host'; config=@{ modules = @(@{id='deadlines'; enabled=$true}, @{id='clock'; enabled=$true}) }} | Out-Null
+
+  'peeks'
+  Ctl @{cmd='offer_peek'; title='Charger connected'; code='Battery'; count='70%'; priority=1; key='power'} | Out-Null
+  $s = St
+  Check 'a peek shows' ($s.mode -eq 'peek')
+  Ctl @{cmd='offer_peek'; title='Problem Set 4'; code='CS101'; count='3h'; priority=3} | Out-Null
+  Ctl @{cmd='offer_peek'; title='Wi-Fi lost'; code='Network'; count=''; priority=1; key='net'} | Out-Null
+  Check 'a lesser peek waits behind a more important one' ((St).queuedPeeks -eq 1)
+  Ctl @{cmd='advance'; ms=4300} | Out-Null; Ctl @{cmd='advance'; ms=500} | Out-Null
+  Check 'and shows when the notch is free' ((St).mode -eq 'peek' -and (St).queuedPeeks -eq 0)
+  Ctl @{cmd='advance'; ms=4500} | Out-Null; Ctl @{cmd='advance'; ms=600} | Out-Null
+  Check 'then it rests again' ((St).mode -eq 'rest')
+
+  'drawing'
+  Ctl @{cmd='mouse'; kind='move'; x=320; y=10} | Out-Null; Ctl @{cmd='advance'; ms=800} | Out-Null
+  $dib = Ctl @{cmd='dibcheck'}
+  Check 'the window shows exactly what the app drew, tabs included' ($dib.differing -eq 0) "differing=$($dib.differing)"
+  Ctl @{cmd='quit'} | Out-Null
+} finally { Start-Sleep -Milliseconds 300; if (-not $p.HasExited) { $p.Kill() } }
+"`n$script:pass passed, $script:fail failed"
+if ($script:fail -gt 0) { exit 1 }

@@ -724,6 +724,23 @@ impl Module for DeadlinesModule {
         self
     }
 
+    fn title(&self, lang: blink_core::i18n::Lang) -> String {
+        if lang == blink_core::i18n::Lang::Id { "Tenggat" } else { "Deadlines" }.to_string()
+    }
+
+    /// A deadline inside the horizon (or one already missed) outranks the clock; any deadline
+    /// does when the user wants it always shown; a far one yields the pill to the clock.
+    fn rest_priority(&mut self, env: &Env, settings: &Settings) -> u8 {
+        let model = self.model(env);
+        let Some(hero) = &model.view.hero else { return 0 };
+        let soon = hero.due_ms <= env.wall_ms + (settings.due_horizon_hours * 3_600_000) as i64;
+        match (soon, settings.resting_style.as_str()) {
+            (true, _) => 3,
+            (false, "always") | (false, "hover") => 2,
+            _ => 0,
+        }
+    }
+
     fn rest_style(&mut self, env: &Env, resting_style: &str, due_horizon_hours: f64) -> crate::shell::RestStyle {
         use crate::shell::RestStyle;
         let model = self.model(env);
@@ -799,6 +816,10 @@ impl Module for DeadlinesModule {
             title: task.title.clone(),
             count: compact_countdown(task.due_ms, env.wall_ms, &env.t, true),
             urgency: urgency_of(task.due_ms, env.wall_ms),
+            // A deadline alert is something to look at now.
+            priority: 3,
+            ttl_ms: None,
+            key: Some(format!("deadline:{}", task.id)),
         })
     }
 

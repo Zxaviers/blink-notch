@@ -8,6 +8,7 @@ use jiff::tz::TimeZone;
 use serde_json::{json, Value};
 
 use crate::clock::Clock;
+use crate::host::ModuleConfig;
 use crate::modules::{Effect, Env, Key, Kit, Module, PanelFrame, PeekView, PointerKind, RestView};
 use crate::shell::{Mode, RestStyle, Shape, Shell, ShellConfig, OPEN_MAX_H, OPEN_W, REST_FULL, WINDOW_H, WINDOW_W};
 use crate::ui::canvas::Canvas;
@@ -28,6 +29,17 @@ pub enum AppEffect {
     Toast { title: String, body: String, url: Option<String> },
 }
 
+/// Height of the tab strip along the bottom of the panel when more than one module is on.
+const TAB_H: f32 = 28.0;
+/// Peeks waiting for the notch to be free (a long queue is a bug in a module, not a feature).
+const MAX_QUEUED_PEEKS: usize = 6;
+
+/// A module and whether the user has it switched on.
+pub struct Slot {
+    pub module: Box<dyn Module>,
+    pub enabled: bool,
+}
+
 pub struct App {
     pub clock: Clock,
     shell: Shell,
@@ -37,9 +49,17 @@ pub struct App {
     windows_light: bool,
     canvas: Canvas,
     fonts: Fonts,
-    modules: Vec<Box<dyn Module>>,
+    slots: Vec<Slot>,
+    /// The module whose panel is (or will be) shown.
     active: usize,
+    /// The module that owns the resting pill right now.
+    rest_owner: usize,
     peek: Option<PeekView>,
+    /// Which module the showing peek came from, so a click on it opens that module.
+    peek_from: Option<usize>,
+    peek_queue: Vec<(PeekView, Option<usize>)>,
+    /// Tabs as drawn last frame: (slot index, x, y, w, h) in window coordinates.
+    tab_rects: Vec<(usize, f32, f32, f32, f32)>,
     pointer: Option<(f32, f32)>,
     effects: Vec<AppEffect>,
     /// The last frame's panel height, to retarget the shell when content changes.
@@ -58,10 +78,11 @@ impl App {
         let lang = resolve_language(&settings.language, system_language);
         let cfg = ShellConfig { hover_delay_ms: settings.hover_delay_ms as u64, ..ShellConfig::default() };
         let (w, h) = ((WINDOW_W * scale).round() as u32, (WINDOW_H * scale).round() as u32);
-        let mut modules = modules;
-        for m in modules.iter_mut() {
-            m.configure(&settings);
+        let mut slots: Vec<Slot> = modules.into_iter().map(|m| Slot { enabled: m.default_enabled(), module: m }).collect();
+        for slot in slots.iter_mut() {
+            slot.module.configure(&settings);
         }
+        let first = slots.iter().position(|s| s.enabled).unwrap_or(0);
         Ok(App {
             clock,
             shell: Shell::new(cfg),
@@ -71,9 +92,13 @@ impl App {
             windows_light: false,
             canvas: Canvas::new(w, h, scale),
             fonts,
-            modules,
-            active: 0,
+            slots,
+            active: first,
+            rest_owner: first,
             peek: None,
+            peek_from: None,
+            peek_queue: Vec::new(),
+            tab_rects: Vec::new(),
             pointer: None,
             effects: Vec::new(),
             last_panel_h: 0.0,
@@ -98,8 +123,96 @@ impl App {
         self.canvas.scale
     }
 
+    /// The module of this type, whether or not it is on (tests and the window layer).
     pub fn module_mut<T: 'static>(&mut self) -> Option<&mut T> {
-        self.modules.get_mut(self.active)?.as_any_mut().downcast_mut::<T>()
+        self.slots.iter_mut().find_map(|s| s.module.as_any_mut().downcast_mut::<T>())
+    }
+
+    /// The peek showing right now, if any.
+    pub fn current_peek(&self) -> Option<&PeekView> {
+        if self.shell.mode() == Mode::Peek { self.peek.as_ref() } else { None }
+    }
+
+    pub fn active_module(&self) -> &'static str {
+        self.slots[self.active].module.id()
+    }
+
+    pub fn rest_owner_module(&self) -> &'static str {
+        self.slots[self.rest_owner].module.id()
+    }
+
+    /// (id, enabled) in the user's order.
+    pub fn module_list(&self) -> Vec<(&'static str, bool)> {
+        self.slots.iter().map(|s| (s.module.id(), s.enabled)).collect()
+    }
+
+    fn enabled_indices(&self) -> Vec<usize> {
+        self.slots.iter().enumerate().filter(|(_, s)| s.enabled).map(|(i, _)| i).collect()
+    }
+
+    fn tabs_height(&self) -> f32 {
+        if self.slots.iter().filter(|s| s.enabled).count() > 1 { TAB_H } else { 0.0 }
+    }
+
+    /// Apply the user's choice of modules: order and on/off. Ids the app does not know are
+    /// ignored; modules the list does not mention keep their state and follow the listed ones.
+    pub fn configure_modules(&mut self, config: &[ModuleConfig]) {
+        let active_id = self.slots[self.active].module.id();
+        let mut rest = std::mem::take(&mut self.slots);
+        let mut ordered: Vec<Slot> = Vec::with_capacity(rest.len());
+        for c in config {
+            if let Some(at) = rest.iter().position(|s| s.module.id() == c.id) {
+                let mut slot = rest.remove(at);
+                slot.enabled = c.enabled;
+                ordered.push(slot);
+            }
+        }
+        ordered.extend(rest);
+        // Never leave the notch with nothing to show.
+        if !ordered.iter().any(|s| s.enabled) {
+            if let Some(first) = ordered.first_mut() {
+                first.enabled = true;
+            }
+        }
+        self.slots = ordered;
+        self.active = self
+            .slots
+            .iter()
+            .position(|s| s.enabled && s.module.id() == active_id)
+            .or_else(|| self.slots.iter().position(|s| s.enabled))
+            .unwrap_or(0);
+        self.peek_queue.clear();
+        self.update_rest_style();
+        if self.shell.mode() == Mode::Open {
+            self.refresh_panel_height();
+        }
+    }
+
+    /// Show another module's panel (index into the module list; it must be on).
+    pub fn switch_to(&mut self, slot: usize) {
+        if slot >= self.slots.len() || !self.slots[slot].enabled || slot == self.active {
+            return;
+        }
+        let tz = self.tz.clone();
+        let env = self.env(&tz);
+        let keyboard = self.shell.keyboard();
+        self.slots[self.active].module.pointer(PointerKind::Leave, 0.0, 0.0, &env);
+        if keyboard {
+            self.slots[self.active].module.keyboard_mode(false, &env);
+            self.slots[slot].module.keyboard_mode(true, &env);
+        }
+        self.active = slot;
+        if self.shell.mode() == Mode::Open {
+            self.refresh_panel_height();
+        }
+    }
+
+    /// The next (+1) or previous (-1) module that is on, wrapping around.
+    pub fn switch_by(&mut self, delta: i32) {
+        let on = self.enabled_indices();
+        let Some(at) = on.iter().position(|i| *i == self.active) else { return };
+        let next = (at as i32 + delta).rem_euclid(on.len() as i32) as usize;
+        self.switch_to(on[next]);
     }
 
     /// Take the effects produced since the last call.
@@ -127,8 +240,8 @@ impl App {
         cfg.hover_delay_ms = settings.hover_delay_ms as u64;
         self.shell.set_config(cfg);
         self.settings = settings;
-        for m in self.modules.iter_mut() {
-            m.configure(&self.settings);
+        for slot in self.slots.iter_mut() {
+            slot.module.configure(&self.settings);
         }
         self.update_rest_style();
         self.run_module_tick();
@@ -158,11 +271,28 @@ impl App {
 
     // --------------------------------------------------------------- panel
 
+    /// Outside the open panel the active module follows what the pill or the peek shows, so
+    /// opening it shows the thing you were looking at. `force` also does it mid-animation.
+    fn sync_active(&mut self, force: bool) {
+        if self.shell.mode() == Mode::Open {
+            return;
+        }
+        if !force && self.shell.is_animating(self.clock.now_ms()) {
+            return;
+        }
+        let want = if self.shell.mode() == Mode::Peek { self.peek_from.unwrap_or(self.rest_owner) } else { self.rest_owner };
+        if want < self.slots.len() && self.slots[want].enabled {
+            self.active = want;
+        }
+    }
+
     fn refresh_panel_height(&mut self) {
+        self.sync_active(true);
         let tz = self.tz.clone();
         let env = self.env(&tz);
+        let tabs = self.tabs_height();
         let mut kit = Kit { canvas: &mut self.canvas, fonts: &mut self.fonts };
-        let h = self.modules[self.active].panel_height(&env, &mut kit);
+        let h = self.slots[self.active].module.panel_height(&env, &mut kit) + tabs;
         self.last_panel_h = h;
         let now = self.clock.now_ms();
         self.shell.set_open_height(h, now);
@@ -171,11 +301,25 @@ impl App {
     fn update_rest_style(&mut self) {
         let tz = self.tz.clone();
         let env = self.env(&tz);
-        let style = self.modules[self.active].rest_style(&env, &self.settings.resting_style, self.settings.due_horizon_hours as f64);
+        // The module with the most to say owns the pill; ties go to the earlier one.
+        let mut best: Option<(usize, u8)> = None;
+        for i in self.enabled_indices() {
+            let p = self.slots[i].module.rest_priority(&env, &self.settings);
+            if best.is_none_or(|(_, bp)| p > bp) {
+                best = Some((i, p));
+            }
+        }
+        self.rest_owner = best.map_or(self.active, |(i, _)| i);
+        self.sync_active(false);
+        let style = if self.settings.resting_style == "hover" {
+            RestStyle::Hot
+        } else {
+            self.slots[self.rest_owner].module.rest_style(&env, &self.settings.resting_style, self.settings.due_horizon_hours as f64)
+        };
         self.shell.set_rest_style(style, env.now_ms);
     }
 
-    fn apply_module_effects(&mut self, effects: Vec<Effect>) {
+    fn apply_module_effects(&mut self, from: usize, effects: Vec<Effect>) {
         let mut want_peek = false;
         for e in effects {
             match e {
@@ -199,7 +343,7 @@ impl App {
         // Marking something done can change what the resting pill shows.
         self.update_rest_style();
         if want_peek {
-            self.peek();
+            self.request_peek(from);
         }
     }
 
@@ -220,8 +364,8 @@ impl App {
                 self.pointer = None;
                 self.shell.pointer_leave(now);
                 let env = self.env(&tz);
-                let fx = self.modules[self.active].pointer(PointerKind::Leave, x, y, &env);
-                self.apply_module_effects(fx);
+                let fx = self.slots[self.active].module.pointer(PointerKind::Leave, x, y, &env);
+                self.apply_module_effects(self.active, fx);
             }
             PointerKind::Move => {
                 if !inside {
@@ -229,8 +373,8 @@ impl App {
                         self.pointer = None;
                         self.shell.pointer_leave(now);
                         let env = self.env(&tz);
-                        let fx = self.modules[self.active].pointer(PointerKind::Leave, x, y, &env);
-                        self.apply_module_effects(fx);
+                        let fx = self.slots[self.active].module.pointer(PointerKind::Leave, x, y, &env);
+                        self.apply_module_effects(self.active, fx);
                     }
                     return;
                 }
@@ -240,8 +384,8 @@ impl App {
                 self.pointer = Some((x, y));
                 if self.shell.mode() == Mode::Open {
                     let env = self.env(&tz);
-                    let fx = self.modules[self.active].pointer(PointerKind::Move, x, y, &env);
-                    self.apply_module_effects(fx);
+                    let fx = self.slots[self.active].module.pointer(PointerKind::Move, x, y, &env);
+                    self.apply_module_effects(self.active, fx);
                 }
             }
             PointerKind::Down => {
@@ -249,9 +393,13 @@ impl App {
                     return;
                 }
                 if self.shell.mode() == Mode::Open {
+                    if let Some(tab) = self.tab_at(x, y) {
+                        self.switch_to(tab);
+                        return;
+                    }
                     let env = self.env(&tz);
-                    let fx = self.modules[self.active].pointer(PointerKind::Down, x, y, &env);
-                    self.apply_module_effects(fx);
+                    let fx = self.slots[self.active].module.pointer(PointerKind::Down, x, y, &env);
+                    self.apply_module_effects(self.active, fx);
                 } else {
                     self.refresh_panel_height();
                     self.shell.click(now);
@@ -260,12 +408,16 @@ impl App {
             PointerKind::Wheel(d) => {
                 if inside && self.shell.mode() == Mode::Open {
                     let env = self.env(&tz);
-                    let fx = self.modules[self.active].pointer(PointerKind::Wheel(d), x, y, &env);
-                    self.apply_module_effects(fx);
+                    let fx = self.slots[self.active].module.pointer(PointerKind::Wheel(d), x, y, &env);
+                    self.apply_module_effects(self.active, fx);
                 }
             }
         }
         self.sync_open_height();
+    }
+
+    fn tab_at(&self, x: f32, y: f32) -> Option<usize> {
+        self.tab_rects.iter().find(|(_, rx, ry, rw, rh)| x >= *rx && x < rx + rw && y >= *ry && y < ry + rh).map(|t| t.0)
     }
 
     /// Opening starts only once the panel height is known.
@@ -280,13 +432,17 @@ impl App {
         if self.shell.mode() != Mode::Open {
             return;
         }
+        if matches!(key, Key::Left | Key::Right | Key::Tab) && self.slots.iter().filter(|s| s.enabled).count() > 1 {
+            self.switch_by(if key == Key::Left { -1 } else { 1 });
+            return;
+        }
         let tz = self.tz.clone();
         let env = self.env(&tz);
-        let res = self.modules[self.active].key(key, &env);
+        let res = self.slots[self.active].module.key(key, &env);
         if res.close || (!res.handled && key == Key::Escape) {
             self.close_panel(now);
         }
-        self.apply_module_effects(res.effects);
+        self.apply_module_effects(self.active, res.effects);
     }
 
     fn close_panel(&mut self, now: u64) {
@@ -294,7 +450,7 @@ impl App {
             self.effects.push(AppEffect::KeyboardFocus(false));
             let tz = self.tz.clone();
             let env = self.env(&tz);
-            self.modules[self.active].keyboard_mode(false, &env);
+            self.slots[self.active].module.keyboard_mode(false, &env);
         }
         self.shell.close(now);
     }
@@ -309,7 +465,7 @@ impl App {
         self.refresh_panel_height();
         let tz = self.tz.clone();
         let env = self.env(&tz);
-        self.modules[self.active].keyboard_mode(true, &env);
+        self.slots[self.active].module.keyboard_mode(true, &env);
         self.shell.enter_keyboard(now);
         self.effects.push(AppEffect::KeyboardFocus(true));
     }
@@ -321,19 +477,75 @@ impl App {
             // Focus is already gone; do not ask for it to be handed back.
             let tz = self.tz.clone();
             let env = self.env(&tz);
-            self.modules[self.active].keyboard_mode(false, &env);
+            self.slots[self.active].module.keyboard_mode(false, &env);
             self.shell.close(now);
         }
     }
 
-    /// Show a peek for something the module wants announced.
+    /// Show whatever the first module with something to announce has (tray click, second launch).
     pub fn peek(&mut self) {
+        for i in self.enabled_indices() {
+            if self.request_peek(i) {
+                return;
+            }
+        }
+    }
+
+    /// Ask one module for its pending peek and offer it. Returns whether it had one.
+    fn request_peek(&mut self, from: usize) -> bool {
         let tz = self.tz.clone();
         let env = self.env(&tz);
-        if let Some(p) = self.modules[self.active].peek(&env) {
-            self.peek = Some(p);
-            self.shell.peek(env.now_ms);
+        match self.slots.get_mut(from).and_then(|s| s.module.peek(&env)) {
+            Some(view) => {
+                self.offer_peek(view, Some(from));
+                true
+            }
+            None => false,
         }
+    }
+
+    /// Offer a peek (a module's, later a plugin's). A more important one replaces what shows, an
+    /// equal or less important one waits, one with the same key replaces its older self, and
+    /// anything offered while the panel is open waits until it closes.
+    pub fn offer_peek(&mut self, view: PeekView, from: Option<usize>) {
+        let showing = self.shell.mode() == Mode::Peek;
+        let same_key = |a: &PeekView, b: &PeekView| a.key.is_some() && a.key == b.key;
+        if showing && self.peek.as_ref().is_some_and(|cur| same_key(cur, &view)) {
+            self.start_peek(view, from);
+            return;
+        }
+        self.peek_queue.retain(|(q, _)| !same_key(q, &view));
+        let free = self.shell.mode() == Mode::Rest;
+        let outranks = showing && self.peek.as_ref().is_some_and(|cur| view.priority > cur.priority);
+        if free || outranks {
+            self.start_peek(view, from);
+        } else if self.peek_queue.len() < MAX_QUEUED_PEEKS {
+            self.peek_queue.push((view, from));
+        }
+    }
+
+    fn start_peek(&mut self, view: PeekView, from: Option<usize>) {
+        let now = self.clock.now_ms();
+        let ms = view.ttl_ms.unwrap_or(self.shell.config().peek_ms);
+        self.peek = Some(view);
+        self.peek_from = from;
+        self.shell.peek_for(now, ms);
+        self.sync_active(true);
+    }
+
+    /// When the notch is free again, show the most important waiting peek.
+    fn next_queued_peek(&mut self) {
+        if self.shell.mode() != Mode::Rest || self.shell.hovering() || self.peek_queue.is_empty() {
+            return;
+        }
+        let mut at = 0;
+        for (i, (v, _)) in self.peek_queue.iter().enumerate() {
+            if v.priority > self.peek_queue[at].0.priority {
+                at = i;
+            }
+        }
+        let (view, from) = self.peek_queue.remove(at);
+        self.start_peek(view, from);
     }
 
     // ----------------------------------------------------------------- time
@@ -347,16 +559,19 @@ impl App {
         if changed && self.shell.mode() == Mode::Open {
             self.refresh_panel_height();
         }
+        self.next_queued_peek();
         changed
     }
 
-    /// Let the active module sync and announce what is due.
+    /// Let every module that is on sync and announce what is due.
     fn run_module_tick(&mut self) {
         let tz = self.tz.clone();
         let env = self.env(&tz);
-        let effects = self.modules[self.active].tick(&env);
-        if !effects.is_empty() {
-            self.apply_module_effects(effects);
+        for i in self.enabled_indices() {
+            let effects = self.slots[i].module.tick(&env);
+            if !effects.is_empty() {
+                self.apply_module_effects(i, effects);
+            }
         }
     }
 
@@ -377,7 +592,16 @@ impl App {
         let open = self.shell.mode() == Mode::Open;
         let tz = self.tz.clone();
         let env = self.env(&tz);
-        let mut nodes = self.modules[self.active].accessibility(&env, open);
+        let shown = if open { self.active } else { self.rest_owner };
+        let mut nodes = self.slots[shown].module.accessibility(&env, open);
+        if open && self.tabs_height() > 0.0 {
+            for (slot, x, y, w, h) in self.tab_rects.clone() {
+                let mut tab = Node::new(200 + slot as i32, ROOT, Role::Button, self.slots[slot].module.title(env.t.lang()));
+                tab.rect = (x, y, w, h);
+                tab.action = Some(crate::access::NodeAction::SwitchTab(slot));
+                nodes.push(tab);
+            }
+        }
         let rect = ((WINDOW_W - shape.w) / 2.0, 0.0, shape.w, shape.h);
         let mut root = Node::new(ROOT, ROOT, Role::Pane, crate::access::word(env.t.lang(), "notch"));
         root.rect = rect;
@@ -401,24 +625,25 @@ impl App {
             NodeAction::Module(a) => {
                 let tz = self.tz.clone();
                 let env = self.env(&tz);
-                let effects = self.modules[self.active].perform(a, &env);
-                self.apply_module_effects(effects);
+                let effects = self.slots[self.active].module.perform(a, &env);
+                self.apply_module_effects(self.active, effects);
             }
+            NodeAction::SwitchTab(i) => self.switch_to(i),
         }
     }
 
     /// Fetch the feeds now (tray "Refresh now", footer button).
     pub fn refresh_sources(&mut self) {
-        if let Some(m) = self.modules.get_mut(self.active) {
-            m.refresh();
+        for slot in self.slots.iter_mut().filter(|s| s.enabled) {
+            slot.module.refresh();
         }
         self.run_module_tick();
     }
 
     /// The personal events file changed.
     pub fn reload_local_events(&mut self) {
-        if let Some(m) = self.modules.get_mut(self.active) {
-            m.reload_local();
+        for slot in self.slots.iter_mut().filter(|s| s.enabled) {
+            slot.module.reload_local();
         }
         self.data_changed();
     }
@@ -427,9 +652,13 @@ impl App {
     pub fn next_wake(&mut self) -> Option<u64> {
         let tz = self.tz.clone();
         let env = self.env(&tz);
-        let open = self.shell.mode() == Mode::Open;
-        let module = self.modules[self.active].next_wake(&env, open || self.shell.mode() == Mode::Peek);
-        [self.shell.next_wake(), module].into_iter().flatten().min()
+        let showing = matches!(self.shell.mode(), Mode::Open | Mode::Peek);
+        let mut wake = self.shell.next_wake();
+        for i in self.enabled_indices() {
+            let w = self.slots[i].module.next_wake(&env, showing && i == self.active);
+            wake = [wake, w].into_iter().flatten().min();
+        }
+        wake
     }
 
     pub fn wants_frames(&self) -> bool {
@@ -479,7 +708,7 @@ impl App {
             Mode::Rest => {
                 let rest_alpha = (1.0 - openness * 3.0).clamp(0.0, 1.0) * if reduced { 1.0 - fade * 0.0 } else { 1.0 };
                 if self.shell.rest_style() == RestStyle::Full && rest_alpha > 0.0 {
-                    let rv = self.modules[self.active].rest(&env);
+                    let rv = self.slots[self.rest_owner].module.rest(&env);
                     self.draw_rest(&rv, &pill, rest_alpha);
                 }
             }
@@ -495,14 +724,52 @@ impl App {
             let frame = PanelFrame {
                 theme: &panel_theme,
                 alpha: open_alpha,
-                viewport_h: self.shell.target().h.max(REST_FULL.h),
+                // The module sees the panel without the tab strip along the bottom.
+                viewport_h: self.shell.target().h.max(REST_FULL.h) - self.tabs_height(),
                 origin_x: (WINDOW_W - OPEN_W) / 2.0,
                 keyboard: self.shell.keyboard(),
             };
             let mut kit = Kit { canvas: &mut self.canvas, fonts: &mut self.fonts };
-            self.modules[self.active].draw_panel(&env, &mut kit, &frame);
+            self.slots[self.active].module.draw_panel(&env, &mut kit, &frame);
+            self.draw_tabs(&panel_theme, open_alpha, &env);
+        } else {
+            self.tab_rects.clear();
         }
         self.canvas.pop_clip();
+    }
+
+    /// The strip of module tabs along the bottom of the panel (only with more than one module on).
+    fn draw_tabs(&mut self, theme: &Theme, alpha: f32, env: &Env) {
+        self.tab_rects.clear();
+        let tabs_h = self.tabs_height();
+        if tabs_h <= 0.0 {
+            return;
+        }
+        let top = self.shell.target().h.max(REST_FULL.h) - tabs_h;
+        let size = 11.0;
+        let pad = 11.0;
+        let gap = 4.0;
+        let items: Vec<(usize, String)> = self.enabled_indices().into_iter().map(|i| (i, self.slots[i].module.title(env.t.lang()))).collect();
+        let widths: Vec<f32> = items.iter().map(|(_, t)| self.canvas.measure(&mut self.fonts, Face::Sans, size, t, 0.0) + 2.0 * pad).collect();
+        let total: f32 = widths.iter().sum::<f32>() + gap * (items.len() as f32 - 1.0);
+        let mut x = (WINDOW_W - total) / 2.0;
+        let h = tabs_h - 8.0;
+        let y = top + 3.0;
+        let faint = f32::from(theme.line.1) / 255.0 * alpha;
+        for ((slot, title), w) in items.iter().zip(&widths) {
+            let active = *slot == self.active;
+            let over = self.pointer.is_some_and(|(px, py)| px >= x && px < x + w && py >= y && py < y + h);
+            if active {
+                self.canvas.rrect(x, y, *w, h, h / 2.0, theme.line.0, faint * 1.6);
+            } else if over {
+                self.canvas.rrect(x, y, *w, h, h / 2.0, theme.line.0, faint);
+            }
+            let base = y + self.fonts.baseline(Face::Sans, size, h);
+            let color = if active { theme.fg } else { theme.dim };
+            self.canvas.text(&mut self.fonts, Face::Sans, size, x + pad, base, title, color, alpha, 0.0);
+            self.tab_rects.push((*slot, x, top, *w, tabs_h));
+            x += w + gap;
+        }
     }
 
     fn draw_rest(&mut self, rv: &RestView, theme: &Theme, alpha: f32) {
@@ -551,8 +818,14 @@ impl App {
         let shape = self.shell.shape(now);
         let tz = self.tz.clone();
         let env = self.env(&tz);
-        let rest = self.modules[self.active].rest(&env);
-        let module_debug = self.modules[self.active].debug_now(&env);
+        let rest = self.slots[self.rest_owner].module.rest(&env);
+        let module_debug = self.slots[self.active].module.debug_now(&env);
+        let modules: Vec<Value> = self
+            .slots
+            .iter()
+            .enumerate()
+            .map(|(i, s)| json!({ "id": s.module.id(), "enabled": s.enabled, "active": i == self.active, "restOwner": i == self.rest_owner }))
+            .collect();
         json!({
             "mode": format!("{:?}", self.shell.mode()).to_lowercase(),
             "restStyle": format!("{:?}", self.shell.rest_style()).to_lowercase(),
@@ -571,6 +844,9 @@ impl App {
             "nextWake": self.next_wake(),
             "cachedGlyphs": self.fonts.cached_glyphs(),
             "module": module_debug,
+            "modules": modules,
+            "tabs": self.tabs_height() > 0.0,
+            "queuedPeeks": self.peek_queue.len(),
         })
     }
 

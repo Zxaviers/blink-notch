@@ -2,6 +2,7 @@
 //! animation and which module is on top; a module owns one kind of content
 //! (deadlines first; a timer, media, system peeks later).
 
+pub mod clock;
 pub mod deadlines;
 
 use blink_core::i18n::Translator;
@@ -37,12 +38,18 @@ pub struct RestView {
 }
 
 /// A short automatic expansion about one item.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct PeekView {
     pub code: String,
     pub title: String,
     pub count: String,
     pub urgency: &'static str,
+    /// Higher replaces lower; equal waits its turn. 1 = ordinary, 3 = needs attention now.
+    pub priority: u8,
+    /// How long it stays; None means the standard peek time.
+    pub ttl_ms: Option<u64>,
+    /// A peek with the same key replaces the one showing (or waiting) instead of queueing.
+    pub key: Option<String>,
 }
 
 /// Something a click or a key asks for.
@@ -84,6 +91,9 @@ pub enum PointerKind {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Key {
+    Left,
+    Right,
+    Tab,
     Up,
     Down,
     Home,
@@ -117,6 +127,22 @@ pub struct PanelFrame<'a> {
 
 pub trait Module {
     fn id(&self) -> &'static str;
+
+    /// The name on the module's tab.
+    fn title(&self, _lang: blink_core::i18n::Lang) -> String {
+        self.id().to_string()
+    }
+
+    /// Whether the module is on when the user has not said.
+    fn default_enabled(&self) -> bool {
+        true
+    }
+
+    /// How much this module deserves the resting pill right now: 0 nothing to say, 1 something
+    /// calm, 2 or more something worth a glance. The highest wins; ties go to the earlier module.
+    fn rest_priority(&mut self, _env: &Env, _settings: &blink_core::settings::Settings) -> u8 {
+        1
+    }
 
     /// For tests and tools that need the concrete module.
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;

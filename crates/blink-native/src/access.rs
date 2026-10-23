@@ -14,6 +14,7 @@ pub enum Role {
     List,
     ListItem,
     Button,
+    Text,
 }
 
 /// What activating an element does.
@@ -21,6 +22,8 @@ pub enum Role {
 pub enum NodeAction {
     /// Open the panel and move keyboard focus into it (what the hotkey does).
     OpenPanel,
+    /// Show this module (by position among the enabled ones).
+    SwitchTab(usize),
     Module(Action),
 }
 

@@ -280,10 +280,15 @@ impl Shell {
 
     /// A short automatic expansion. Ignored while open.
     pub fn peek(&mut self, now: u64) {
+        self.peek_for(now, self.cfg.peek_ms);
+    }
+
+    /// Like `peek`, for a given time. A peek already showing is restarted.
+    pub fn peek_for(&mut self, now: u64, ms: u64) {
         if self.mode == Mode::Open {
             return;
         }
-        self.peek_until = Some(now + self.cfg.peek_ms);
+        self.peek_until = Some(now + ms);
         self.set_mode(Mode::Peek, now);
     }
 

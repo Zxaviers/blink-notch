@@ -48,6 +48,7 @@ use super::tray::{self, MenuLabels, Tray, WM_TRAY};
 use crate::app::{App, AppEffect};
 use crate::clock::Clock;
 use crate::live::LiveSource;
+use crate::modules::clock::ClockModule;
 use crate::modules::deadlines::{DeadlineSource, DeadlinesModule, DemoSource};
 use crate::modules::{Key, Module, PointerKind};
 use crate::shell::{WINDOW_H, WINDOW_W};
@@ -608,8 +609,15 @@ impl Runtime {
         self.app.apply_settings(settings, &system_language());
         self.place();
         let status = self.register_hotkey(&accelerator);
+        self.reload_host();
         self.dirty = true;
         status
+    }
+
+    /// Re-read which modules are on and in what order (`host.json`).
+    fn reload_host(&mut self) {
+        let config = crate::host::parse_modules(self.store.get_json("host").ok().flatten().as_ref());
+        self.app.configure_modules(&config);
     }
 
     /// Redacted facts about the running notch, appended to the settings program's report.
@@ -713,6 +721,9 @@ impl Runtime {
             }
             WM_KEYDOWN => {
                 let key = match wparam.0 as u32 {
+                    0x25 => Some(Key::Left),
+                    0x27 => Some(Key::Right),
+                    0x09 => Some(Key::Tab),
                     0x26 => Some(Key::Up),
                     0x28 => Some(Key::Down),
                     0x24 => Some(Key::Home),
@@ -934,6 +945,9 @@ impl Runtime {
             }
             "key" => {
                 let key = match v["key"].as_str().unwrap_or("") {
+                    "left" => Key::Left,
+                    "right" => Key::Right,
+                    "tab" => Key::Tab,
                     "up" => Key::Up,
                     "down" => Key::Down,
                     "home" => Key::Home,
@@ -979,6 +993,36 @@ impl Runtime {
                 return Ok(json!({ "handedToWindows": shown }));
             }
             "open_settings" => self.open_settings(),
+            "modules" => {
+                let list: Vec<Value> = self.app.module_list().iter().map(|(id, on)| json!({ "id": id, "enabled": on })).collect();
+                return Ok(json!({ "modules": list, "active": self.app.active_module(), "restOwner": self.app.rest_owner_module() }));
+            }
+            "switch" => {
+                let target = v["to"].as_str().unwrap_or("");
+                match self.app.module_list().iter().position(|(id, _)| *id == target) {
+                    Some(i) => self.app.switch_to(i),
+                    None => return Err(format!("no module {target}")),
+                }
+            }
+            "offer_peek" => {
+                // What a module (or later a plugin) does: offer a peek with a priority, a time and a key.
+                let view = crate::modules::PeekView {
+                    code: v["code"].as_str().unwrap_or("").to_string(),
+                    title: v["title"].as_str().unwrap_or("").to_string(),
+                    count: v["count"].as_str().unwrap_or("").to_string(),
+                    urgency: "later",
+                    priority: v["priority"].as_u64().unwrap_or(1) as u8,
+                    ttl_ms: v["ttl"].as_u64(),
+                    key: v["key"].as_str().map(String::from),
+                };
+                self.app.offer_peek(view, None);
+            }
+            "reload_host" => self.reload_host(),
+            "host" => {
+                // Write host.json from the command, as the settings program will, then apply it.
+                self.store.set_json("host", &v["config"]).map_err(|e| e.to_string())?;
+                self.reload_host();
+            }
             "dibcheck" => {
                 // Does the window's bitmap equal the app's last frame, pixel for pixel? (Trails of old
                 // frames would show up here as differing pixels.)
@@ -1191,8 +1235,9 @@ pub fn run(opts: Options) -> Result<(), String> {
     } else {
         Box::new(live_source(&opts, &store, &settings, tz.clone(), target.clone())?)
     };
-    let modules: Vec<Box<dyn Module>> = vec![Box::new(DeadlinesModule::new(source))];
+    let modules: Vec<Box<dyn Module>> = vec![Box::new(DeadlinesModule::new(source)), Box::new(ClockModule::new())];
     let mut app = App::new(clock, settings, tz, scale, &system_language(), modules)?;
+    app.configure_modules(&crate::host::parse_modules(store.get_json("host").ok().flatten().as_ref()));
     app.set_reduced_motion(!animations_enabled());
     app.set_windows_light_theme(apps_use_light_theme());
     if opts.pin_open {

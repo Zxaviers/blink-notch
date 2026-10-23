@@ -24,7 +24,7 @@ use windows::Win32::UI::Accessibility::{
     UIA_AutomationIdPropertyId, UIA_ButtonControlTypeId, UIA_ClassNamePropertyId, UIA_ControlTypePropertyId, UIA_FrameworkIdPropertyId,
     UIA_HasKeyboardFocusPropertyId, UIA_HelpTextPropertyId, UIA_InvokePatternId, UIA_IsContentElementPropertyId, UIA_IsControlElementPropertyId,
     UIA_IsEnabledPropertyId, UIA_IsKeyboardFocusablePropertyId, UIA_IsOffscreenPropertyId, UIA_ListControlTypeId, UIA_ListItemControlTypeId,
-    UIA_NamePropertyId, UIA_PaneControlTypeId, UIA_PATTERN_ID, UIA_PROPERTY_ID,
+    UIA_NamePropertyId, UIA_PaneControlTypeId, UIA_TextControlTypeId, UIA_PATTERN_ID, UIA_PROPERTY_ID,
 };
 use windows::Win32::UI::WindowsAndMessaging::PostMessageW;
 
@@ -90,6 +90,7 @@ fn control_type(role: Role) -> i32 {
         Role::List => UIA_ListControlTypeId.0,
         Role::ListItem => UIA_ListItemControlTypeId.0,
         Role::Button => UIA_ButtonControlTypeId.0,
+        Role::Text => UIA_TextControlTypeId.0,
     }
 }
 
