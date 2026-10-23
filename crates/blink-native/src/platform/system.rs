@@ -9,12 +9,24 @@ use windows::Win32::UI::WindowsAndMessaging::{FindWindowW, PostMessageW};
 /// Posted by a second launch to the running instance: show yourself.
 pub const WM_SHOW_ME: u32 = 0x8000 + 2;
 
-/// True while a fullscreen app, D3D fullscreen game or presentation is active
-/// (QUNS_BUSY, QUNS_RUNNING_D3D_FULL_SCREEN, QUNS_PRESENTATION_MODE).
-pub fn fullscreen_app_active() -> bool {
+/// What kind of fullscreen, if any, is in front.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FullscreenKind {
+    None,
+    /// An ordinary app covering the whole screen (Windows calls it "busy"): a browser or an
+    /// app in fullscreen, a maximized borderless window, a video player.
+    App,
+    /// A game in exclusive fullscreen, or a presentation.
+    Game,
+}
+
+pub fn fullscreen_kind() -> FullscreenKind {
     match unsafe { SHQueryUserNotificationState() } {
-        Ok(state) => matches!(state.0, 2..=4),
-        Err(_) => false,
+        // QUNS_RUNNING_D3D_FULL_SCREEN = 3, QUNS_PRESENTATION_MODE = 4
+        Ok(state) if matches!(state.0, 3 | 4) => FullscreenKind::Game,
+        // QUNS_BUSY = 2
+        Ok(state) if state.0 == 2 => FullscreenKind::App,
+        _ => FullscreenKind::None,
     }
 }
 

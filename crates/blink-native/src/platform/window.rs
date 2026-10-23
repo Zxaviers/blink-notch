@@ -253,7 +253,8 @@ struct Runtime {
     dump_on_exit: Option<String>,
     paused: bool,
     fullscreen: bool,
-    fullscreen_sim: Option<bool>,
+    fullscreen_sim: Option<system::FullscreenKind>,
+    fullscreen_mode: crate::host::FullscreenMode,
     hidden: bool,
     tray: Option<Tray>,
     /// What clicking the last notification opens.
@@ -491,7 +492,14 @@ impl Runtime {
     // ------------------------------------------------- visibility, hotkey
 
     fn refresh_fullscreen(&mut self) {
-        let busy = self.fullscreen_sim.unwrap_or_else(system::fullscreen_app_active);
+        use crate::host::FullscreenMode;
+        use system::FullscreenKind;
+        let kind = self.fullscreen_sim.unwrap_or_else(system::fullscreen_kind);
+        let busy = match self.fullscreen_mode {
+            FullscreenMode::Never => false,
+            FullscreenMode::Games => kind == FullscreenKind::Game,
+            FullscreenMode::All => kind != FullscreenKind::None,
+        };
         if busy != self.fullscreen {
             self.fullscreen = busy;
             if !busy {
@@ -729,6 +737,8 @@ impl Runtime {
     /// Re-read which modules are on and in what order (`host.json`).
     fn reload_host(&mut self) {
         let file = self.store.get_json("host").ok().flatten();
+        self.fullscreen_mode = crate::host::parse_fullscreen_mode(file.as_ref());
+        self.refresh_fullscreen();
         self.app.configure_modules(&crate::host::parse_modules(file.as_ref()));
         let status = self.register_visibility_hotkey(&crate::host::parse_visibility_hotkey(file.as_ref()));
         if status != "ok" {
@@ -1206,7 +1216,13 @@ impl Runtime {
             "toggle_visibility" => self.toggle_visibility(),
             "fullscreen" => {
                 // Pretend a fullscreen app is (or is not) in front; null goes back to asking Windows.
-                self.fullscreen_sim = v["on"].as_bool();
+                // on=true: a game is fullscreen; kind="app": an ordinary app is; on=false: none; null: ask Windows.
+                self.fullscreen_sim = match (v["on"].as_bool(), v["kind"].as_str()) {
+                    (Some(true), Some("app")) => Some(system::FullscreenKind::App),
+                    (Some(true), _) => Some(system::FullscreenKind::Game),
+                    (Some(false), _) => Some(system::FullscreenKind::None),
+                    (None, _) => None,
+                };
                 self.refresh_fullscreen();
             }
             "frames" => {
@@ -1422,7 +1438,8 @@ pub fn run(opts: Options) -> Result<(), String> {
             paused: false,
             fullscreen: false,
             // Scripted runs must not depend on what the machine is doing; they ask for fullscreen explicitly.
-            fullscreen_sim: control.then_some(false),
+            fullscreen_sim: control.then_some(system::FullscreenKind::None),
+            fullscreen_mode: crate::host::FullscreenMode::Games,
             hidden: false,
             tray: None,
             toast_url: None,
@@ -1456,6 +1473,7 @@ pub fn run(opts: Options) -> Result<(), String> {
             rt.effects_log.push(format!("hotkey:{status}"));
         }
         let file = rt.store.get_json("host").ok().flatten();
+        rt.fullscreen_mode = crate::host::parse_fullscreen_mode(file.as_ref());
         let status = rt.register_visibility_hotkey(&crate::host::parse_visibility_hotkey(file.as_ref()));
         if status != "ok" {
             rt.effects_log.push(format!("hotkey:visibility:{status}"));

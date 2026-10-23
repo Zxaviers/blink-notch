@@ -23,6 +23,26 @@ pub fn parse_visibility_hotkey(value: Option<&Value>) -> String {
     }
 }
 
+/// When the notch steps aside for a fullscreen app (`hideInFullscreen` in `host.json`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FullscreenMode {
+    /// Only for games and presentations (the default): a browser, a chat app or a maximized
+    /// window that covers the screen does not hide it.
+    Games,
+    /// For anything fullscreen, videos and browsers included.
+    All,
+    /// Never.
+    Never,
+}
+
+pub fn parse_fullscreen_mode(value: Option<&Value>) -> FullscreenMode {
+    match value.and_then(|v| v.get("hideInFullscreen")).and_then(Value::as_str) {
+        Some("all") => FullscreenMode::All,
+        Some("never") => FullscreenMode::Never,
+        _ => FullscreenMode::Games,
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ModuleConfig {
     pub id: String,
@@ -86,6 +106,14 @@ mod tests {
         assert_eq!(parse_visibility_hotkey(Some(&json!({}))), "Ctrl+Alt+H");
         assert_eq!(parse_visibility_hotkey(Some(&json!({ "visibilityHotkey": " Ctrl+Shift+N " }))), "Ctrl+Shift+N");
         assert_eq!(parse_visibility_hotkey(Some(&json!({ "visibilityHotkey": "" }))), "", "empty means off");
+    }
+
+    #[test]
+    fn fullscreen_hiding_defaults_to_games_only() {
+        assert_eq!(parse_fullscreen_mode(None), FullscreenMode::Games);
+        assert_eq!(parse_fullscreen_mode(Some(&json!({ "hideInFullscreen": "all" }))), FullscreenMode::All);
+        assert_eq!(parse_fullscreen_mode(Some(&json!({ "hideInFullscreen": "never" }))), FullscreenMode::Never);
+        assert_eq!(parse_fullscreen_mode(Some(&json!({ "hideInFullscreen": "banana" }))), FullscreenMode::Games);
     }
 
     #[test]
