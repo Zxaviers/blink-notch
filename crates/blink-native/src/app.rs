@@ -395,7 +395,22 @@ impl App {
                 let fx = self.slots[self.active].module.pointer(PointerKind::Leave, x, y, &env);
                 self.apply_module_effects(self.active, fx);
             }
+            PointerKind::Up => {
+                if self.shell.mode() == Mode::Open {
+                    let env = self.env(&tz);
+                    let fx = self.slots[self.active].module.pointer(PointerKind::Up, x, y, &env);
+                    self.apply_module_effects(self.active, fx);
+                }
+            }
             PointerKind::Move => {
+                // A drag in progress keeps following the pointer outside the notch.
+                if self.shell.mode() == Mode::Open && self.slots[self.active].module.captures_pointer() {
+                    self.pointer = Some((x, y));
+                    let env = self.env(&tz);
+                    let fx = self.slots[self.active].module.pointer(PointerKind::Move, x, y, &env);
+                    self.apply_module_effects(self.active, fx);
+                    return;
+                }
                 if !inside {
                     if self.pointer.is_some() {
                         self.pointer = None;
@@ -446,6 +461,11 @@ impl App {
 
     fn tab_at(&self, x: f32, y: f32) -> Option<usize> {
         self.tab_rects.iter().find(|(_, rx, ry, rw, rh)| x >= *rx && x < rx + rw && y >= *ry && y < ry + rh).map(|t| t.0)
+    }
+
+    /// The open panel is in the middle of a drag (the window layer then captures the mouse).
+    pub fn pointer_captured(&self) -> bool {
+        self.shell.mode() == Mode::Open && self.slots[self.active].module.captures_pointer()
     }
 
     /// Opening starts only once the panel height is known.

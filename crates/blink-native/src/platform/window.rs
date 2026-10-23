@@ -28,7 +28,7 @@ use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD};
 use windows::Win32::UI::HiDpi::{GetDpiForMonitor, SetProcessDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, MDT_EFFECTIVE_DPI};
 use windows::Win32::UI::Accessibility::{SetWinEventHook, HWINEVENTHOOK};
-use windows::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, TrackMouseEvent, UnregisterHotKey, HOT_KEY_MODIFIERS, TME_LEAVE, TRACKMOUSEEVENT};
+use windows::Win32::UI::Input::KeyboardAndMouse::{ReleaseCapture, SetCapture, RegisterHotKey, TrackMouseEvent, UnregisterHotKey, HOT_KEY_MODIFIERS, TME_LEAVE, TRACKMOUSEEVENT};
 use windows::Win32::UI::Shell::ShellExecuteW;
 use windows::Win32::UI::WindowsAndMessaging::{
     SetWindowPos, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, RegisterWindowMessageW, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetClassNameW, GetForegroundWindow, GetMessageW, GetQueueStatus,
@@ -36,7 +36,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
     RegisterClassExW, SetTimer, ShowWindow, SystemParametersInfoW, TranslateMessage, UpdateLayeredWindow, WindowFromPoint, CS_HREDRAW,
     CS_VREDRAW, GWL_EXSTYLE, IDC_ARROW, MSG, PM_REMOVE, QS_ALLINPUT, SPI_GETCLIENTAREAANIMATION, SW_SHOWNOACTIVATE, SW_SHOWNORMAL,
     ULW_ALPHA, EVENT_SYSTEM_FOREGROUND, SW_HIDE, WINEVENT_OUTOFCONTEXT, WM_ACTIVATE, WM_CHAR, WM_DESTROY, WM_DISPLAYCHANGE, WM_DPICHANGED, WM_ERASEBKGND, WM_HOTKEY, WM_KEYDOWN,
-    WM_LBUTTONDOWN, WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_QUIT, WM_SETTINGCHANGE, WM_TIMER, WNDCLASSEXW,
+    WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_QUIT, WM_SETTINGCHANGE, WM_TIMER, WNDCLASSEXW,
     WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
 };
 
@@ -50,6 +50,7 @@ use crate::app::{App, AppEffect};
 use crate::clock::Clock;
 use crate::live::LiveSource;
 use crate::modules::clock::ClockModule;
+use crate::modules::controls::{ControlsModule, FakeControls};
 use crate::modules::system::SystemModule;
 use crate::modules::deadlines::{DeadlineSource, DeadlinesModule, DemoSource};
 use crate::modules::{Key, Module, PointerKind};
@@ -835,6 +836,19 @@ impl Runtime {
             }
             WM_LBUTTONDOWN => {
                 self.app.pointer(PointerKind::Down, lo(lparam.0) as f32 / scale, hi(lparam.0) as f32 / scale);
+                if self.app.pointer_captured() {
+                    // A slider drag: keep getting the mouse until the button is released.
+                    unsafe {
+                        SetCapture(self.hwnd);
+                    }
+                }
+                self.after();
+            }
+            WM_LBUTTONUP => {
+                self.app.pointer(PointerKind::Up, lo(lparam.0) as f32 / scale, hi(lparam.0) as f32 / scale);
+                unsafe {
+                    let _ = ReleaseCapture();
+                }
                 self.after();
             }
             WM_MOUSEWHEEL => {
@@ -1092,6 +1106,7 @@ impl Runtime {
                     "leave" => PointerKind::Leave,
                     "down" => PointerKind::Down,
                     "wheel" => PointerKind::Wheel(f("delta")),
+                    "up" => PointerKind::Up,
                     other => return Err(format!("unknown mouse kind {other}")),
                 };
                 self.app.pointer(kind, f("x"), f("y"));
@@ -1404,7 +1419,7 @@ pub fn run(opts: Options) -> Result<(), String> {
     } else {
         Box::new(live_source(&opts, &store, &settings, tz.clone(), target.clone())?)
     };
-    let modules: Vec<Box<dyn Module>> = vec![Box::new(DeadlinesModule::new(source)), Box::new(ClockModule::new()), Box::new(SystemModule::new())];
+    let modules: Vec<Box<dyn Module>> = vec![Box::new(DeadlinesModule::new(source)), Box::new(ControlsModule::new(FakeControls::new())), Box::new(ClockModule::new()), Box::new(SystemModule::new())];
     let mut app = App::new(clock, settings, tz, scale, &system_language(), modules)?;
     app.configure_modules(&crate::host::parse_modules(store.get_json("host").ok().flatten().as_ref()));
     app.set_reduced_motion(!animations_enabled());

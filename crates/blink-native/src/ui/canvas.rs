@@ -16,6 +16,9 @@ pub enum Icon {
     Refresh,
     Gear,
     Undo,
+    Speaker,
+    SpeakerMuted,
+    Sun,
 }
 
 type ClipState = (Option<(i32, i32, i32, i32)>, Option<Mask>);
@@ -237,6 +240,29 @@ impl Canvas {
                 for i in 0..8 {
                     let a = (i as f32 * 45.0).to_radians();
                     line(&mut pb, (4.3 * a.cos(), 4.3 * a.sin()), (6.2 * a.cos(), 6.2 * a.sin()));
+                }
+            }
+            Icon::Speaker | Icon::SpeakerMuted => {
+                // The cone, then waves (or a cross when muted).
+                line(&mut pb, (-5.5, -1.6), (-2.8, -1.6));
+                line(&mut pb, (-2.8, -1.6), (0.4, -4.2));
+                line(&mut pb, (0.4, -4.2), (0.4, 4.2));
+                line(&mut pb, (0.4, 4.2), (-2.8, 1.6));
+                line(&mut pb, (-2.8, 1.6), (-5.5, 1.6));
+                line(&mut pb, (-5.5, 1.6), (-5.5, -1.6));
+                if icon == Icon::Speaker {
+                    arc(&mut pb, (0.4, 0.0), 3.0, -45.0, 45.0);
+                    arc(&mut pb, (0.4, 0.0), 5.6, -45.0, 45.0);
+                } else {
+                    line(&mut pb, (2.6, -2.4), (6.0, 2.4));
+                    line(&mut pb, (6.0, -2.4), (2.6, 2.4));
+                }
+            }
+            Icon::Sun => {
+                arc(&mut pb, (0.0, 0.0), 2.6, 0.0, 360.0);
+                for i in 0..8 {
+                    let a = (i as f32 * 45.0).to_radians();
+                    line(&mut pb, (4.2 * a.cos(), 4.2 * a.sin()), (6.0 * a.cos(), 6.0 * a.sin()));
                 }
             }
             Icon::Undo => {

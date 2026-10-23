@@ -675,6 +675,7 @@ impl DeadlinesModule {
                 vec![Effect::RefreshFeeds]
             }
             Action::OpenSettings => vec![Effect::OpenSettings],
+            Action::Control(_) => Vec::new(),
         }
     }
 
@@ -777,6 +778,7 @@ impl Module for DeadlinesModule {
             Some(Action::ToggleDone) => "ToggleDone".to_string(),
             Some(Action::Refresh) => "Refresh".to_string(),
             Some(Action::OpenSettings) => "OpenSettings".to_string(),
+            Some(Action::Control(_)) => "Control".to_string(),
             None => String::new(),
         };
         serde_json::json!({
@@ -873,6 +875,7 @@ impl Module for DeadlinesModule {
                 let hit = self.hits.iter().rev().find(|h| h.rect.contains(x, y) && h.action.is_some()).and_then(|h| h.action.clone());
                 hit.map_or_else(Vec::new, |a| self.act(a, env))
             }
+            PointerKind::Up => Vec::new(),
             PointerKind::Wheel(delta) => {
                 self.state.scroll -= delta;
                 self.clamp_scroll();

@@ -3,6 +3,7 @@
 //! (deadlines first; a timer, media, system peeks later).
 
 pub mod clock;
+pub mod controls;
 pub mod deadlines;
 pub mod system;
 
@@ -66,6 +67,7 @@ pub enum Action {
     ToggleDone,
     Refresh,
     OpenSettings,
+    Control(controls::ControlCommand),
 }
 
 /// What the host must do for a module.
@@ -91,6 +93,8 @@ pub enum PointerKind {
     Move,
     Leave,
     Down,
+    /// The button was released (a slider drag ends).
+    Up,
     Wheel(f32),
 }
 
@@ -132,6 +136,12 @@ pub struct PanelFrame<'a> {
 
 pub trait Module {
     fn id(&self) -> &'static str;
+
+    /// The module is in the middle of a drag: it wants pointer moves and the release even
+    /// when the pointer leaves the notch.
+    fn captures_pointer(&self) -> bool {
+        false
+    }
 
     /// Whether the module has a panel (and so a tab). A module without one only speaks in peeks.
     fn has_panel(&self) -> bool {
