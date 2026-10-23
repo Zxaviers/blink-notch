@@ -24,7 +24,7 @@ use windows::Win32::Media::Audio::{
     eCapture, eCommunications, eConsole, eMultimedia, eRender, ERole, IMMDeviceEnumerator, MMDeviceEnumerator, DEVICE_STATE_ACTIVE,
 };
 use windows::Win32::NetworkManagement::WiFi::{
-    WlanConnect, WlanEnumInterfaces, WlanFreeMemory, WlanGetAvailableNetworkList, WlanOpenHandle, WLAN_AVAILABLE_NETWORK_LIST, WLAN_CONNECTION_PARAMETERS,
+    WlanConnect, WlanEnumInterfaces, WlanFreeMemory, WlanGetAvailableNetworkList, WlanOpenHandle, WlanScan, WlanSetProfile, WLAN_AVAILABLE_NETWORK_LIST, WLAN_CONNECTION_PARAMETERS,
     WLAN_INTERFACE_INFO_LIST, wlan_connection_mode_profile, dot11_BSS_type_any,
 };
 use windows::Win32::Storage::FileSystem::{CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING};
@@ -177,6 +177,7 @@ impl Context {
                 ControlCommand::SetWifi(on) => set_radio(RadioKind::WiFi, *on),
                 ControlCommand::SetBluetooth(on) => set_radio(RadioKind::Bluetooth, *on),
                 ControlCommand::ConnectWifi(name) => self.connect(name),
+                ControlCommand::ScanWifi => self.scan(),
                 ControlCommand::Project(m) => project(*m),
                 ControlCommand::ToggleMic => {
                     if let Some(ep) = default_capture() {
@@ -230,6 +231,7 @@ impl Context {
             | ControlCommand::Snip
             | ControlCommand::OpenSettings
             | ControlCommand::WifiSettings
+            | ControlCommand::ScanWifi
             | ControlCommand::Refresh
             | ControlCommand::ShowPage(_) => {}
         }
@@ -266,10 +268,14 @@ impl Context {
         }
     }
 
-    /// Networks this computer already has a profile for, the connected one first.
+    /// Networks in range (the one in use first, then ones Windows has a password for, then by signal).
     fn read_networks(&mut self) -> Vec<Network> {
+        self.read_networks_raw().into_iter().map(|r| r.network).collect()
+    }
+
+    fn read_networks_raw(&mut self) -> Vec<RawNetwork> {
         let Some((handle, guid)) = self.first_interface() else { return Vec::new() };
-        let mut out: Vec<Network> = Vec::new();
+        let mut out: Vec<RawNetwork> = Vec::new();
         unsafe {
             let mut list: *mut WLAN_AVAILABLE_NETWORK_LIST = std::ptr::null_mut();
             if WlanGetAvailableNetworkList(handle, &guid, 0, None, &mut list) != 0 || list.is_null() {
@@ -279,24 +285,64 @@ impl Context {
             for n in items {
                 const CONNECTED: u32 = 1;
                 const HAS_PROFILE: u32 = 2;
-                if n.dwFlags & HAS_PROFILE == 0 {
-                    continue;
+                let ssid_len = (n.dot11Ssid.uSSIDLength as usize).min(32);
+                let ssid = String::from_utf8_lossy(&n.dot11Ssid.ucSSID[..ssid_len]).to_string();
+                if ssid.is_empty() {
+                    continue; // a hidden network has no name to show
                 }
-                let len = n.strProfileName.iter().position(|c| *c == 0).unwrap_or(n.strProfileName.len());
-                let name = String::from_utf16_lossy(&n.strProfileName[..len]);
-                if !out.iter().any(|o| o.name == name) {
-                    out.push(Network { name, connected: n.dwFlags & CONNECTED != 0 });
+                let saved = n.dwFlags & HAS_PROFILE != 0;
+                let profile = if saved {
+                    let len = n.strProfileName.iter().position(|c| *c == 0).unwrap_or(n.strProfileName.len());
+                    String::from_utf16_lossy(&n.strProfileName[..len])
+                } else {
+                    ssid.clone()
+                };
+                let network = Network { name: profile.clone(), connected: n.dwFlags & CONNECTED != 0, signal: n.wlanSignalQuality.min(100) as u8, secured: n.bSecurityEnabled.as_bool(), saved };
+                // The same name can be heard on several access points: keep the strongest.
+                match out.iter_mut().find(|o| o.network.name == network.name) {
+                    Some(existing) => {
+                        if network.connected || (!existing.network.connected && network.signal > existing.network.signal) {
+                            *existing = RawNetwork { network, ssid };
+                        }
+                    }
+                    None => out.push(RawNetwork { network, ssid }),
                 }
             }
             WlanFreeMemory(list as *const c_void);
         }
-        out.sort_by_key(|n| !n.connected);
+        out.sort_by_key(|o| (!o.network.connected, !o.network.saved, 255 - o.network.signal));
         out
     }
 
+    /// Ask the Wi-Fi card to look around again (the list updates a moment later).
+    fn scan(&mut self) {
+        let Some((handle, guid)) = self.first_interface() else { return };
+        unsafe {
+            let _ = WlanScan(handle, &guid, None, None, None);
+        }
+    }
+
+    /// A saved network connects directly; an open one gets a profile first; one that needs a
+    /// password is Windows' to ask for.
     fn connect(&mut self, name: &str) {
         let Some((handle, guid)) = self.first_interface() else { return };
-        let wide: Vec<u16> = name.encode_utf16().chain(Some(0)).collect();
+        let Some(found) = self.read_networks_raw().into_iter().find(|r| r.network.name == name) else { return };
+        let profile = if found.network.saved {
+            name.to_string()
+        } else if !found.network.secured {
+            let xml = open_profile_xml(&found.ssid);
+            let wide: Vec<u16> = xml.encode_utf16().chain(Some(0)).collect();
+            let mut reason = 0u32;
+            let rc = unsafe { WlanSetProfile(handle, &guid, 0, PCWSTR(wide.as_ptr()), PCWSTR::null(), false, None, &mut reason) };
+            if rc != 0 {
+                return;
+            }
+            found.ssid.clone()
+        } else {
+            open_uri("ms-settings:network-wifi");
+            return;
+        };
+        let wide: Vec<u16> = profile.encode_utf16().chain(Some(0)).collect();
         let params = WLAN_CONNECTION_PARAMETERS {
             wlanConnectionMode: wlan_connection_mode_profile,
             strProfile: PCWSTR(wide.as_ptr()),
@@ -309,6 +355,20 @@ impl Context {
             let _ = WlanConnect(handle, &guid, &params, None);
         }
     }
+}
+
+struct RawNetwork {
+    network: Network,
+    /// The name as heard on the air (the profile may be called something else).
+    ssid: String,
+}
+
+/// The profile of a network with no password: connect by hand, no security.
+fn open_profile_xml(ssid: &str) -> String {
+    let name = ssid.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;").replace('\'', "&apos;");
+    format!(
+        "<?xml version=\"1.0\"?><WLANProfile xmlns=\"http://www.microsoft.com/networking/WLAN/profile/v1\"><name>{name}</name><SSIDConfig><SSID><name>{name}</name></SSID></SSIDConfig><connectionType>ESS</connectionType><connectionMode>manual</connectionMode><MSM><security><authEncryption><authentication>open</authentication><encryption>none</encryption><useOneX>false</useOneX></authEncryption></security></MSM></WLANProfile>"
+    )
 }
 
 // -------------------------------------------------------------------- audio

@@ -146,16 +146,38 @@ fn the_output_page_lists_the_devices_and_choosing_one_goes_back() {
 }
 
 #[test]
-fn the_network_page_connects_a_saved_network_and_opens_windows_for_others() {
+fn the_network_page_lists_what_is_in_range_and_connects() {
     let (mut app, fake) = app_with_controls();
     click(&mut app, "Wi-Fi networks");
+    assert!(fake.take_log().contains(&ControlCommand::ScanWifi), "opening the page asks the card to look again");
     let on_page = names(&mut app);
-    assert!(on_page.iter().any(|n| n == "Campus ✓") && on_page.iter().any(|n| n == "Home") && on_page.iter().any(|n| n == "More networks…"), "{on_page:?}");
-    click(&mut app, "More networks…");
+    for want in ["Campus ✓", "Home", "Cafe, open", "Library, password needed", "More…"] {
+        assert!(on_page.iter().any(|n| n == want), "no {want:?} in {on_page:?}");
+    }
+    click(&mut app, "More…");
     assert_eq!(fake.take_log(), vec![ControlCommand::WifiSettings]);
-    click(&mut app, "Home");
-    assert_eq!(fake.take_log(), vec![ControlCommand::ConnectWifi("Home".into())]);
+    click(&mut app, "Cafe, open");
+    assert_eq!(fake.take_log(), vec![ControlCommand::ConnectWifi("Cafe".into())]);
     assert!(names(&mut app).iter().any(|n| n.starts_with("Volume 40%")), "back on the main page");
+    click(&mut app, "Wi-Fi networks");
+    click(&mut app, "Home");
+    assert_eq!(fake.take_log().last(), Some(&ControlCommand::ConnectWifi("Home".into())));
+}
+
+#[test]
+fn every_page_is_as_tall_as_the_main_one_so_opening_a_page_never_leaves_the_pointer_outside() {
+    let (mut app, _fake) = app_with_controls();
+    let main = app.state_json()["target"]["h"].as_f64().unwrap();
+    click(&mut app, "Wi-Fi networks");
+    advance(&mut app, 400);
+    assert_eq!(app.state_json()["target"]["h"].as_f64().unwrap(), main, "network page");
+    click(&mut app, "Back");
+    advance(&mut app, 400);
+    click(&mut app, "Output: Speakers");
+    advance(&mut app, 400);
+    assert_eq!(app.state_json()["target"]["h"].as_f64().unwrap(), main, "output page");
+    // The pointer stayed where the click was: still inside the notch, which is still open.
+    assert_eq!(app.state_json()["mode"], "open");
 }
 
 #[test]

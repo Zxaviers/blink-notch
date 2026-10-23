@@ -35,6 +35,12 @@ pub struct Output {
 pub struct Network {
     pub name: String,
     pub connected: bool,
+    /// Signal strength, 0 to 100.
+    pub signal: u8,
+    /// Needs a password.
+    pub secured: bool,
+    /// Windows already has this network's password (or it is open and was used before).
+    pub saved: bool,
 }
 
 /// What Win+P offers.
@@ -94,7 +100,11 @@ pub enum ControlCommand {
     SetWifi(bool),
     SetBluetooth(bool),
     ToggleMic,
+    /// Connect to a network: a saved one directly, an open one by making a profile for it; one that
+    /// needs a password is left to Windows' own list.
     ConnectWifi(String),
+    /// Look for networks in range again.
+    ScanWifi,
     Project(ProjectMode),
     /// Open the cast (wireless display) list.
     Cast,
@@ -138,7 +148,12 @@ impl FakeControls {
                 wifi: Some(true),
                 bluetooth: Some(true),
                 mic_muted: Some(false),
-                networks: vec![Network { name: "Campus".into(), connected: true }, Network { name: "Home".into(), connected: false }],
+                networks: vec![
+                    Network { name: "Campus".into(), connected: true, signal: 80, secured: true, saved: true },
+                    Network { name: "Home".into(), connected: false, signal: 55, secured: true, saved: true },
+                    Network { name: "Cafe".into(), connected: false, signal: 40, secured: false, saved: false },
+                    Network { name: "Library".into(), connected: false, signal: 20, secured: true, saved: false },
+                ],
                 project: Some(ProjectMode::Extend),
                 displays: 2,
             }),
@@ -189,6 +204,7 @@ impl ControlsBackend for FakeControls {
             | ControlCommand::Snip
             | ControlCommand::OpenSettings
             | ControlCommand::WifiSettings
+            | ControlCommand::ScanWifi
             | ControlCommand::Refresh
             | ControlCommand::ShowPage(_) => {}
         }
@@ -305,7 +321,10 @@ fn word(lang: Lang, key: &str) -> &'static str {
         "off" => if id { "Mati" } else { "Off" },
         "output" => if id { "Keluaran" } else { "Output" },
         "networks" => if id { "Jaringan Wi-Fi" } else { "Wi-Fi networks" },
-        "more" => if id { "Jaringan lainnya…" } else { "More networks…" },
+        "more" => if id { "Lainnya…" } else { "More…" },
+        "searching" => if id { "Mencari jaringan…" } else { "Looking for networks…" },
+        "secured" => if id { "perlu kata sandi" } else { "password needed" },
+        "open" => if id { "terbuka" } else { "open" },
         "back" => if id { "Kembali" } else { "Back" },
         _ => "",
     }
@@ -360,6 +379,9 @@ const ROW_H: f32 = 34.0;
 const ROW_GAP: f32 = 4.0;
 /// How many rows a page of choices can show (the panel is only so tall).
 const MAX_ROWS: usize = 6;
+/// The panel is this tall on every page. If it shrank when a page opened, the pointer (which was
+/// on the tile that was clicked) would be left outside the notch and the notch would close.
+const PANEL_H: f32 = crate::shell::OPEN_MAX_H - 28.0;
 
 pub struct ControlsModule {
     backend: Arc<dyn ControlsBackend>,
@@ -451,6 +473,9 @@ impl ControlsModule {
             ControlCommand::ShowPage(page) => {
                 self.page = *page;
                 self.selected = 0;
+                if *page == ControlsPage::Network {
+                    self.backend.send(ControlCommand::ScanWifi);
+                }
                 return vec![Effect::Redraw];
             }
             ControlCommand::SetWifi(on) => set_pending(Tile::Wifi, *on),
@@ -737,6 +762,48 @@ impl ControlsModule {
         self.push_button(x, y, w, h, command);
     }
 
+    /// A small button at the right end of a page's header row.
+    fn header_action(&mut self, kit: &mut Kit, frame: &PanelFrame, y: f32, text: &str, command: ControlCommand) {
+        let theme = frame.theme;
+        let tw = kit.canvas.measure(kit.fonts, Face::Sans, 12.0, text, 0.0);
+        let w = 40.0 + tw;
+        let x = frame.origin_x + PAD_X + CONTENT_W - w;
+        let selected = self.keyboard && self.drawn_buttons == self.selected;
+        self.surface(kit, frame, x, y, w, 30.0, 15.0, false, selected);
+        put(kit, Face::Sans, 12.0, x + 14.0, y, 30.0, tw + 6.0, text, theme.fg, frame.alpha);
+        kit.canvas.icon(Icon::ArrowUpRight, x + w - 16.0, y + 15.0, 11.0, theme.dim, frame.alpha);
+        self.push_button(x, y, w, 30.0, command);
+    }
+
+    /// One network in range: its name, how strong it is, and whether it needs a password.
+    fn network_row(&mut self, kit: &mut Kit, frame: &PanelFrame, y: f32, n: &Network) {
+        let theme = frame.theme;
+        let (x, w, h) = (frame.origin_x + PAD_X, CONTENT_W, ROW_H);
+        let selected = self.keyboard && self.drawn_buttons == self.selected;
+        self.surface(kit, frame, x, y, w, h, 12.0, n.connected, selected);
+        let ink = if n.connected { theme.bg } else { theme.fg };
+        let quiet = if n.connected { theme.bg } else { theme.dim };
+        kit.canvas.icon(Icon::Wifi, x + 22.0, y + h / 2.0, 15.0, ink, frame.alpha);
+        put(kit, Face::Sans, 12.5, x + 44.0, y, h, w - 150.0, &n.name, ink, frame.alpha);
+        // The right end: a check when connected, a lock when a password is needed, then the signal bars.
+        let mut right = x + w - 18.0;
+        if n.connected {
+            kit.canvas.icon(Icon::Check, right, y + h / 2.0, 13.0, ink, frame.alpha);
+            right -= 26.0;
+        } else if n.secured && !n.saved {
+            kit.canvas.icon(Icon::Lock, right, y + h / 2.0, 12.0, quiet, frame.alpha);
+            right -= 26.0;
+        }
+        let lit = (u32::from(n.signal) + 24) / 25;
+        for i in 0..4u32 {
+            let bar_h = 4.0 + 3.0 * i as f32;
+            let bx = right - 20.0 + 5.0 * i as f32;
+            let on = i < lit;
+            kit.canvas.rrect(bx, y + h / 2.0 + 7.0 - bar_h, 3.0, bar_h, 1.0, quiet, frame.alpha * if on { 0.95 } else { 0.28 });
+        }
+        self.push_button(x, y, w, h, ControlCommand::ConnectWifi(n.name.clone()));
+    }
+
     fn layout(&mut self, env: &Env, kit: &mut Kit, frame: &PanelFrame, draw: bool) -> f32 {
         let lang = env.t.lang();
         let state = self.backend.state();
@@ -826,18 +893,20 @@ impl ControlsModule {
         let mut y = PAD_TOP;
         if draw {
             self.back_button(kit, frame, y, word(lang, "networks"), lang);
+            self.header_action(kit, frame, y, word(lang, "more"), ControlCommand::WifiSettings);
         }
         y += 30.0 + GAP;
-        for n in state.networks.iter().take(MAX_ROWS - 1) {
+        if state.networks.is_empty() && draw {
+            let theme = frame.theme;
+            put(kit, Face::Sans, 12.0, frame.origin_x + PAD_X + 4.0, y, 30.0, CONTENT_W - 8.0, word(lang, "searching"), theme.dim, frame.alpha);
+        }
+        for n in state.networks.iter().take(MAX_ROWS) {
             if draw {
-                self.choice_row(kit, frame, y, Icon::Wifi, &n.name, n.connected, ControlCommand::ConnectWifi(n.name.clone()));
+                self.network_row(kit, frame, y, n);
             }
             y += ROW_H + ROW_GAP;
         }
-        if draw {
-            self.choice_row(kit, frame, y, Icon::ArrowUpRight, word(lang, "more"), false, ControlCommand::WifiSettings);
-        }
-        y + ROW_H + PAD_BOTTOM
+        y + PAD_BOTTOM
     }
 }
 
@@ -898,7 +967,7 @@ impl Module for ControlsModule {
         }
         let theme = crate::ui::theme::Theme::dark();
         let frame = PanelFrame { theme: &theme, alpha: 1.0, viewport_h: crate::shell::OPEN_MAX_H, origin_x: 0.0, keyboard: false };
-        self.layout(env, kit, &frame, false)
+        self.layout(env, kit, &frame, false).max(PANEL_H)
     }
 
     fn draw_panel(&mut self, env: &Env, kit: &mut Kit, frame: &PanelFrame) {
@@ -1142,10 +1211,19 @@ impl Module for ControlsModule {
                 let back = ControlCommand::ShowPage(ControlsPage::Main);
                 let r = cmd_rect(&self.hits, &back);
                 push(&mut out, w("back").to_string(), back, r);
-                for n in state.networks.iter().take(MAX_ROWS - 1) {
+                for n in state.networks.iter().take(MAX_ROWS) {
                     let cmd = ControlCommand::ConnectWifi(n.name.clone());
                     let r = cmd_rect(&self.hits, &cmd);
-                    push(&mut out, format!("{}{}", n.name, if n.connected { " ✓" } else { "" }), cmd, r);
+                    let note = if n.connected {
+                        " ✓".to_string()
+                    } else if n.secured && !n.saved {
+                        format!(", {}", w("secured"))
+                    } else if !n.secured && !n.saved {
+                        format!(", {}", w("open"))
+                    } else {
+                        String::new()
+                    };
+                    push(&mut out, format!("{}{note}", n.name), cmd, r);
                 }
                 let r = cmd_rect(&self.hits, &ControlCommand::WifiSettings);
                 push(&mut out, w("more").to_string(), ControlCommand::WifiSettings, r);

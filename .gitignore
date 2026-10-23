@@ -15,3 +15,5 @@ spikes/*/target/
 
 crates/blink-settings/gen/
 /target-alt/
+
+target-alt*/
