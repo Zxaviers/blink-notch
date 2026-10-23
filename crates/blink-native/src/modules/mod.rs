@@ -66,6 +66,8 @@ pub enum Effect {
     RefreshFeeds,
     /// The panel's content changed size or data; redraw.
     Redraw,
+    /// Something a screen reader should say (an action was carried out).
+    Announce(String),
     /// A reminder: a system notification (when the user wants them).
     Toast { title: String, body: String, url: Option<String> },
     /// The module has something to peek about (see `Module::peek`).
@@ -154,6 +156,17 @@ pub trait Module {
 
     /// Fetch fresh data now.
     fn refresh(&mut self) {}
+
+    /// What a screen reader sees, without the root: elements whose parent is `access::ROOT`
+    /// or one of the others. `open` says whether the panel is showing.
+    fn accessibility(&mut self, _env: &Env, _open: bool) -> Vec<crate::access::Node> {
+        Vec::new()
+    }
+
+    /// Carry out an action chosen through a screen reader (the same as a click or key would).
+    fn perform(&mut self, _action: Action, _env: &Env) -> Vec<Effect> {
+        Vec::new()
+    }
 
     /// The personal events file was rewritten.
     fn reload_local(&mut self) {}

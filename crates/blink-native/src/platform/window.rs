@@ -43,6 +43,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 use super::control::{self, Request, WM_CONTROL, WM_IPC};
 use super::focus;
 use super::system::{self, WM_SHOW_ME};
+use super::uia;
 use super::tray::{self, MenuLabels, Tray, WM_TRAY};
 use crate::app::{App, AppEffect};
 use crate::clock::Clock;
@@ -56,6 +57,9 @@ const MANUAL_WALL_BASE: i64 = 1_792_670_400_000;
 const TIMER_WAKE: usize = 1;
 const TIMER_QUIT: usize = 2;
 const TIMER_POLL: usize = 3;
+const TIMER_A11Y: usize = 4;
+/// Keep screen-reader snapshots at most this often (mouse moves arrive far faster).
+const A11Y_EVERY_MS: u128 = 100;
 /// Slow safety net for the fullscreen check (the foreground hook is the fast path).
 const POLL_MS: u32 = 3000;
 /// Posted by the foreground hook.
@@ -253,6 +257,7 @@ struct Runtime {
     /// Time between consecutive animation frames (ms), for the pacing check.
     frame_times: Vec<f32>,
     last_frame: Option<Instant>,
+    last_a11y: Instant,
 }
 
 thread_local! {
@@ -366,6 +371,7 @@ impl Runtime {
         if !self.app.wants_frames() {
             self.last_frame = None;
             self.reschedule();
+            self.publish_a11y();
         }
     }
 
@@ -393,6 +399,31 @@ impl Runtime {
         self.process_effects();
         self.dirty = true;
         self.reschedule();
+        self.publish_a11y_soon();
+    }
+
+    /// Keep what a screen reader sees current. Costs nothing until one has asked.
+    fn publish_a11y(&mut self) {
+        if !uia::active() {
+            return;
+        }
+        self.last_a11y = Instant::now();
+        let tree = self.app.accessibility();
+        uia::publish(self.hwnd, tree, self.origin, self.scale());
+    }
+
+    /// Publish now, or shortly if one just went out (a burst of mouse moves makes one).
+    fn publish_a11y_soon(&mut self) {
+        if !uia::active() {
+            return;
+        }
+        if self.last_a11y.elapsed().as_millis() >= A11Y_EVERY_MS {
+            self.publish_a11y();
+        } else {
+            unsafe {
+                SetTimer(Some(self.hwnd), TIMER_A11Y, A11Y_EVERY_MS as u32 + 20, None);
+            }
+        }
     }
 
     fn process_effects(&mut self) {
@@ -413,6 +444,12 @@ impl Runtime {
                     } else {
                         let _ = self.toast(&title, &body, url);
                     }
+                }
+                AppEffect::Announce(text) => {
+                    if self.control {
+                        self.effects_log.push(format!("announce:{text}"));
+                    }
+                    uia::announce(self.hwnd, &text);
                 }
                 AppEffect::KeyboardFocus(on) => {
                     if self.control && self.sim_focus {
@@ -704,6 +741,12 @@ impl Runtime {
                 }
                 TIMER_QUIT => unsafe { PostQuitMessage(0) },
                 TIMER_POLL => self.refresh_fullscreen(),
+                TIMER_A11Y => {
+                    unsafe {
+                        let _ = KillTimer(Some(self.hwnd), TIMER_A11Y);
+                    }
+                    self.publish_a11y();
+                }
                 _ => {}
             },
             WM_HOTKEY => {
@@ -713,6 +756,10 @@ impl Runtime {
                 }
             }
             WM_FOREGROUND => self.refresh_fullscreen(),
+            uia::WM_A11Y_INVOKE => {
+                self.app.accessible_invoke(wparam.0 as i32);
+                self.after();
+            }
             WM_DATA => {
                 self.app.data_changed();
                 self.after();
@@ -982,6 +1029,14 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: 
         let _ = DestroyWindow(hwnd);
         return LRESULT(0);
     }
+    if msg == uia::WM_GETOBJECT && lparam.0 as i32 == -25 {
+        // First question from an assistive tool: have a tree ready, then answer.
+        uia::set_active();
+        with_rt(|rt| rt.publish_a11y());
+        if let Some(answer) = uia::on_get_object(hwnd, wparam, lparam) {
+            return answer;
+        }
+    }
     if msg == WM_TRAY {
         // The menu runs its own message loop, so it must not hold the runtime.
         match (lparam.0 & 0xffff) as u32 {
@@ -1144,6 +1199,7 @@ pub fn run(opts: Options) -> Result<(), String> {
             hotkey: String::new(),
             frame_times: Vec::new(),
             last_frame: None,
+            last_a11y: Instant::now(),
         });
     });
     // Show first: the checks below may hide it again (a fullscreen app is already in front).

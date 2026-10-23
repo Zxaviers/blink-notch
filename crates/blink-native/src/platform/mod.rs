@@ -3,5 +3,6 @@
 pub mod control;
 pub mod focus;
 pub mod system;
+pub mod uia;
 pub mod tray;
 pub mod window;

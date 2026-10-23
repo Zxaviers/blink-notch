@@ -4,6 +4,7 @@
 //! here and are unit tested without Windows; the window, tray and other Windows
 //! glue is in `platform` and the `blink` binary.
 
+pub mod access;
 pub mod app;
 pub mod clock;
 pub mod live;

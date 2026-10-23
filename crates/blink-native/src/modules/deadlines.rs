@@ -19,6 +19,7 @@ use blink_core::planner::{is_snoozed, snooze_until, SNOOZE_KINDS};
 use blink_core::settings::Settings;
 use blink_core::view::{build_view, View};
 
+use crate::access::{self, key_for, Node, NodeAction, Role, ROOT};
 use super::{Action, Effect, Env, Key, KeyResult, Kit, Module, PanelFrame, PeekView, PointerKind, RestView};
 use crate::ui::canvas::Icon;
 use crate::ui::text::Face;
@@ -643,24 +644,27 @@ impl DeadlinesModule {
         match action {
             Action::OpenUrl(url) => vec![Effect::OpenUrl(url)],
             Action::MarkDone(id) => {
+                let said = self.said(env, "marked_done", &id);
                 self.source.mark_done(&id, env.wall_ms);
                 if self.state.selected.as_deref() == Some(id.as_str()) {
                     self.state.selected = None;
                 }
-                vec![Effect::Redraw]
+                vec![Effect::Redraw, Effect::Announce(said)]
             }
             Action::Restore(id) => {
+                let said = self.said(env, "restored", &id);
                 self.source.restore(&id);
-                vec![Effect::Redraw]
+                vec![Effect::Redraw, Effect::Announce(said)]
             }
             Action::ToggleSnooze(id) => {
                 self.state.snooze_for = if self.state.snooze_for.as_deref() == Some(id.as_str()) { None } else { Some(id) };
                 vec![Effect::Redraw]
             }
             Action::Snooze(id, kind) => {
+                let said = self.said(env, "snoozed", &id);
                 self.source.snooze(&id, kind, env.wall_ms, env.tz);
                 self.state.snooze_for = None;
-                vec![Effect::Redraw]
+                vec![Effect::Redraw, Effect::Announce(said)]
             }
             Action::ToggleDone => {
                 self.state.done_open = !self.state.done_open;
@@ -672,6 +676,29 @@ impl DeadlinesModule {
             }
             Action::OpenSettings => vec![Effect::OpenSettings],
         }
+    }
+
+    /// "Marked done: Problem Set 4": what a screen reader says after an action.
+    fn said(&self, env: &Env, word_key: &str, id: &str) -> String {
+        let view = self.model(env).view;
+        let title = view.upcoming.iter().chain(&view.overdue).chain(&view.done_list).find(|t| t.id == id).map(|t| t.title.clone()).unwrap_or_default();
+        format!("{}: {}", access::word(env.t.lang(), word_key), title)
+    }
+
+    /// One screen-reader sentence for a deadline: title, course, when, how long.
+    fn row_name(task: &Task, env: &Env) -> String {
+        let mut parts = vec![task.title.clone()];
+        if let Some(course) = task.course.as_deref().filter(|c| !c.is_empty()) {
+            parts.push(course.to_string());
+        }
+        parts.push(due_label(task.due_ms, env.wall_ms, &env.t, env.tz));
+        parts.push(compact_countdown(task.due_ms, env.wall_ms, &env.t, false));
+        parts.join(". ")
+    }
+
+    /// Window rectangle (logical px) of a row as drawn last frame; None when scrolled out of view.
+    fn drawn_row(&self, id: &str) -> Option<(f32, f32, f32, f32)> {
+        self.hits.iter().find(|h| h.row.as_deref() == Some(id) && h.rect.w > BTN * 2.0).map(|h| (h.rect.x, h.rect.y, h.rect.w, h.rect.h))
     }
 
     /// Milliseconds until the countdown text for `due` changes.
@@ -902,6 +929,81 @@ impl Module for DeadlinesModule {
 
     fn configure(&mut self, settings: &Settings) {
         self.source.configure(settings);
+    }
+
+    fn perform(&mut self, action: Action, env: &Env) -> Vec<Effect> {
+        self.act(action, env)
+    }
+
+    fn accessibility(&mut self, env: &Env, open: bool) -> Vec<Node> {
+        let lang = env.t.lang();
+        let w = |key: &str| access::word(lang, key);
+        let model = self.model(env);
+        let mut out = Vec::new();
+
+        if !open {
+            let rv = self.rest(env);
+            let text = if model.view.hero.is_some() { format!("{}: {} {}", w("next"), rv.label, rv.count) } else { rv.count };
+            let mut pill = Node::new(1, ROOT, Role::Button, text);
+            pill.action = Some(NodeAction::OpenPanel);
+            out.push(pill);
+            return out;
+        }
+
+        let push_rows = |out: &mut Vec<Node>, list_key: i32, list_name: &str, tasks: Vec<&Task>, done: bool, this: &Self| {
+            if tasks.is_empty() {
+                return;
+            }
+            out.push(Node::new(list_key, ROOT, Role::List, list_name));
+            for task in tasks {
+                let rect = this.drawn_row(&task.id);
+                let row_key = key_for(&task.id, 0);
+                let mut row = Node::new(row_key, list_key, Role::ListItem, Self::row_name(task, env));
+                row.help = w("row_help").to_string();
+                row.rect = rect.unwrap_or_default();
+                row.offscreen = rect.is_none();
+                row.focused = this.state.keyboard && this.state.selected.as_deref() == Some(task.id.as_str());
+                row.action = task.url.clone().map(|u| NodeAction::Module(Action::OpenUrl(u)));
+                out.push(row.clone());
+                let button = |sub: i32, name: &str, action: Action| {
+                    let mut b = Node::new(key_for(&task.id, sub), row_key, Role::Button, format!("{name}: {}", task.title));
+                    b.rect = row.rect;
+                    b.offscreen = row.offscreen;
+                    b.action = Some(NodeAction::Module(action));
+                    b
+                };
+                if done {
+                    out.push(button(5, w("restore"), Action::Restore(task.id.clone())));
+                } else {
+                    out.push(button(1, w("mark_done"), Action::MarkDone(task.id.clone())));
+                    out.push(button(2, w("snooze_30m"), Action::Snooze(task.id.clone(), "30m")));
+                    out.push(button(3, w("snooze_2h"), Action::Snooze(task.id.clone(), "2h")));
+                    out.push(button(4, w("snooze_tomorrow"), Action::Snooze(task.id.clone(), "tomorrow")));
+                }
+            }
+        };
+
+        let upcoming: Vec<&Task> = model.view.upcoming.iter().take(MAX_UPCOMING_ROWS).collect();
+        push_rows(&mut out, 2, w("upcoming"), upcoming, false, self);
+        let overdue: Vec<&Task> = model.view.overdue.iter().take(MAX_OVERDUE_ROWS).collect();
+        push_rows(&mut out, 3, w("overdue"), overdue, false, self);
+        if !model.view.done_list.is_empty() {
+            let mut toggle = Node::new(5, ROOT, Role::Button, format!("{} ({})", w("show_done"), model.view.done_list.len()));
+            toggle.action = Some(NodeAction::Module(Action::ToggleDone));
+            out.push(toggle);
+            if self.state.done_open {
+                push_rows(&mut out, 4, w("done"), model.view.done_list.iter().collect(), true, self);
+            }
+        }
+        if model.has_feeds {
+            let mut refresh = Node::new(6, ROOT, Role::Button, w("refresh"));
+            refresh.action = Some(NodeAction::Module(Action::Refresh));
+            out.push(refresh);
+        }
+        let mut settings = Node::new(7, ROOT, Role::Button, w("settings"));
+        settings.action = Some(NodeAction::Module(Action::OpenSettings));
+        out.push(settings);
+        out
     }
 
     fn refresh(&mut self) {

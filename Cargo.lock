@@ -305,6 +305,7 @@ dependencies = [
  "tiny-skia",
  "ttf-parser",
  "windows",
+ "windows-core",
 ]
 
 [[package]]

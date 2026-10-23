@@ -22,6 +22,8 @@ pub enum AppEffect {
     RefreshFeeds,
     /// Take (true) or give back (false) real keyboard focus.
     KeyboardFocus(bool),
+    /// Something for a screen reader to say (only matters while one is running).
+    Announce(String),
     /// A system notification; `url` is what clicking it opens.
     Toast { title: String, body: String, url: Option<String> },
 }
@@ -181,8 +183,10 @@ impl App {
                 Effect::OpenSettings => self.effects.push(AppEffect::OpenSettings),
                 Effect::RefreshFeeds => self.effects.push(AppEffect::RefreshFeeds),
                 Effect::Redraw => {}
+                Effect::Announce(text) => self.effects.push(AppEffect::Announce(text)),
                 Effect::Toast { title, body, url } => {
                     if self.settings.toast {
+                        self.effects.push(AppEffect::Announce(format!("{title}. {body}")));
                         self.effects.push(AppEffect::Toast { title, body, url });
                     }
                 }
@@ -362,6 +366,44 @@ impl App {
         self.update_rest_style();
         if self.shell.mode() == Mode::Open {
             self.refresh_panel_height();
+        }
+    }
+
+    /// The tree a screen reader sees right now: the notch, and what the active module shows in it.
+    pub fn accessibility(&mut self) -> crate::access::Tree {
+        use crate::access::{Node, Role, Tree, ROOT};
+        let now = self.clock.now_ms();
+        let shape = self.shell.shape(now);
+        let open = self.shell.mode() == Mode::Open;
+        let tz = self.tz.clone();
+        let env = self.env(&tz);
+        let mut nodes = self.modules[self.active].accessibility(&env, open);
+        let rect = ((WINDOW_W - shape.w) / 2.0, 0.0, shape.w, shape.h);
+        let mut root = Node::new(ROOT, ROOT, Role::Pane, crate::access::word(env.t.lang(), "notch"));
+        root.rect = rect;
+        root.focused = self.shell.keyboard() && !nodes.iter().any(|n| n.focused);
+        // Elements without a place of their own (the resting pill) take the notch's.
+        for n in nodes.iter_mut().filter(|n| n.rect.2 <= 0.0 && !n.offscreen && n.role == Role::Button && n.parent == ROOT && !open) {
+            n.rect = rect;
+        }
+        let mut all = vec![root];
+        all.extend(nodes);
+        Tree { nodes: all }
+    }
+
+    /// A screen reader activated an element (by key from the last tree it saw).
+    pub fn accessible_invoke(&mut self, key: i32) {
+        use crate::access::NodeAction;
+        let tree = self.accessibility();
+        let Some(action) = tree.find(key).and_then(|n| n.action.clone()) else { return };
+        match action {
+            NodeAction::OpenPanel => self.hotkey(),
+            NodeAction::Module(a) => {
+                let tz = self.tz.clone();
+                let env = self.env(&tz);
+                let effects = self.modules[self.active].perform(a, &env);
+                self.apply_module_effects(effects);
+            }
         }
     }
 
