@@ -21,7 +21,7 @@ use windows::Win32::Devices::Display::{
 use windows::Win32::Foundation::{CloseHandle, HANDLE, PROPERTYKEY};
 use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
 use windows::Win32::Media::Audio::{
-    eCommunications, eConsole, eMultimedia, eRender, ERole, IMMDeviceEnumerator, MMDeviceEnumerator, DEVICE_STATE_ACTIVE,
+    eCapture, eCommunications, eConsole, eMultimedia, eRender, ERole, IMMDeviceEnumerator, MMDeviceEnumerator, DEVICE_STATE_ACTIVE,
 };
 use windows::Win32::NetworkManagement::WiFi::{
     WlanConnect, WlanEnumInterfaces, WlanFreeMemory, WlanGetAvailableNetworkList, WlanOpenHandle, WLAN_AVAILABLE_NETWORK_LIST, WLAN_CONNECTION_PARAMETERS,
@@ -33,6 +33,7 @@ use windows::Win32::System::Com::{CoCreateInstance, CLSCTX_ALL, STGM_READ};
 use windows::Win32::System::IO::DeviceIoControl;
 use windows::Win32::System::WinRT::{RoInitialize, RO_INIT_MULTITHREADED};
 use windows::Win32::UI::Input::KeyboardAndMouse::{keybd_event, KEYEVENTF_KEYUP};
+use windows::Win32::System::Shutdown::LockWorkStation;
 use windows::Win32::UI::Shell::ShellExecuteW;
 use windows::Win32::UI::WindowsAndMessaging::{GetSystemMetrics, SM_CMONITORS, SW_SHOWNORMAL};
 
@@ -177,9 +178,21 @@ impl Context {
                 ControlCommand::SetBluetooth(on) => set_radio(RadioKind::Bluetooth, *on),
                 ControlCommand::ConnectWifi(name) => self.connect(name),
                 ControlCommand::Project(m) => project(*m),
+                ControlCommand::ToggleMic => {
+                    if let Some(ep) = default_capture() {
+                        if let Ok(m) = ep.GetMute() {
+                            let _ = ep.SetMute(!m.as_bool(), std::ptr::null());
+                        }
+                    }
+                }
                 ControlCommand::Cast => cast(),
+                ControlCommand::Lock => {
+                    let _ = LockWorkStation();
+                }
+                ControlCommand::Snip => open_uri("ms-screenclip:"),
+                ControlCommand::OpenSettings => open_uri("ms-settings:"),
                 ControlCommand::WifiSettings => open_uri("ms-settings:network-wifi"),
-                ControlCommand::Refresh => {}
+                ControlCommand::Refresh | ControlCommand::ShowPage(_) => {}
             }
         }
     }
@@ -206,12 +219,19 @@ impl Context {
                 s.bluetooth = read_radio(RadioKind::Bluetooth);
                 s.networks = self.read_networks();
             }
+            ControlCommand::ToggleMic => s.mic_muted = read_mic_muted(),
             ControlCommand::ConnectWifi(_) => s.networks = self.read_networks(),
             ControlCommand::Project(_) => {
                 s.project = read_project();
                 s.displays = unsafe { GetSystemMetrics(SM_CMONITORS) }.clamp(0, 255) as u8;
             }
-            ControlCommand::Cast | ControlCommand::WifiSettings | ControlCommand::Refresh => {}
+            ControlCommand::Cast
+            | ControlCommand::Lock
+            | ControlCommand::Snip
+            | ControlCommand::OpenSettings
+            | ControlCommand::WifiSettings
+            | ControlCommand::Refresh
+            | ControlCommand::ShowPage(_) => {}
         }
     }
 
@@ -224,6 +244,7 @@ impl Context {
             brightness: read_brightness(),
             wifi: read_radio(RadioKind::WiFi),
             bluetooth: read_radio(RadioKind::Bluetooth),
+            mic_muted: read_mic_muted(),
             networks: self.read_networks(),
             project: read_project(),
             displays: unsafe { GetSystemMetrics(SM_CMONITORS) }.clamp(0, 255) as u8,
@@ -299,6 +320,16 @@ unsafe fn enumerator() -> Option<IMMDeviceEnumerator> {
 unsafe fn default_endpoint() -> Option<IAudioEndpointVolume> {
     let device = enumerator()?.GetDefaultAudioEndpoint(eRender, eConsole).ok()?;
     device.Activate::<IAudioEndpointVolume>(CLSCTX_ALL, None).ok()
+}
+
+unsafe fn default_capture() -> Option<IAudioEndpointVolume> {
+    let device = enumerator()?.GetDefaultAudioEndpoint(eCapture, eConsole).ok()?;
+    device.Activate::<IAudioEndpointVolume>(CLSCTX_ALL, None).ok()
+}
+
+/// Whether the default microphone is muted; None when there is no microphone.
+fn read_mic_muted() -> Option<bool> {
+    unsafe { Some(default_capture()?.GetMute().ok()?.as_bool()) }
 }
 
 fn read_volume() -> Option<(u8, bool)> {

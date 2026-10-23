@@ -94,3 +94,14 @@ Feedback from trying it, and what changed:
 3. **Controls module (tab):** volume with mute and output chips, brightness, Wi-Fi and Bluetooth on/off, saved networks, Cast, and projection modes (shown only with a second screen). Real backend in `platform/winctl.rs`; a fake backend is used in scripted runs (`gate-controls.ps1`, 13 checks).
 4. **Volume keys taken over** (`takeOverVolumeKeys`, on by default): a low-level hook swallows only Volume Up/Down/Mute while the notch is showing, so Windows' own volume bar does not appear. Verified with injected keys. Not verified: Fn keys the laptop firmware handles itself, and Windows' brightness bar (not suppressed).
 5. Direction stays "Nusa-like, but more customizable": modules on/off/order/options in `host.json`; a settings page for it comes in 6f.
+
+### Controls v2: tiles (2026-10-23)
+Feedback: the Controls tab looked plain and lacked features. Nusa itself has no control center (only volume and brightness overlays), so the look follows Nusa's language (pure black, white "on" pills, big rounded cards, small grey captions) and the features follow what a quick-settings panel needs.
+
+- **Sliders:** volume and brightness are wide tiles that fill like a progress bar (dark text over the fill, light elsewhere, a grip at the edge). The speaker icon is mute. The wheel nudges; `[` `]` change brightness from the keyboard. A slider shows where you put it at once, not when Windows reports back.
+- **Output row** under the volume shows the device in use; it opens a page listing every output (the one in use first, a check on it). Choosing one goes back.
+- **Tiles (4 across):** Wi-Fi (the network name shows; a small arrow opens the saved networks page), Bluetooth, **Microphone** (mute, new), Cast, Project (one press moves to the next mode; only with a second screen), **Lock**, **Screenshot** (the Win+Shift+S tool), **Settings**. A pressed toggle looks done at once and is checked against Windows a moment later.
+- **Customizable:** `tiles` (ids `wifi`, `bluetooth`, `mic`, `cast`, `project`, `lock`, `snip`, `settings`; order and subset) and `output` (true/false) in the controls module options of `host.json`.
+- **Live:** while the panel is open it re-reads Windows every 2 s, so a change made elsewhere shows up.
+- **Checks:** 11 panel tests (new: pages, microphone, tiles option, optimistic toggle, periodic refresh), `gate-controls.ps1` 22 checks, other gates unchanged. Checked against the real PC read-only (outputs, Wi-Fi, brightness); not clicked on real hardware: mic mute, lock, screenshot tool, settings, cast, projection, output switching, Wi-Fi connect.
+- **Not done:** Night light, Do not disturb, battery saver and airplane mode (Windows has no clean public way to switch these; they would be a link to Windows settings at best), a Bluetooth device list, per-app volume, DDC brightness for external monitors.

@@ -27,7 +27,7 @@ try {
   'sliders'
   $vol = Hits | Where-Object { $_.target -eq 'Volume' } | Select-Object -First 1
   $y = $vol.y + $vol.h / 2
-  $a = $vol.x + 8; $b = $vol.x + $vol.w - 8
+  $a = $vol.x; $b = $vol.x + $vol.w
   Ctl @{cmd='mouse'; kind='move'; x=($a + ($b - $a) * 0.25); y=$y} | Out-Null
   Ctl @{cmd='mouse'; kind='down'; x=($a + ($b - $a) * 0.25); y=$y} | Out-Null
   Ctl @{cmd='mouse'; kind='move'; x=($a + ($b - $a) * 0.8); y=$y} | Out-Null
@@ -35,24 +35,44 @@ try {
   $log = Log
   Check 'dragging the volume slider sends the levels it passes' ($log -contains 'SetVolume(25)' -and $log -contains 'SetVolume(80)') ($log -join ', ')
   $br = Hits | Where-Object { $_.target -eq 'Brightness' } | Select-Object -First 1
-  Ctl @{cmd='mouse'; kind='move'; x=($br.x + 8); y=($br.y + 10)} | Out-Null
-  Ctl @{cmd='mouse'; kind='down'; x=($br.x + 8); y=($br.y + 10)} | Out-Null
-  Ctl @{cmd='mouse'; kind='up'; x=($br.x + 8); y=($br.y + 10)} | Out-Null
+  Ctl @{cmd='mouse'; kind='move'; x=($br.x + 0.5); y=($br.y + 10)} | Out-Null
+  Ctl @{cmd='mouse'; kind='down'; x=($br.x + 0.5); y=($br.y + 10)} | Out-Null
+  Ctl @{cmd='mouse'; kind='up'; x=($br.x + 0.5); y=($br.y + 10)} | Out-Null
   Check 'the brightness slider sets brightness' ((Log) -contains 'SetBrightness(0)')
 
-  'buttons'
-  ClickHit '*ToggleMute*'
+  'tiles and buttons'
+  function Page() { (Ctl @{cmd='state'}).state.module.page }
+  function ClickAndDraw($pattern) { ClickHit $pattern; Ctl @{cmd='advance'; ms=60} | Out-Null }
+  ClickAndDraw '*ToggleMute*'
   Check 'the speaker button mutes' ((Log) -contains 'ToggleMute')
-  ClickHit '*SetOutput("bt")*'
+  ClickAndDraw '*SetBluetooth(false)*'
+  Check 'the Bluetooth tile toggles it' ((Log) -contains 'SetBluetooth(false)')
+  ClickAndDraw '*ToggleMic*'
+  Check 'the microphone tile mutes the microphone' ((Log) -contains 'ToggleMic')
+  ClickAndDraw '*Project(SecondOnly)*'
+  Check 'the project tile moves to the next mode' ((Log) -contains 'Project(SecondOnly)')
+  ClickAndDraw '*Cast*'
+  Check 'Cast is a tile' ((Log) -contains 'Cast')
+  ClickAndDraw '*Lock*'
+  Check 'Lock is a tile' ((Log) -contains 'Lock')
+  ClickAndDraw '*Snip*'
+  Check 'Screenshot is a tile' ((Log) -contains 'Snip')
+  ClickAndDraw '*OpenSettings*'
+  Check 'Settings is a tile' ((Log) -contains 'OpenSettings')
+
+  'pages'
+  ClickAndDraw '*ShowPage(Output)*'
+  Check 'the output row opens its page' ((Page) -eq 'Output') (Page)
+  ClickAndDraw '*SetOutput("bt")*'
   Check 'choosing another output sends it' ((Log) -contains 'SetOutput("bt")')
-  ClickHit '*SetBluetooth(false)*'
-  Check 'the Bluetooth chip toggles it' ((Log) -contains 'SetBluetooth(false)')
-  ClickHit '*ConnectWifi("Home")*'
+  Check 'and goes back to the main page' ((Page) -eq 'Main') (Page)
+  ClickAndDraw '*ShowPage(Network)*'
+  Check 'the Wi-Fi arrow opens the networks page' ((Page) -eq 'Network') (Page)
+  ClickAndDraw '*ConnectWifi("Home")*'
   Check 'a saved network connects' ((Log) -contains 'ConnectWifi("Home")')
-  ClickHit '*Project(Duplicate)*'
-  Check 'a projection mode is chosen' ((Log) -contains 'Project(Duplicate)')
-  ClickHit '*Cast*'
-  Check 'Cast is a button' ((Log) -contains 'Cast')
+  Check 'and goes back to the main page' ((Page) -eq 'Main') (Page)
+  ClickAndDraw '*SetWifi(false)*'
+  Check 'the Wi-Fi tile toggles it' ((Log) -contains 'SetWifi(false)')
 
   'the volume keys'
   $fx = @((Ctl @{cmd='media_key'; vk=175}).effects) + @((Ctl @{cmd='media_key'; vk=173}).effects)

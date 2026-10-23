@@ -19,6 +19,16 @@ pub enum Icon {
     Speaker,
     SpeakerMuted,
     Sun,
+    Wifi,
+    Bluetooth,
+    Mic,
+    MicMuted,
+    Cast,
+    Monitor,
+    Lock,
+    Crop,
+    ChevronRight,
+    ChevronLeft,
 }
 
 type ClipState = (Option<(i32, i32, i32, i32)>, Option<Mask>);
@@ -265,6 +275,71 @@ impl Canvas {
                     line(&mut pb, (4.2 * a.cos(), 4.2 * a.sin()), (6.0 * a.cos(), 6.0 * a.sin()));
                 }
             }
+            Icon::Wifi => {
+                for r in [3.0, 5.6, 8.2] {
+                    arc(&mut pb, (0.0, 4.4), r, -135.0, -45.0);
+                }
+                arc(&mut pb, (0.0, 4.4), 0.35, 0.0, 360.0);
+            }
+            Icon::Bluetooth => {
+                line(&mut pb, (-3.2, -3.0), (3.2, 3.0));
+                line(&mut pb, (3.2, 3.0), (0.0, 6.0));
+                line(&mut pb, (0.0, 6.0), (0.0, -6.0));
+                line(&mut pb, (0.0, -6.0), (3.2, -3.0));
+                line(&mut pb, (3.2, -3.0), (-3.2, 3.0));
+            }
+            Icon::Mic | Icon::MicMuted => {
+                line(&mut pb, (-2.2, -4.2), (-2.2, 0.6));
+                line(&mut pb, (2.2, -4.2), (2.2, 0.6));
+                arc(&mut pb, (0.0, -4.2), 2.2, 180.0, 360.0);
+                arc(&mut pb, (0.0, 0.6), 2.2, 0.0, 180.0);
+                arc(&mut pb, (0.0, 0.6), 4.6, 0.0, 180.0);
+                line(&mut pb, (0.0, 5.2), (0.0, 6.6));
+                if icon == Icon::MicMuted {
+                    line(&mut pb, (-5.2, -6.0), (5.2, 6.2));
+                }
+            }
+            Icon::Cast => {
+                line(&mut pb, (-6.0, 4.0), (-6.0, -4.0));
+                line(&mut pb, (-6.0, -4.0), (6.0, -4.0));
+                line(&mut pb, (6.0, -4.0), (6.0, 4.0));
+                line(&mut pb, (6.0, 4.0), (2.4, 4.0));
+                for r in [2.4, 4.8] {
+                    arc(&mut pb, (-6.0, 4.0), r, -90.0, 0.0);
+                }
+                arc(&mut pb, (-6.0, 4.0), 0.35, 0.0, 360.0);
+            }
+            Icon::Monitor => {
+                line(&mut pb, (-6.0, -5.0), (6.0, -5.0));
+                line(&mut pb, (6.0, -5.0), (6.0, 2.0));
+                line(&mut pb, (6.0, 2.0), (-6.0, 2.0));
+                line(&mut pb, (-6.0, 2.0), (-6.0, -5.0));
+                line(&mut pb, (0.0, 2.0), (0.0, 5.4));
+                line(&mut pb, (-3.0, 5.4), (3.0, 5.4));
+            }
+            Icon::Lock => {
+                line(&mut pb, (-4.4, -0.4), (4.4, -0.4));
+                line(&mut pb, (4.4, -0.4), (4.4, 5.6));
+                line(&mut pb, (4.4, 5.6), (-4.4, 5.6));
+                line(&mut pb, (-4.4, 5.6), (-4.4, -0.4));
+                line(&mut pb, (-2.8, -0.4), (-2.8, -2.4));
+                line(&mut pb, (2.8, -0.4), (2.8, -2.4));
+                arc(&mut pb, (0.0, -2.4), 2.8, 180.0, 360.0);
+            }
+            Icon::Crop => {
+                line(&mut pb, (-3.0, -6.0), (-3.0, 3.0));
+                line(&mut pb, (-3.0, 3.0), (6.0, 3.0));
+                line(&mut pb, (3.0, 6.0), (3.0, -3.0));
+                line(&mut pb, (3.0, -3.0), (-6.0, -3.0));
+            }
+            Icon::ChevronRight => {
+                line(&mut pb, (-1.8, -4.0), (2.2, 0.0));
+                line(&mut pb, (2.2, 0.0), (-1.8, 4.0));
+            }
+            Icon::ChevronLeft => {
+                line(&mut pb, (1.8, -4.0), (-2.2, 0.0));
+                line(&mut pb, (-2.2, 0.0), (1.8, 4.0));
+            }
             Icon::Undo => {
                 arc(&mut pb, (0.5, 0.5), 4.2, 160.0, 400.0);
                 line(&mut pb, (-4.6, -2.3), (-3.7, -4.7));
@@ -421,7 +496,10 @@ mod tests {
 
     #[test]
     fn every_icon_draws_something_inside_its_box() {
-        for icon in [Icon::Check, Icon::ArrowUpRight, Icon::Alarm, Icon::Refresh, Icon::Gear, Icon::Undo] {
+        for icon in [
+            Icon::Check, Icon::ArrowUpRight, Icon::Alarm, Icon::Refresh, Icon::Gear, Icon::Undo, Icon::Speaker, Icon::SpeakerMuted, Icon::Sun, Icon::Wifi,
+            Icon::Bluetooth, Icon::Mic, Icon::MicMuted, Icon::Cast, Icon::Monitor, Icon::Lock, Icon::Crop, Icon::ChevronRight, Icon::ChevronLeft,
+        ] {
             let mut c = Canvas::new(40, 40, 2.0);
             c.icon(icon, 10.0, 10.0, 14.0, Rgb(255, 255, 255), 1.0);
             let lit: Vec<usize> = c.pm.data().chunks_exact(4).enumerate().filter(|(_, p)| p[3] > 0).map(|(i, _)| i).collect();
