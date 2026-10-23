@@ -43,6 +43,17 @@ impl Canvas {
         self.pm.height()
     }
 
+    /// How many rows from the top hold any non-transparent pixel (0 when the canvas is empty).
+    /// Exact, so the window layer never has to guess how far a frame reached.
+    pub fn content_rows(&self) -> usize {
+        let row_bytes = self.pm.width() as usize * 4;
+        let data = self.pm.data();
+        (0..self.pm.height() as usize)
+            .rev()
+            .find(|y| data[y * row_bytes..(y + 1) * row_bytes].chunks_exact(4).any(|px| px[3] != 0))
+            .map_or(0, |y| y + 1)
+    }
+
     pub fn clear(&mut self) {
         self.pm.fill(tiny_skia::Color::TRANSPARENT);
     }
@@ -333,6 +344,20 @@ mod tests {
         assert_eq!(alpha_at(&c, 100, 10), 0, "outside the notch is see-through");
         assert_eq!(alpha_at(&c, 320, 40), 0, "below the notch is see-through");
         assert!(alpha_at(&c, 205, 31) < 255, "the bottom corners are rounded");
+    }
+
+    #[test]
+    fn content_rows_reports_exactly_how_far_the_drawing_reaches() {
+        let mut c = Canvas::new(640, 360, 1.0);
+        assert_eq!(c.content_rows(), 0);
+        c.fill_notch(Shape { w: 232.0, h: 32.0, r: 16.0 }, Rgb(0, 0, 0), 1.0);
+        let small = c.content_rows();
+        assert!((32..=33).contains(&small), "a 32 px notch reaches row {small}");
+        c.clear();
+        c.fill_notch(Shape { w: 420.0, h: 340.0, r: 24.0 }, Rgb(0, 0, 0), 1.0);
+        assert!((340..=341).contains(&c.content_rows()));
+        c.clear();
+        assert_eq!(c.content_rows(), 0);
     }
 
     #[test]

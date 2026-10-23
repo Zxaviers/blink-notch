@@ -320,7 +320,10 @@ impl Runtime {
             return;
         }
         self.app.render();
-        let rows = self.app.visible_rows();
+        // How far this frame really reaches, measured on the canvas. (Estimating it from the shape
+        // at a slightly later moment under-counts while the notch moves fast, and the rows between
+        // the guess and the truth kept their old pixels: trails of earlier frames.)
+        let rows = self.app.canvas().content_rows();
         let copy_rows = rows.max(self.prev_rows).min(self.surface.h as usize);
         let width = self.surface.w as usize;
         {
@@ -845,6 +848,7 @@ impl Runtime {
             "noActivate": ex & WS_EX_NOACTIVATE.0 != 0,
             "foreground": foreground == self.hwnd,
             "keyboardActive": self.kb_active,
+            "hwnd": self.hwnd.0 as isize,
             "frames": self.frames,
             "hidden": self.hidden,
             "paused": self.paused,
@@ -975,6 +979,28 @@ impl Runtime {
                 return Ok(json!({ "handedToWindows": shown }));
             }
             "open_settings" => self.open_settings(),
+            "dibcheck" => {
+                // Does the window's bitmap equal the app's last frame, pixel for pixel? (Trails of old
+                // frames would show up here as differing pixels.)
+                self.present();
+                let width = self.surface.w as usize;
+                let height = self.surface.h as usize;
+                let src = self.app.canvas().pm.data();
+                let dst = self.surface.pixels();
+                let mut differing = 0usize;
+                let mut first_row = None;
+                for y in 0..height {
+                    for x in 0..width {
+                        let i = (y * width + x) * 4;
+                        let want = (u32::from(src[i + 3]) << 24) | (u32::from(src[i]) << 16) | (u32::from(src[i + 1]) << 8) | u32::from(src[i + 2]);
+                        if dst[y * width + x] != want {
+                            differing += 1;
+                            first_row.get_or_insert(y);
+                        }
+                    }
+                }
+                return Ok(json!({ "differing": differing, "firstRow": first_row }));
+            }
             "refresh" => self.app.refresh_sources(),
             "reload_local" => self.app.reload_local_events(),
             "pause" => {

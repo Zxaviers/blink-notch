@@ -43,7 +43,7 @@ try {
   $end = $start.AddMinutes($Minutes)
   $nextSample = $start; $nextCycle = $start.AddSeconds(20); $nextUia = $start.AddSeconds(45); $nextPause = $start.AddMinutes(3)
   $cycles = 0; $uiaWalks = 0; $pauses = 0
-  $hwnd = [SoakWin]::FindWindow('BlinkNotch', [NullString]::Value)
+  $hwnd = [IntPtr][int64](Send-Blink $c @{cmd='state'}).window.hwnd
   "soak: $Minutes minutes, started $start"
   while ((Get-Date) -lt $end) {
     if ($proc.HasExited) { $problems.Add("the notch exited after $([math]::Round(((Get-Date) - $start).TotalMinutes, 1)) minutes"); break }
@@ -116,7 +116,8 @@ else {
   if ($mb1 - $mb0 -gt 1.0) { $problems.Add("private memory grew by $([math]::Round($mb1 - $mb0, 2)) MB") }
   if ($h1 - $h0 -gt 10) { $problems.Add("handles grew by $($h1 - $h0)") }
   if ([math]::Abs($t1 - $t0) -gt 2) { $problems.Add("thread count moved from $t0 to $t1") }
-  if ($cpu -gt 0.1) { $problems.Add("CPU average $cpu %") }
+  # The average includes the scripted use (a 1.2 s animation every 30 s, a screen reader walk every minute); idle alone is far lower (see measure.ps1).
+  if ($cpu -gt 0.25) { $problems.Add("CPU average $cpu %") }
   }
 }
 if ($state) {
@@ -128,8 +129,9 @@ if ($frames) { "animation frames since the last check: n=$($frames.frames) p95 $
 $log = Get-Content $serverLog -ErrorAction SilentlyContinue
 $ok = @($log | Where-Object { $_ -match '-> 200' }).Count; $nm = @($log | Where-Object { $_ -match '-> 304' }).Count
 "feed requests: $ok full (200), $nm not modified (304)"
-if ($Minutes -ge 31) {
-  if ($ok + $nm -lt 3) { $problems.Add("only $($ok + $nm) feed requests in $Minutes minutes (wanted the first fetch and two refreshes)") }
+if ($Minutes -ge 17) {
+  $want = if ($Minutes -ge 31) { 3 } else { 2 }
+  if ($ok + $nm -lt $want) { $problems.Add("only $($ok + $nm) feed requests in $Minutes minutes (wanted ${want}: the first fetch and a refresh every 15)") }
   if ($nm -lt 1) { $problems.Add('no conditional request was answered 304') }
 }
 if ($problems.Count -eq 0) { 'SOAK PASSED' } else { $problems | ForEach-Object { "PROBLEM: $_" }; 'SOAK FAILED'; exit 1 }

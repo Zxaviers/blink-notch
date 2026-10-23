@@ -308,7 +308,7 @@ try {
   pipeA?.close(); pipeB?.close()
   await sleep(500)
   for (const p of procs) { try { p.kill() } catch { /* gone */ } }
-  try { ps("Get-Process -Name 'blink-settings','blink' -ErrorAction SilentlyContinue | Stop-Process -Force") } catch { /* none */ }
+  try { ps(`Get-Process -Name 'blink-settings','blink' -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '${releaseDir}\*' } | Stop-Process -Force`) } catch { /* none */ }
   for (const id of createdFeedIds) { try { execFileSync('cmdkey', [`/delete:${id}.deadline-notch`], { stdio: 'ignore' }) } catch { /* already gone */ } }
   try { execFileSync('reg', ['delete', `HKCU\\${RUN_KEY}`, '/f'], { stdio: 'ignore' }) } catch { /* none */ }
   fs.rmSync(tmp, { recursive: true, force: true })

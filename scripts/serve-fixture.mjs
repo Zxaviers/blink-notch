@@ -45,10 +45,10 @@ http.createServer((req, res) => {
   if (req.headers['if-none-match'] === etag) {
     res.writeHead(304, { ETag: etag })
     res.end()
-    console.log(`#${requests} ${req.method} -> 304`)
+    console.log(`${new Date().toISOString()} #${requests} ${req.method} -> 304`)
     return
   }
   res.writeHead(200, { 'Content-Type': 'text/calendar; charset=utf-8', ETag: etag })
   res.end(body)
-  console.log(`#${requests} ${req.method} -> 200`)
+  console.log(`${new Date().toISOString()} #${requests} ${req.method} -> 200`)
 }).listen(port, '127.0.0.1', () => console.log(`fixture calendar on http://127.0.0.1:${port}/cal.ics`))

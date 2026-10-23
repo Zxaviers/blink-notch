@@ -43,7 +43,7 @@ try {
   $s = Ctl @{cmd='state'}
 
   'the notch at rest'
-  $hwnd = [Win]::FindWindow('BlinkNotch', [NullString]::Value)
+  $hwnd = [IntPtr][int64]$s.window.hwnd   # ours, not whichever notch Windows finds first
   $root = [System.Windows.Automation.AutomationElement]::FromHandle($hwnd)
   Check 'the window is known to UI Automation as "Blink"' ((ElName $root) -eq 'Blink') (ElName $root)
   Check 'it is a pane with its own class name' ((ElType $root) -eq 'Pane' -and $root.Current.ClassName -eq 'BlinkNotch') "$(ElType $root) $($root.Current.ClassName)"

@@ -273,7 +273,12 @@ fn finish_sync(inner: &Mutex<Inner>, id: &str, result: Result<Fetched, &'static 
     entry.error = error;
     entry.syncing = false;
     let delay = next_refresh_delay_ms(refresh_ms, entry.error.is_none(), entry.failures);
-    entry.next_at = Some(now + delay as i64);
+    // Count from when the data was fetched, not from when the fetch was asked for: the feed
+    // service refuses to hit the network within 15 minutes of its last fetch, so a schedule that
+    // starts a moment earlier would be answered from the cache and double the real interval.
+    // Failures count from now (the cached time is old and would retry in a tight loop).
+    let base = if entry.error.is_none() { fetched.fetched_at_ms.unwrap_or(now) } else { now };
+    entry.next_at = Some(base + delay as i64);
     g.dirty = true;
 }
 

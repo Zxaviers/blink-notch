@@ -257,3 +257,16 @@ fn toasts_off_still_records_the_reminder_but_sends_none() {
     assert!(!app.take_effects().iter().any(|e| matches!(e, AppEffect::Toast { .. })));
     assert!(d.join("fired.json").exists(), "the threshold is still marked as fired");
 }
+
+#[test]
+fn the_next_refresh_counts_from_when_the_data_was_fetched() {
+    // Fetched a little after the poll that asked for it: the feed service will not touch the
+    // network again until 15 minutes after that moment, so the schedule must not be earlier.
+    let d = dir("fetched-at");
+    let fetched = Ok(Fetched { ics: Some(ics(&[("a", "Quiz is due", 30 * H)])), from_cache: false, fetched_at_ms: Some(WALL_BASE + 4_000), error: None });
+    let mut s = source(&d, scripted(vec![fetched]));
+    s.poll(WALL_BASE);
+    s.announce(WALL_BASE);
+    let refresh = s.next_wake_wall(WALL_BASE).unwrap();
+    assert_eq!(refresh, WALL_BASE + 4_000 + refresh_ms());
+}
