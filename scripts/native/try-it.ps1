@@ -9,8 +9,13 @@
 #
 # The notch hides itself while a fullscreen app is in front (a game, a video, or a browser or app in
 # fullscreen). If you see nothing, leave fullscreen.
-param([switch]$Demo, [switch]$Preview, [switch]$Stop, [string]$Exe = "$PSScriptRoot\..\..\target\release\blink.exe")
+param([switch]$Demo, [switch]$Preview, [switch]$Stop, [string]$Exe = '')
 
+# Use the newest build there is (one is made in target-alt while another copy is running).
+if (-not $Exe) {
+  $Exe = @("$PSScriptRoot\..\..\target\release\blink.exe", "$PSScriptRoot\..\..\target-alt\release\blink.exe") |
+    Where-Object { Test-Path $_ } | Sort-Object { (Get-Item $_).LastWriteTime } -Descending | Select-Object -First 1
+}
 $Exe = (Resolve-Path $Exe).Path
 if ($Stop) {
   & $Exe --quit

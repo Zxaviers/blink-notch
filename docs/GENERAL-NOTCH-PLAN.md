@@ -85,3 +85,12 @@ Each kind can be switched off in `host.json` (module options `battery`, `wifi`, 
 Verified: 13 unit tests of the event-to-peek rules, 4 app-level tests, `scripts/native/gate-system.ps1` (28 checks through the real window with injected events, plus a check that the real sources register: all five did on this laptop). Cost with every source running: 4.9 MB private at rest, 0% idle CPU (the Bluetooth watcher adds about 1.2 MB).
 
 Not verified: any real event firing (needs real hardware actions; `scripts/native/real-system.ps1` does the Caps Lock, volume and layout ones with supervision), reading a real earbuds battery, Bluetooth on or off, brightness (skipped by choice), and the key source while an elevated (administrator) app has focus.
+
+### 6b follow-up after first hands-on test (2026-10-23)
+Feedback from trying it, and what changed:
+
+1. **Keyboard layout peek removed** (not needed). Caps Lock stays.
+2. **Show/hide shortcut:** Ctrl+Alt+H (`visibilityHotkey` in `host.json`) shows or hides the notch, also over fullscreen. The notch now hides itself only for games and presentations by default (`hideInFullscreen`: `games` | `all` | `never`); the old "any fullscreen-like app" rule was the likely cause of it vanishing until the Windows key was pressed. `hiddenBy` in the state says why it is hidden. The z-order is reasserted so it stays on top. Cause not proven on the real laptop.
+3. **Controls module (tab):** volume with mute and output chips, brightness, Wi-Fi and Bluetooth on/off, saved networks, Cast, and projection modes (shown only with a second screen). Real backend in `platform/winctl.rs`; a fake backend is used in scripted runs (`gate-controls.ps1`, 13 checks).
+4. **Volume keys taken over** (`takeOverVolumeKeys`, on by default): a low-level hook swallows only Volume Up/Down/Mute while the notch is showing, so Windows' own volume bar does not appear. Verified with injected keys. Not verified: Fn keys the laptop firmware handles itself, and Windows' brightness bar (not suppressed).
+5. Direction stays "Nusa-like, but more customizable": modules on/off/order/options in `host.json`; a settings page for it comes in 6f.
