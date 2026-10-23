@@ -75,7 +75,7 @@ fn empty_overdue_only_light_theme_and_long_lists_render() {
     open_by_hover(&mut l);
     dump(&mut l, "snap-light");
 
-    // Many deadlines: the panel is capped at 340 px and scrolls.
+    // Many deadlines: the page keeps its height and the list inside it scrolls.
     let many: Vec<_> = (0..20)
         .map(|i| {
             let mut t = blink_core::ics::Task::default();
@@ -90,8 +90,8 @@ fn empty_overdue_only_light_theme_and_long_lists_render() {
     let mut m = app_with(DemoSource::new(WALL_BASE).with_tasks(many), normalize_settings(None), 1.0);
     open_by_hover(&mut m);
     let s = m.state_json();
-    assert_eq!(s["shape"]["h"], 340.0);
-    assert!(s["panelHeight"].as_f64().unwrap() > 340.0);
+    assert_eq!(s["shape"]["h"], s["panelHeight"], "every page is the same height");
+    assert!(s["module"]["contentHeight"].as_f64().unwrap() > 400.0, "the list is longer than the page");
     dump(&mut m, "snap-long-top");
     m.pointer(PointerKind::Wheel(-120.0), 320.0, 150.0);
     m.pointer(PointerKind::Wheel(-120.0), 320.0, 150.0);
@@ -99,7 +99,7 @@ fn empty_overdue_only_light_theme_and_long_lists_render() {
     dump(&mut m, "snap-long-scrolled");
     m.pointer(PointerKind::Wheel(-100_000.0), 320.0, 150.0);
     let max = m.state_json()["module"]["scroll"].as_f64().unwrap();
-    assert!((max - (m.state_json()["panelHeight"].as_f64().unwrap() - 340.0)).abs() < 0.6, "scroll stops at the end: {max}");
+    assert!((max - (m.state_json()["module"]["contentHeight"].as_f64().unwrap() - 120.0)).abs() < 0.6, "scroll stops at the end: {max}");
     dump(&mut m, "snap-long-bottom");
 }
 

@@ -41,8 +41,8 @@ fn hovering_opens_after_the_delay_and_the_panel_shows_content() {
     assert!(!app.wants_frames());
     app.render();
     let s = app.state_json();
-    assert_eq!(s["shape"]["w"], 420.0);
-    assert!(s["shape"]["h"].as_f64().unwrap() > 200.0, "{}", s["shape"]);
+    assert_eq!(s["shape"]["w"], 540.0);
+    assert!(s["shape"]["h"].as_f64().unwrap() > 150.0, "{}", s["shape"]);
     assert!(s["module"]["hits"].as_array().unwrap().len() > 3, "rows and buttons were recorded");
     assert_eq!(alpha(&app, 110 + 30, 150), 255, "inside the open panel");
 }
@@ -240,11 +240,18 @@ fn the_countdown_wakes_the_app_exactly_when_its_text_changes() {
 }
 
 #[test]
-fn an_idle_notch_with_no_deadlines_never_asks_to_wake() {
+fn an_idle_notch_with_no_deadlines_only_wakes_for_its_eyes_and_then_goes_silent() {
     let mut app = app_with(blink_native::modules::deadlines::DemoSource::new(WALL_BASE).without_feeds(), blink_core::settings::normalize_settings(None), 1.0);
-    assert_eq!(app.next_wake(), None);
     assert!(!app.wants_frames());
     assert_eq!(app.state_json()["rest"]["count"], "Add a feed");
+    // Quiet for 45 s: the eyes open (that is the one thing the notch wakes for).
+    assert_eq!(app.next_wake(), Some(45_000));
+    // Blinks come every few seconds for a while, then the eyes doze and nothing is scheduled again.
+    app.clock.set_manual_ms(45_000);
+    let blink = app.next_wake().expect("the next blink");
+    assert!(blink > 45_000 && blink < 50_000, "{blink}");
+    app.clock.set_manual_ms(151_000);
+    assert_eq!(app.next_wake(), None, "dozing eyes never wake the notch");
 }
 
 #[test]

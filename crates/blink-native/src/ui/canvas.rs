@@ -1,7 +1,7 @@
 //! A canvas on a CPU pixmap. Everything is addressed in logical pixels and
 //! scaled to the display here, so the layout code never thinks about DPI.
 
-use tiny_skia::{FillRule, LineCap, LineJoin, Mask, Paint, PathBuilder, Pixmap, Stroke, Transform};
+use tiny_skia::{Color, FillRule, GradientStop, LineCap, LineJoin, LinearGradient, Mask, Paint, PathBuilder, Pixmap, Point, RadialGradient, SpreadMode, Stroke, Transform};
 
 use super::text::{Face, Fonts};
 use super::theme::Rgb;
@@ -29,6 +29,16 @@ pub enum Icon {
     Crop,
     ChevronRight,
     ChevronLeft,
+    Bolt,
+    Headphones,
+    Plus,
+    Close,
+    Folder,
+    File,
+    Download,
+    ArrowUp,
+    Battery,
+    Music,
 }
 
 type ClipState = (Option<(i32, i32, i32, i32)>, Option<Mask>);
@@ -200,6 +210,131 @@ impl Canvas {
         }
     }
 
+    // ---------------------------------------------------- gradients and glow
+
+    fn rrect_path(x: f32, y: f32, w: f32, h: f32, radius: f32) -> Option<tiny_skia::Path> {
+        if w <= 0.0 || h <= 0.0 {
+            return None;
+        }
+        let r = radius.min(w / 2.0).min(h / 2.0);
+        let mut pb = PathBuilder::new();
+        if r <= 0.01 {
+            pb.move_to(x, y);
+            pb.line_to(x + w, y);
+            pb.line_to(x + w, y + h);
+            pb.line_to(x, y + h);
+        } else {
+            let k = 0.5523 * r;
+            pb.move_to(x + r, y);
+            pb.line_to(x + w - r, y);
+            pb.cubic_to(x + w - r + k, y, x + w, y + r - k, x + w, y + r);
+            pb.line_to(x + w, y + h - r);
+            pb.cubic_to(x + w, y + h - r + k, x + w - r + k, y + h, x + w - r, y + h);
+            pb.line_to(x + r, y + h);
+            pb.cubic_to(x + r - k, y + h, x, y + h - r + k, x, y + h - r);
+            pb.line_to(x, y + r);
+            pb.cubic_to(x, y + r - k, x + r - k, y, x + r, y);
+        }
+        pb.close();
+        pb.finish()
+    }
+
+    fn color_of(c: Rgb, alpha: f32) -> Color {
+        Color::from_rgba8(c.0, c.1, c.2, (255.0 * alpha.clamp(0.0, 1.0)).round() as u8)
+    }
+
+    /// A rounded rectangle filled with a gradient from `a` (left or top) to `b` (right or bottom).
+    #[allow(clippy::too_many_arguments)]
+    pub fn gradient_rrect(&mut self, x: f32, y: f32, w: f32, h: f32, radius: f32, a: Rgb, b: Rgb, vertical: bool, alpha: f32) {
+        let s = self.scale;
+        let (x, y, w, h) = (x * s, y * s, w * s, h * s);
+        let Some(path) = Self::rrect_path(x, y, w, h, radius * s) else { return };
+        let (p0, p1) = if vertical { (Point::from_xy(x, y), Point::from_xy(x, y + h)) } else { (Point::from_xy(x, y), Point::from_xy(x + w, y)) };
+        let stops = vec![GradientStop::new(0.0, Self::color_of(a, alpha)), GradientStop::new(1.0, Self::color_of(b, alpha))];
+        let Some(shader) = LinearGradient::new(p0, p1, stops, SpreadMode::Pad, Transform::identity()) else { return };
+        let mut paint = Paint::default();
+        paint.shader = shader;
+        paint.anti_alias = true;
+        self.pm.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), self.mask.as_ref());
+    }
+
+    /// A circle that fades from `color` at the centre to nothing at the edge: a soft glow.
+    pub fn glow(&mut self, cx: f32, cy: f32, radius: f32, color: Rgb, alpha: f32) {
+        let s = self.scale;
+        let (cx, cy, r) = (cx * s, cy * s, radius * s);
+        if r <= 0.5 {
+            return;
+        }
+        let stops = vec![GradientStop::new(0.0, Self::color_of(color, alpha)), GradientStop::new(1.0, Self::color_of(color, 0.0))];
+        let Some(shader) = RadialGradient::new(Point::from_xy(cx, cy), Point::from_xy(cx, cy), r, stops, SpreadMode::Pad, Transform::identity()) else { return };
+        let mut paint = Paint::default();
+        paint.shader = shader;
+        paint.anti_alias = true;
+        let mut pb = PathBuilder::new();
+        pb.push_circle(cx, cy, r);
+        if let Some(path) = pb.finish() {
+            self.pm.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), self.mask.as_ref());
+        }
+    }
+
+    /// A glow spread along a rounded rectangle: soft light around a pill or a bar.
+    #[allow(clippy::too_many_arguments)]
+    pub fn glow_rrect(&mut self, x: f32, y: f32, w: f32, h: f32, radius: f32, spread: f32, color: Rgb, alpha: f32) {
+        const LAYERS: usize = 6;
+        for i in 0..LAYERS {
+            let t = (i + 1) as f32 / LAYERS as f32;
+            let grow = spread * t;
+            self.rrect(x - grow, y - grow, w + 2.0 * grow, h + 2.0 * grow, radius + grow, color, alpha * (1.0 - t) * 0.35);
+        }
+    }
+
+    pub fn circle(&mut self, cx: f32, cy: f32, radius: f32, color: Rgb, alpha: f32) {
+        let s = self.scale;
+        let mut pb = PathBuilder::new();
+        pb.push_circle(cx * s, cy * s, (radius * s).max(0.1));
+        if let Some(path) = pb.finish() {
+            self.pm.fill_path(&path, &Self::paint(color, alpha), FillRule::Winding, Transform::identity(), self.mask.as_ref());
+        }
+    }
+
+    /// A round button face, lit from the upper left: `light` fading to `base`.
+    pub fn orb(&mut self, cx: f32, cy: f32, radius: f32, light: Rgb, base: Rgb, alpha: f32) {
+        let s = self.scale;
+        let (cx, cy, r) = (cx * s, cy * s, radius * s);
+        let focus = Point::from_xy(cx - r * 0.35, cy - r * 0.45);
+        let stops = vec![GradientStop::new(0.0, Self::color_of(light, alpha)), GradientStop::new(1.0, Self::color_of(base, alpha))];
+        let Some(shader) = RadialGradient::new(focus, Point::from_xy(cx, cy), r * 1.25, stops, SpreadMode::Pad, Transform::identity()) else { return };
+        let mut paint = Paint::default();
+        paint.shader = shader;
+        paint.anti_alias = true;
+        let mut pb = PathBuilder::new();
+        pb.push_circle(cx, cy, r);
+        if let Some(path) = pb.finish() {
+            self.pm.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), self.mask.as_ref());
+        }
+    }
+
+    /// An arc stroke (a progress ring): from `start_deg` (0 = right, clockwise, -90 = top) sweeping `sweep_deg`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn arc(&mut self, cx: f32, cy: f32, radius: f32, thickness: f32, start_deg: f32, sweep_deg: f32, color: Rgb, alpha: f32) {
+        let s = self.scale;
+        let sweep = sweep_deg.clamp(-360.0, 360.0);
+        if sweep.abs() < 0.5 {
+            return;
+        }
+        let steps = ((sweep.abs() / 6.0).ceil() as usize).max(2);
+        let mut pb = PathBuilder::new();
+        for i in 0..=steps {
+            let a = (start_deg + sweep * i as f32 / steps as f32).to_radians();
+            let (x, y) = ((cx + radius * a.cos()) * s, (cy + radius * a.sin()) * s);
+            if i == 0 { pb.move_to(x, y) } else { pb.line_to(x, y) }
+        }
+        if let Some(path) = pb.finish() {
+            let stroke = Stroke { width: thickness * s, line_cap: LineCap::Round, line_join: LineJoin::Round, ..Stroke::default() };
+            self.pm.stroke_path(&path, &Self::paint(color, alpha), &stroke, Transform::identity(), self.mask.as_ref());
+        }
+    }
+
     // --------------------------------------------------------------- icons
 
     pub fn icon(&mut self, icon: Icon, cx: f32, cy: f32, size: f32, color: Rgb, alpha: f32) {
@@ -339,6 +474,75 @@ impl Canvas {
             Icon::ChevronLeft => {
                 line(&mut pb, (1.8, -4.0), (-2.2, 0.0));
                 line(&mut pb, (-2.2, 0.0), (1.8, 4.0));
+            }
+            Icon::Bolt => {
+                line(&mut pb, (1.2, -6.0), (-3.4, 1.0));
+                line(&mut pb, (-3.4, 1.0), (0.2, 1.0));
+                line(&mut pb, (0.2, 1.0), (-1.2, 6.0));
+                line(&mut pb, (-1.2, 6.0), (3.4, -1.2));
+                line(&mut pb, (3.4, -1.2), (-0.2, -1.2));
+                line(&mut pb, (-0.2, -1.2), (1.2, -6.0));
+            }
+            Icon::Headphones => {
+                arc(&mut pb, (0.0, 0.8), 5.2, 180.0, 360.0);
+                line(&mut pb, (-5.2, 0.8), (-5.2, 3.4));
+                line(&mut pb, (5.2, 0.8), (5.2, 3.4));
+                line(&mut pb, (-5.2, 2.0), (-3.0, 2.0));
+                line(&mut pb, (-3.0, 2.0), (-3.0, 5.6));
+                line(&mut pb, (-3.0, 5.6), (-5.2, 5.6));
+                line(&mut pb, (5.2, 2.0), (3.0, 2.0));
+                line(&mut pb, (3.0, 2.0), (3.0, 5.6));
+                line(&mut pb, (3.0, 5.6), (5.2, 5.6));
+            }
+            Icon::Plus => {
+                line(&mut pb, (-5.0, 0.0), (5.0, 0.0));
+                line(&mut pb, (0.0, -5.0), (0.0, 5.0));
+            }
+            Icon::Close => {
+                line(&mut pb, (-4.0, -4.0), (4.0, 4.0));
+                line(&mut pb, (4.0, -4.0), (-4.0, 4.0));
+            }
+            Icon::Folder => {
+                line(&mut pb, (-6.0, -4.0), (-2.0, -4.0));
+                line(&mut pb, (-2.0, -4.0), (-0.6, -2.4));
+                line(&mut pb, (-0.6, -2.4), (6.0, -2.4));
+                line(&mut pb, (6.0, -2.4), (6.0, 4.6));
+                line(&mut pb, (6.0, 4.6), (-6.0, 4.6));
+                line(&mut pb, (-6.0, 4.6), (-6.0, -4.0));
+            }
+            Icon::File => {
+                line(&mut pb, (-4.0, -6.0), (1.2, -6.0));
+                line(&mut pb, (1.2, -6.0), (4.0, -3.2));
+                line(&mut pb, (4.0, -3.2), (4.0, 6.0));
+                line(&mut pb, (4.0, 6.0), (-4.0, 6.0));
+                line(&mut pb, (-4.0, 6.0), (-4.0, -6.0));
+                line(&mut pb, (1.2, -6.0), (1.2, -3.2));
+                line(&mut pb, (1.2, -3.2), (4.0, -3.2));
+            }
+            Icon::Download => {
+                line(&mut pb, (0.0, -5.6), (0.0, 3.0));
+                line(&mut pb, (-3.4, -0.4), (0.0, 3.0));
+                line(&mut pb, (3.4, -0.4), (0.0, 3.0));
+                line(&mut pb, (-5.4, 5.8), (5.4, 5.8));
+            }
+            Icon::ArrowUp => {
+                line(&mut pb, (0.0, 5.6), (0.0, -5.6));
+                line(&mut pb, (-4.2, -1.4), (0.0, -5.6));
+                line(&mut pb, (4.2, -1.4), (0.0, -5.6));
+            }
+            Icon::Battery => {
+                line(&mut pb, (-6.0, -3.2), (4.4, -3.2));
+                line(&mut pb, (4.4, -3.2), (4.4, 3.2));
+                line(&mut pb, (4.4, 3.2), (-6.0, 3.2));
+                line(&mut pb, (-6.0, 3.2), (-6.0, -3.2));
+                line(&mut pb, (6.2, -1.2), (6.2, 1.2));
+            }
+            Icon::Music => {
+                line(&mut pb, (-1.0, 4.2), (-1.0, -5.2));
+                line(&mut pb, (-1.0, -5.2), (5.0, -6.2));
+                line(&mut pb, (5.0, -6.2), (5.0, 2.6));
+                arc(&mut pb, (-3.0, 4.2), 2.0, 0.0, 360.0);
+                arc(&mut pb, (3.0, 2.6), 2.0, 0.0, 360.0);
             }
             Icon::Undo => {
                 arc(&mut pb, (0.5, 0.5), 4.2, 160.0, 400.0);
@@ -499,6 +703,7 @@ mod tests {
         for icon in [
             Icon::Check, Icon::ArrowUpRight, Icon::Alarm, Icon::Refresh, Icon::Gear, Icon::Undo, Icon::Speaker, Icon::SpeakerMuted, Icon::Sun, Icon::Wifi,
             Icon::Bluetooth, Icon::Mic, Icon::MicMuted, Icon::Cast, Icon::Monitor, Icon::Lock, Icon::Crop, Icon::ChevronRight, Icon::ChevronLeft,
+            Icon::Bolt, Icon::Headphones, Icon::Plus, Icon::Close, Icon::Folder, Icon::File, Icon::Download, Icon::ArrowUp, Icon::Battery, Icon::Music,
         ] {
             let mut c = Canvas::new(40, 40, 2.0);
             c.icon(icon, 10.0, 10.0, 14.0, Rgb(255, 255, 255), 1.0);

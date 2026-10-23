@@ -10,9 +10,18 @@ pub mod system;
 use blink_core::i18n::Translator;
 use jiff::tz::TimeZone;
 
-use crate::ui::canvas::Canvas;
+use crate::ui::canvas::{Canvas, Icon};
 use crate::ui::text::Fonts;
-use crate::ui::theme::Theme;
+use crate::ui::theme::{Rgb, Theme};
+
+/// The header row of the panel (title, date and time) that the host draws above a page.
+pub const HEADER_H: f32 = 42.0;
+/// The row of page dots along the bottom of the panel (only with more than one page).
+pub const PAGER_H: f32 = 26.0;
+/// Room kept free at each side of a page for the buttons that turn the page.
+pub const PAGE_SIDE: f32 = 36.0;
+/// How tall a page is, between the header and the pager.
+pub const CONTENT_H: f32 = 124.0;
 
 /// Everything a module needs to know about "now" and the user's settings.
 pub struct Env<'a> {
@@ -52,8 +61,12 @@ pub struct PeekView {
     pub ttl_ms: Option<u64>,
     /// A peek with the same key replaces the one showing (or waiting) instead of queueing.
     pub key: Option<String>,
-    /// A bar under the text, 0.0 to 1.0 (volume, battery).
+    /// A ring around the picture, 0.0 to 1.0 (volume, battery).
     pub progress: Option<f32>,
+    /// The picture in the ring at the left of the peek.
+    pub icon: Option<Icon>,
+    /// The colour of the ring; None takes it from `urgency`.
+    pub accent: Option<Rgb>,
 }
 
 /// Something a click or a key asks for.
@@ -127,11 +140,26 @@ pub struct PanelFrame<'a> {
     pub theme: &'a Theme,
     /// Fades the contents in and out with the notch.
     pub alpha: f32,
-    /// Visible height of the notch in logical px (the viewport).
+    /// Height of the page in logical px (the viewport).
     pub viewport_h: f32,
     /// Left edge of the panel in window coordinates (logical px).
     pub origin_x: f32,
+    /// Top of the page, below the header (window coordinates).
+    pub origin_y: f32,
+    /// Width of the panel.
+    pub width: f32,
     pub keyboard: bool,
+}
+
+impl PanelFrame<'_> {
+    /// Where a page's own content starts and how wide it is (the sides are left for the page buttons).
+    pub fn content_x(&self) -> f32 {
+        self.origin_x + PAGE_SIDE
+    }
+
+    pub fn content_w(&self) -> f32 {
+        self.width - 2.0 * PAGE_SIDE
+    }
 }
 
 pub trait Module {
@@ -157,6 +185,22 @@ pub trait Module {
     }
 
     /// The name on the module's tab.
+    /// Whether the host draws the round buttons that turn the page. A page showing a sub-page of its own
+    /// (with a back button where the arrow would be) says no.
+    fn page_arrows(&self) -> bool {
+        true
+    }
+
+    /// The colour of this page: its title, its highlights.
+    fn accent(&self) -> Rgb {
+        Rgb(0xf2, 0xf2, 0xf2)
+    }
+
+    /// The title in two parts: the second is drawn in the accent colour.
+    fn title_parts(&self, lang: blink_core::i18n::Lang) -> (String, String) {
+        (self.title(lang), String::new())
+    }
+
     fn title(&self, _lang: blink_core::i18n::Lang) -> String {
         self.id().to_string()
     }

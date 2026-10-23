@@ -105,3 +105,15 @@ Feedback: the Controls tab looked plain and lacked features. Nusa itself has no 
 - **Live:** while the panel is open it re-reads Windows every 2 s, so a change made elsewhere shows up.
 - **Checks:** 11 panel tests (new: pages, microphone, tiles option, optimistic toggle, periodic refresh), `gate-controls.ps1` 22 checks, other gates unchanged. Checked against the real PC read-only (outputs, Wi-Fi, brightness); not clicked on real hardware: mic mute, lock, screenshot tool, settings, cast, projection, output switching, Wi-Fi connect.
 - **Not done:** Night light, Do not disturb, battery saver and airplane mode (Windows has no clean public way to switch these; they would be a link to Windows settings at best), a Bluetooth device list, per-app volume, DDC brightness for external monitors.
+
+### Look v2: the Nusa-style notch (2026-10-23)
+Feedback: "not flat". References: Nusa's pages (screenshots from the user), mock in `docs/design/blink-look-mock.html`, result in `docs/design/blink-look-actual.png` (made by `scripts/native/shots-look.ps1`).
+
+- **Shape:** the open notch is wide and short (540 wide, about 192 high: header 42, page 124, pager 26) and every page is the same size. Pages turn with round arrow buttons and a row of dots (the old tab strip is gone; Left/Right/Tab still turn pages from the keyboard).
+- **Header (host):** the page title with its second half in the page's own colour, the date and time with a small ring (battery when there is one, otherwise how much of the day has gone), and activity bars. Each module gives `accent()` and `title_parts()`.
+- **Pages:** Deadlines (a big light countdown for the next one, rows tinted blue/amber/red by how close, actions on hover, snooze chips inside the row), Controls (gradient-filled sliders with a glow at the edge, round glowing buttons with names under them, Output and Wi-Fi as pages with their own back button), Clock (big light time).
+- **Peeks:** a ring with the picture (it fills with the level), a bold line and a quiet one, and the big light number at the right; colour by kind (charger green, Wi-Fi and Bluetooth blue, headphones violet, volume cyan, caps and brightness amber, deadlines by urgency).
+- **Resting pill:** ring, time (or the next deadline), quiet bars. After 45 s of quiet, and when nothing is due soon, a pair of eyes (own design): they blink every few seconds, then doze after 2.5 min and the notch stops waking for them. `eyes: false` in the clock's options turns them off.
+- **Canvas:** gradients, glow, rings (arcs), orbs; light and bold Segoe UI weights for numbers and titles (regular and semibold stand in if a computer lacks them).
+- **Checks:** all unit and panel tests, and gates g2 (47), g3 (26), a11y (27), draw (8), host (28), system (27), controls (22). The idle-wake test now allows the eyes' wakes and requires silence once they doze.
+- **Next:** music + synced lyrics (page with album colours), projects (tasks, files, folders; the shelf), plugin interface.

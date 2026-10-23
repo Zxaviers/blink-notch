@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Blink look: design mock</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+  :root {
+    --ink: #f4f4f7; --dim: #9a9aa6; --faint: rgba(255,255,255,.08);
+    --green: #34d399; --blue: #4ea8ff; --amber: #f5b84a; --red: #ff6b6b; --violet: #a78bfa; --cyan: #38d6e8;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; color: var(--ink); background: #07070c; padding: 28px 0 60px; }
+  .wall { width: 1080px; margin: 0 auto; border-radius: 22px; padding: 34px 0 26px; background:
+      radial-gradient(520px 260px at 50% 100%, rgba(76,110,255,.55), transparent 70%),
+      radial-gradient(380px 230px at 28% 100%, rgba(167,139,250,.45), transparent 70%),
+      radial-gradient(380px 230px at 72% 100%, rgba(167,139,250,.45), transparent 70%),
+      linear-gradient(#dfe6ff, #a9b8ff 55%, #6f78ff); position: relative; }
+  .row { display: flex; flex-direction: column; align-items: center; margin-bottom: 30px; }
+  .label { margin-top: 12px; font-size: 12px; color: #23233a; letter-spacing: .02em; }
+  .notch { width: 540px; background: #000; color: var(--ink); border-radius: 0 0 28px 28px; position: relative; overflow: hidden;
+           box-shadow: 0 18px 40px rgba(10,10,40,.45), 0 0 0 1px rgba(255,255,255,.04) inset; }
+  .head { display: flex; align-items: center; justify-content: space-between; padding: 12px 22px 0; height: 34px; font-size: 14px; }
+  .title { font-weight: 650; font-size: 15px; letter-spacing: -.01em; }
+  .title b { font-weight: 650; color: var(--acc); }
+  .clock { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #d7d7df; }
+  .clock b { color: #fff; font-weight: 650; }
+  .ring { width: 15px; height: 15px; border-radius: 50%; background: conic-gradient(var(--green) 0 72%, rgba(255,255,255,.14) 0); -webkit-mask: radial-gradient(circle, transparent 4.2px, #000 4.6px); mask: radial-gradient(circle, transparent 4.2px, #000 4.6px); }
+  .eq { display: flex; gap: 2px; align-items: center; height: 14px; }
+  .eq i { width: 2px; background: #fff; border-radius: 2px; }
+  .body { padding: 8px 22px 30px; position: relative; }
+  .dots { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; gap: 5px; justify-content: center; }
+  .dots i { width: 5px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.28); }
+  .dots i.on { width: 20px; background: #fff; }
+  .arrow { position: absolute; top: 50%; width: 26px; height: 26px; margin-top: -4px; border-radius: 50%; background: rgba(255,255,255,.14); display: grid; place-items: center; font-size: 15px; }
+  .arrow.l { left: 8px; } .arrow.r { right: 8px; }
+  .big { font-size: 44px; font-weight: 300; letter-spacing: -.03em; line-height: 1; }
+  .big small { font-size: 18px; color: var(--dim); font-weight: 400; margin-left: 3px; }
+  .cap { color: var(--dim); font-size: 12.5px; margin-top: 4px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,.1); border-radius: 999px; padding: 6px 12px; font-size: 12.5px; color: #eee; }
+  .pill.acc { background: var(--acc); color: #0a0a10; font-weight: 600; box-shadow: 0 4px 14px color-mix(in srgb, var(--acc) 55%, transparent); }
+  .two { display: grid; grid-template-columns: 170px 1fr; gap: 20px; align-items: center; }
+  .rows { display: grid; gap: 7px; }
+  .item { display: flex; align-items: center; gap: 10px; border-radius: 13px; padding: 8px 12px; font-size: 13px; background: color-mix(in srgb, var(--c) 16%, #000); border: 1px solid color-mix(in srgb, var(--c) 22%, transparent); }
+  .item .chip { font-size: 10.5px; font-weight: 650; color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); padding: 2px 7px; border-radius: 6px; }
+  .item .t { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .n { font-family: Consolas, monospace; font-size: 12px; color: var(--c); }
+  .item.done .t { text-decoration: line-through; color: #8fb9a5; }
+  .tick { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; background: var(--c); color: #04120c; }
+  .tick.o { background: transparent; border: 1.5px solid rgba(255,255,255,.35); }
+  .slider { position: relative; height: 38px; border-radius: 14px; background: rgba(255,255,255,.09); overflow: hidden; display: flex; align-items: center; padding: 0 12px; gap: 10px; font-size: 12.5px; }
+  .slider .f { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 70%, #fff), var(--c)); box-shadow: 0 0 22px color-mix(in srgb, var(--c) 60%, transparent); }
+  .slider > * { position: relative; }
+  .slider .v { margin-left: auto; font-family: Consolas, monospace; font-size: 12px; }
+  .orb { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-size: 20px; background: rgba(255,255,255,.1); color: #fff; }
+  .orb.on { background: radial-gradient(circle at 35% 25%, color-mix(in srgb, var(--c) 65%, #fff), var(--c)); color: #05121a; box-shadow: 0 0 20px color-mix(in srgb, var(--c) 65%, transparent), inset 0 1px 0 rgba(255,255,255,.5); }
+  .orbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px 6px; text-align: center; font-size: 10.5px; color: var(--dim); }
+  .orbs div { display: grid; justify-items: center; gap: 4px; }
+  .art { width: 76px; height: 76px; border-radius: 16px; background: linear-gradient(135deg, #5b7cff, #b35bff 60%, #ff7ab8); box-shadow: 0 8px 22px rgba(120,80,255,.5); display: grid; place-items: center; font-size: 30px; }
+  .bar { height: 4px; border-radius: 3px; background: rgba(255,255,255,.18); position: relative; flex: 1; }
+  .bar i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: #fff; }
+  .peek { width: 420px; height: 70px; border-radius: 0 0 24px 24px; padding: 0 22px; display: flex; align-items: center; gap: 14px; }
+  .pring { width: 38px; height: 38px; border-radius: 50%; background: conic-gradient(var(--c) 0 70%, rgba(255,255,255,.14) 0); display: grid; place-items: center; box-shadow: 0 0 18px color-mix(in srgb, var(--c) 45%, transparent); position: relative; }
+  .pring::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: #000; }
+  .pring i { position: relative; font-size: 17px; color: var(--c); }
+  .peek .m { flex: 1; } .peek .m b { display: block; font-size: 15px; font-weight: 650; } .peek .m span { font-size: 12.5px; color: var(--dim); }
+  .peek .r { font-size: 30px; font-weight: 300; letter-spacing: -.02em; }
+  .rest { width: 232px; height: 34px; border-radius: 0 0 17px 17px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; font-weight: 650; font-size: 15px; }
+  .eyes { width: 190px; height: 36px; border-radius: 0 0 18px 18px; position: relative; display: flex; gap: 18px; justify-content: center; align-items: center; background: #000; box-shadow: 0 5px 14px -2px rgba(80,180,255,.65); }
+  .eyes i { width: 9px; height: 15px; border-radius: 6px; background: #fff; box-shadow: 0 0 10px rgba(180,230,255,.9); }
+</style>
+</head>
+<body>
+<div class="wall">
+
+  <div class="row">
+    <div style="display:flex; gap:26px; align-items:flex-start;">
+      <div style="display:flex;flex-direction:column;align-items:center">
+        <div class="notch rest" style="--acc:var(--green)"><span class="ring"></span><span>22:24</span><span class="eq"><i style="height:6px"></i><i style="height:12px"></i><i style="height:8px"></i><i style="height:13px"></i></span></div>
+        <div class="label">Resting: clock, progress ring, activity bars</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center">
+        <div class="eyes"><i></i><i></i></div>
+        <div class="label">Idle: eyes (own design), then they doze</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="notch peek" style="--c:var(--green)"><div class="pring"><i class="ti ti-bolt"></i></div><div class="m"><b>Charging</b><span>Charger connected</span></div><div class="r">70%</div></div>
+    <div class="label">Peek: charger (ring + glow, big light number)</div>
+  </div>
+
+  <div class="row">
+    <div class="notch" style="--acc:var(--amber)">
+      <div class="head"><div class="title">Dead<b>lines</b></div><div class="clock"><span class="ring"></span>Fri 23 Oct <b>22:24</b></div><div class="eq"><i style="height:4px"></i><i style="height:4px"></i><i style="height:4px"></i></div></div>
+      <div class="body">
+        <div class="two">
+          <div><div class="big">3<small>this week</small></div><div class="cap">1 due in 3h 13m</div><div style="display:flex;gap:6px;margin-top:10px"><span class="pill acc"><i class="ti ti-plus"></i>Add</span><span class="pill"><i class="ti ti-refresh"></i>Sync</span></div></div>
+          <div class="rows">
+            <div class="item" style="--c:var(--red)"><span class="chip">CS101</span><span class="t">Problem Set 4</span><span class="n">3h 13m</span></div>
+            <div class="item" style="--c:var(--amber)"><span class="chip">NET2</span><span class="t">Lab report: routing</span><span class="n">1d 4h</span></div>
+            <div class="item" style="--c:var(--blue)"><span class="chip">DB3</span><span class="t">ER diagram draft</span><span class="n">4d</span></div>
+          </div>
+        </div>
+        <div class="arrow l"><i class="ti ti-chevron-left"></i></div><div class="arrow r"><i class="ti ti-chevron-right"></i></div>
+        <div class="dots"><i class="on"></i><i></i><i></i><i></i></div>
+      </div>
+    </div>
+    <div class="label">Page: Deadlines (amber accent, urgency-tinted rows)</div>
+  </div>
+
+  <div class="row">
+    <div class="notch" style="--acc:var(--cyan)">
+      <div class="head"><div class="title">Con<b>trols</b></div><div class="clock"><span class="ring"></span>Fri 23 Oct <b>22:24</b></div><div class="eq"><i style="height:4px"></i><i style="height:4px"></i><i style="height:4px"></i></div></div>
+      <div class="body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:center">
+          <div style="display:grid;gap:8px">
+            <div class="slider" style="--c:var(--cyan)"><div class="f" style="width:62%"></div><i class="ti ti-volume" style="color:#031a1f"></i><span style="color:#031a1f;font-weight:600">Volume</span><span class="v" style="color:#fff">62%</span></div>
+            <div class="slider" style="--c:var(--amber)"><div class="f" style="width:85%"></div><i class="ti ti-sun" style="color:#241600"></i><span style="color:#241600;font-weight:600">Brightness</span><span class="v" style="color:#fff">85%</span></div>
+            <div class="pill" style="justify-content:space-between;border-radius:12px"><span><i class="ti ti-headphones"></i>&nbsp; AirBuds Pro</span><i class="ti ti-chevron-right" style="color:var(--dim)"></i></div>
+          </div>
+          <div class="orbs" style="--c:var(--cyan)">
+            <div><span class="orb on"><i class="ti ti-wifi"></i></span>Campus</div>
+            <div><span class="orb on"><i class="ti ti-bluetooth"></i></span>Bluetooth</div>
+            <div><span class="orb on"><i class="ti ti-microphone"></i></span>Mic</div>
+            <div><span class="orb"><i class="ti ti-cast"></i></span>Cast</div>
+            <div><span class="orb"><i class="ti ti-device-desktop"></i></span>Project</div>
+            <div><span class="orb"><i class="ti ti-lock"></i></span>Lock</div>
+            <div><span class="orb"><i class="ti ti-crop"></i></span>Capture</div>
+            <div><span class="orb"><i class="ti ti-settings"></i></span>Settings</div>
+          </div>
+        </div>
+        <div class="arrow l"><i class="ti ti-chevron-left"></i></div><div class="arrow r"><i class="ti ti-chevron-right"></i></div>
+        <div class="dots"><i></i><i class="on"></i><i></i><i></i></div>
+      </div>
+    </div>
+    <div class="label">Page: Controls (glowing orbs, filled sliders; wide instead of tall)</div>
+  </div>
+
+  <div class="row">
+    <div class="notch" style="--acc:var(--violet); background: linear-gradient(180deg, #000 30%, #12123a 75%, #243a9c)">
+      <div class="head"><div class="title">Mu<b>sic</b></div><div class="clock"><span class="ring"></span>Fri 23 Oct <b>22:24</b></div><div class="eq"><i style="height:5px"></i><i style="height:11px"></i><i style="height:7px"></i><i style="height:12px"></i></div></div>
+      <div class="body">
+        <div style="display:grid;grid-template-columns:76px 1fr 1.05fr;gap:16px;align-items:center">
+          <div class="art"><i class="ti ti-music"></i></div>
+          <div><div style="font-weight:650;font-size:15px">Paper Sky</div><div class="cap">Lumen Coast</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11.5px;color:#ccd"><span>02:59</span><div class="bar"><i style="width:60%"></i></div><span>-01:17</span></div>
+            <div style="display:flex;gap:18px;margin-top:8px;font-size:18px;align-items:center"><i class="ti ti-message-2" style="font-size:16px;color:var(--dim)"></i><i class="ti ti-player-skip-back"></i><i class="ti ti-player-pause"></i><i class="ti ti-player-skip-forward"></i></div></div>
+          <div style="border-left:1px solid rgba(255,255,255,.12);padding-left:16px;font-size:14px;line-height:1.7;color:rgba(255,255,255,.4)">to find you by the sea<br><b style="color:#fff;font-size:15px">every wing a little song</b><br>that carries us along</div>
+        </div>
+        <div class="dots"><i></i><i></i><i class="on"></i><i></i></div>
+      </div>
+    </div>
+    <div class="label">Page: Music + synced lyrics (colors from the album art, lyrics glow line by line)</div>
+  </div>
+
+  <div class="row">
+    <div class="notch" style="--acc:var(--violet)">
+      <div class="head"><div class="title">Pro<b>jects</b></div><div class="clock"><span class="ring"></span>Fri 23 Oct <b>22:24</b></div><div class="eq"><i style="height:4px"></i><i style="height:4px"></i><i style="height:4px"></i></div></div>
+      <div class="body">
+        <div class="two" style="grid-template-columns:160px 1fr">
+          <div><div class="big">4<small>/ 7</small></div><div class="cap">tasks done · Capstone</div><div style="display:flex;gap:6px;margin-top:10px"><span class="pill acc"><i class="ti ti-plus"></i>Task</span><span class="pill"><i class="ti ti-folder"></i>Files</span></div></div>
+          <div>
+            <div class="rows">
+              <div class="item done" style="--c:var(--green)"><span class="tick"><i class="ti ti-check"></i></span><span class="t">Set up CI pipeline</span></div>
+              <div class="item" style="--c:var(--violet)"><span class="tick o"></span><span class="t">Write API tests</span><span class="n">Sun</span></div>
+              <div class="item" style="--c:var(--violet)"><span class="tick o"></span><span class="t">Agent prompt review</span><span class="n">Mon</span></div>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:8px"><span class="pill" style="font-size:11.5px"><i class="ti ti-file-text"></i>spec.pdf</span><span class="pill" style="font-size:11.5px"><i class="ti ti-folder"></i>repo/</span><span class="pill" style="font-size:11.5px;border:1px dashed rgba(255,255,255,.3);background:transparent"><i class="ti ti-download"></i>drop files</span></div>
+          </div>
+        </div>
+        <div class="arrow l"><i class="ti ti-chevron-left"></i></div><div class="arrow r"><i class="ti ti-chevron-right"></i></div>
+        <div class="dots"><i></i><i></i><i></i><i class="on"></i></div>
+      </div>
+    </div>
+    <div class="label">Page: Projects (tasks + attached files and folders; the shelf lives here)</div>
+  </div>
+
+</div>
+</body>
+</html>

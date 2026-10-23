@@ -9,6 +9,8 @@ use blink_core::i18n::Lang;
 use serde_json::Value;
 
 use super::{Effect, Env, Key, KeyResult, Kit, Module, PanelFrame, PeekView, PointerKind, RestView};
+use crate::ui::canvas::Icon;
+use crate::ui::theme::Rgb;
 use crate::events::{AudioKind, SystemEvent};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -100,8 +102,26 @@ fn words(lang: Lang, key: &str) -> &'static str {
     }
 }
 
+/// The picture and colour of each kind of peek.
+fn look(key: &str, urgency: &str) -> (Option<Icon>, Option<Rgb>) {
+    let green = Rgb(0x34, 0xd3, 0x99);
+    let blue = Rgb(0x4e, 0xa8, 0xff);
+    match key {
+        "power" if urgency == "later" => (Some(Icon::Bolt), Some(green)),
+        "power" => (Some(Icon::Battery), None),
+        "wifi" => (Some(Icon::Wifi), Some(blue)),
+        "audio" => (Some(Icon::Headphones), Some(Rgb(0xa7, 0x8b, 0xfa))),
+        "bluetooth" => (Some(Icon::Bluetooth), Some(blue)),
+        "volume" => (Some(Icon::Speaker), Some(Rgb(0x38, 0xd6, 0xe8))),
+        "brightness" => (Some(Icon::Sun), Some(Rgb(0xf5, 0xb8, 0x4a))),
+        "caps" => (Some(Icon::ArrowUp), Some(Rgb(0xf5, 0xb8, 0x4a))),
+        _ => (None, None),
+    }
+}
+
 fn view(code: &str, title: String, count: String, urgency: &'static str, priority: u8, key: &str, ttl_ms: Option<u64>, progress: Option<f32>) -> PeekView {
-    PeekView { code: code.to_string(), title, count, urgency, priority, ttl_ms, key: Some(format!("system:{key}")), progress }
+    let (icon, accent) = look(key, urgency);
+    PeekView { code: code.to_string(), title, count, urgency, priority, ttl_ms, key: Some(format!("system:{key}")), progress, icon, accent }
 }
 
 impl SystemModule {

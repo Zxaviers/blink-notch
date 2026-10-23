@@ -3,7 +3,7 @@
 //! every method takes `now` in milliseconds, so tests drive it exactly.
 //!
 //! Same numbers as the WebView2 app: 150 ms hover intent, 300 ms grace, 4 s
-//! peek, 280 ms ease-out, 232x32 pill, 420-wide panel up to 340 high.
+//! peek, 280 ms ease-out, 232x32 pill; the panel is 540 wide (a header, a page, a pager).
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
@@ -34,8 +34,8 @@ pub struct Shape {
 pub const REST_FULL: Shape = Shape { w: 232.0, h: 32.0, r: 16.0 };
 pub const REST_MINI: Shape = Shape { w: 84.0, h: 10.0, r: 6.0 };
 pub const REST_HOT: Shape = Shape { w: 160.0, h: 6.0, r: 3.0 };
-pub const PEEK: Shape = Shape { w: 400.0, h: 56.0, r: 18.0 };
-pub const OPEN_W: f32 = 420.0;
+pub const PEEK: Shape = Shape { w: 420.0, h: 72.0, r: 24.0 };
+pub const OPEN_W: f32 = 540.0;
 pub const OPEN_MAX_H: f32 = 340.0;
 pub const OPEN_R: f32 = 24.0;
 /// The window the shape lives in, in logical pixels.

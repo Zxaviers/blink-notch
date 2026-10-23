@@ -3,13 +3,12 @@
 
 use jiff::{tz::TimeZone, Timestamp};
 
-use super::{Effect, Env, Key, KeyResult, Kit, Module, PanelFrame, PeekView, PointerKind, RestView};
+use super::{Effect, Env, Key, KeyResult, Kit, Module, PanelFrame, PeekView, PointerKind, RestView, CONTENT_H};
 use crate::access::{Node, NodeAction, Role, ROOT};
 use crate::ui::text::Face;
+use crate::ui::theme::Rgb;
 use blink_core::i18n::Lang;
 use blink_core::settings::Settings;
-
-const PANEL_H: f32 = 132.0;
 
 const DAYS_EN: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const DAYS_ID: [&str; 7] = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
@@ -61,12 +60,20 @@ pub fn long_date(wall_ms: i64, tz: &TimeZone, lang: Lang) -> String {
     format!("{} {} {}", days[n.weekday], n.day, months[n.month])
 }
 
-#[derive(Default)]
-pub struct ClockModule;
+pub struct ClockModule {
+    /// Whether the notch shows eyes after a while of quiet (`eyes` in the clock's options).
+    pub eyes: bool,
+}
+
+impl Default for ClockModule {
+    fn default() -> Self {
+        ClockModule { eyes: true }
+    }
+}
 
 impl ClockModule {
     pub fn new() -> Self {
-        ClockModule
+        ClockModule::default()
     }
 }
 
@@ -79,8 +86,21 @@ impl Module for ClockModule {
         if lang == Lang::Id { "Jam" } else { "Clock" }.to_string()
     }
 
+    fn accent(&self) -> Rgb {
+        Rgb(0x4e, 0xa8, 0xff)
+    }
+
+    fn title_parts(&self, lang: Lang) -> (String, String) {
+        let (a, b) = if lang == Lang::Id { ("J", "am") } else { ("Cl", "ock") };
+        (a.to_string(), b.to_string())
+    }
+
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+
+    fn set_options(&mut self, options: &serde_json::Value) {
+        self.eyes = options.get("eyes").and_then(serde_json::Value::as_bool).unwrap_or(true);
     }
 
     /// Always something to show, but never more important than a deadline.
@@ -93,7 +113,7 @@ impl Module for ClockModule {
     }
 
     fn rest(&mut self, env: &Env) -> RestView {
-        RestView { label: short_date(env.wall_ms, env.tz, env.t.lang()), count: hhmm(env.wall_ms, env.tz), urgency: "later" }
+        RestView { label: String::new(), count: hhmm(env.wall_ms, env.tz), urgency: "later" }
     }
 
     fn peek(&mut self, _env: &Env) -> Option<PeekView> {
@@ -101,20 +121,20 @@ impl Module for ClockModule {
     }
 
     fn panel_height(&mut self, _env: &Env, _kit: &mut Kit) -> f32 {
-        PANEL_H
+        CONTENT_H
     }
 
     fn draw_panel(&mut self, env: &Env, kit: &mut Kit, frame: &PanelFrame) {
         let theme = frame.theme;
-        let cx = frame.origin_x + 210.0;
+        let cx = frame.origin_x + frame.width / 2.0;
         let time = hhmm(env.wall_ms, env.tz);
-        let size = 52.0;
-        let w = kit.canvas.measure(kit.fonts, Face::Mono, size, &time, 0.0);
-        let base = 20.0 + kit.fonts.baseline(Face::Mono, size, 64.0);
-        kit.canvas.text(kit.fonts, Face::Mono, size, cx - w / 2.0, base, &time, theme.fg, frame.alpha, 0.0);
+        let size = 60.0;
+        let w = kit.canvas.measure(kit.fonts, Face::SansLight, size, &time, 0.0);
+        let base = frame.origin_y + 4.0 + kit.fonts.baseline(Face::SansLight, size, 76.0);
+        kit.canvas.text(kit.fonts, Face::SansLight, size, cx - w / 2.0, base, &time, theme.fg, frame.alpha, 0.0);
         let date = long_date(env.wall_ms, env.tz, env.t.lang());
         let dw = kit.canvas.measure(kit.fonts, Face::Sans, 13.0, &date, 0.0);
-        let dbase = 88.0 + kit.fonts.baseline(Face::Sans, 13.0, 20.0);
+        let dbase = frame.origin_y + 84.0 + kit.fonts.baseline(Face::Sans, 13.0, 20.0);
         kit.canvas.text(kit.fonts, Face::Sans, 13.0, cx - dw / 2.0, dbase, &date, theme.dim, frame.alpha, 0.0);
     }
 

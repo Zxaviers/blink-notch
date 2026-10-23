@@ -15,6 +15,10 @@ use tiny_skia::{FillRule, Paint, PathBuilder, Pixmap, Transform};
 pub enum Face {
     Sans,
     SansSemibold,
+    /// Thin, for big numbers.
+    SansLight,
+    /// Bold, for titles.
+    SansBold,
     Mono,
 }
 
@@ -23,6 +27,8 @@ impl Face {
         match self {
             Face::Sans => "segoeui.ttf",
             Face::SansSemibold => "seguisb.ttf",
+            Face::SansLight => "segoeuil.ttf",
+            Face::SansBold => "segoeuib.ttf",
             Face::Mono => "consola.ttf",
         }
     }
@@ -92,6 +98,20 @@ impl Fonts {
             // Fonts live as long as the process, so the mapping is leaked to get a 'static borrow.
             let bytes: &'static [u8] = Box::leak(Box::new(map));
             let face_parsed = ttf_parser::Face::parse(bytes, 0).map_err(|e| format!("{}: {e}", path.display()))?;
+            loaded.insert(face, Loaded { face: face_parsed });
+        }
+        // The light and bold weights are nice to have: a computer without them uses the regular
+        // and semibold ones in their place.
+        for (face, fallback) in [(Face::SansLight, Face::Sans), (Face::SansBold, Face::SansSemibold)] {
+            let path = dir.join(face.file());
+            let parsed = File::open(&path)
+                .ok()
+                .and_then(|file| unsafe { Mmap::map(&file) }.ok())
+                .and_then(|map| {
+                    let bytes: &'static [u8] = Box::leak(Box::new(map));
+                    ttf_parser::Face::parse(bytes, 0).ok()
+                });
+            let face_parsed = parsed.unwrap_or_else(|| loaded[&fallback].face.clone());
             loaded.insert(face, Loaded { face: face_parsed });
         }
         Ok(Fonts { loaded, cache: HashMap::new() })

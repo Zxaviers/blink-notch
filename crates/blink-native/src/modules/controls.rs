@@ -15,7 +15,7 @@ use std::sync::{Arc, Mutex};
 use blink_core::i18n::Lang;
 use serde_json::Value;
 
-use super::{Action, Effect, Env, Key, KeyResult, Kit, Module, PanelFrame, PeekView, PointerKind, RestView};
+use super::{Action, Effect, Env, Key, KeyResult, Kit, Module, PanelFrame, PeekView, PointerKind, RestView, CONTENT_H, PAGE_SIDE};
 use crate::access::{Node, NodeAction, Role, ROOT};
 use crate::events::SystemEvent;
 use crate::ui::canvas::Icon;
@@ -365,23 +365,20 @@ impl Hit {
     }
 }
 
-const PAD_X: f32 = 16.0;
-const PAD_TOP: f32 = 12.0;
-const PAD_BOTTOM: f32 = 12.0;
-const CONTENT_W: f32 = 420.0 - 2.0 * PAD_X;
-const SLIDER_H: f32 = 42.0;
-const OUTPUT_H: f32 = 32.0;
-const GAP: f32 = 8.0;
-const TILE_H: f32 = 62.0;
-const TILE_COLS: usize = 4;
-const TILE_W: f32 = (CONTENT_W - (TILE_COLS as f32 - 1.0) * GAP) / TILE_COLS as f32;
-const ROW_H: f32 = 34.0;
-const ROW_GAP: f32 = 4.0;
-/// How many rows a page of choices can show (the panel is only so tall).
+/// The left column (two sliders and the output row) and the gap before the round buttons.
+const LEFT_W: f32 = 196.0;
+const SIDE_GAP: f32 = 22.0;
+const SLIDER_H: f32 = 38.0;
+const OUTPUT_H: f32 = 30.0;
+const V_GAP: f32 = 8.0;
+const ORB_R: f32 = 19.0;
+const ORB_COLS: usize = 4;
+const ORB_CELL_W: f32 = (crate::shell::OPEN_W - 2.0 * PAGE_SIDE - LEFT_W - SIDE_GAP) / ORB_COLS as f32;
+const CELL_H: f32 = 60.0;
+const LIST_ROW_H: f32 = 34.0;
+const LIST_GAP: f32 = 6.0;
+/// How many choices a page can show (two columns of three).
 const MAX_ROWS: usize = 6;
-/// The panel is this tall on every page. If it shrank when a page opened, the pointer (which was
-/// on the tile that was clicked) would be left outside the notch and the notch would close.
-const PANEL_H: f32 = crate::shell::OPEN_MAX_H - 28.0;
 
 pub struct ControlsModule {
     backend: Arc<dyn ControlsBackend>,
@@ -624,19 +621,42 @@ fn put(kit: &mut Kit, face: Face, size: f32, x: f32, box_y: f32, box_h: f32, max
     kit.canvas.text(kit.fonts, face, size, x, base, &cut, color, alpha, 0.0)
 }
 
-/// The icon, name and number of a slider, in one color (drawn twice: dark over the fill, light elsewhere).
+/// The same text centred on `cx`.
+#[allow(clippy::too_many_arguments)]
+fn put_centered(kit: &mut Kit, face: Face, size: f32, cx: f32, box_y: f32, box_h: f32, max_w: f32, text: &str, color: Rgb, alpha: f32) {
+    let px = size * kit.canvas.scale;
+    let cut = kit.fonts.ellipsize(face, text, px, 0.0, max_w.max(8.0) * kit.canvas.scale);
+    let w = kit.canvas.measure(kit.fonts, face, size, &cut, 0.0);
+    let base = box_y + kit.fonts.baseline(face, size, box_h);
+    kit.canvas.text(kit.fonts, face, size, cx - w / 2.0, base, &cut, color, alpha, 0.0);
+}
+
+/// A picture for an output: headphones for what you wear, a speaker for the rest.
+fn output_icon(name: &str) -> Icon {
+    let n = name.to_lowercase();
+    if ["headphone", "headset", "buds", "airpods", "earphone", "earbud"].iter().any(|w| n.contains(w)) { Icon::Headphones } else { Icon::Speaker }
+}
+
+fn mix(a: Rgb, b: Rgb, t: f32) -> Rgb {
+    let m = |x: u8, y: u8| (f32::from(x) + (f32::from(y) - f32::from(x)) * t).round() as u8;
+    Rgb(m(a.0, b.0), m(a.1, b.1), m(a.2, b.2))
+}
+
+const CYAN: Rgb = Rgb(0x38, 0xd6, 0xe8);
+const AMBER: Rgb = Rgb(0xf5, 0xb8, 0x4a);
+
+/// The icon, name and number of a slider, in one colour (drawn twice: dark over the fill, light elsewhere).
 #[allow(clippy::too_many_arguments)]
 fn slider_content(kit: &mut Kit, x: f32, y: f32, w: f32, h: f32, icon: Icon, label: &str, value: &str, color: Rgb, alpha: f32) {
-    kit.canvas.icon(icon, x + 22.0, y + h / 2.0, 17.0, color, alpha);
-    put(kit, Face::Sans, 12.5, x + 44.0, y, h, w - 120.0, label, color, alpha);
-    let tw = kit.canvas.measure(kit.fonts, Face::Mono, 12.0, value, 0.0);
-    let base = y + kit.fonts.baseline(Face::Mono, 12.0, h);
-    kit.canvas.text(kit.fonts, Face::Mono, 12.0, x + w - 16.0 - tw, base, value, color, alpha, 0.0);
+    kit.canvas.icon(icon, x + 20.0, y + h / 2.0, 16.0, color, alpha);
+    put(kit, Face::SansSemibold, 12.0, x + 38.0, y, h, w - 100.0, label, color, alpha);
+    let tw = kit.canvas.measure(kit.fonts, Face::Mono, 11.5, value, 0.0);
+    let base = y + kit.fonts.baseline(Face::Mono, 11.5, h);
+    kit.canvas.text(kit.fonts, Face::Mono, 11.5, x + w - 14.0 - tw, base, value, color, alpha, 0.0);
 }
 
 impl ControlsModule {
-    /// A rounded surface: lit (the thing is on), plain, or hovered; with an amber ring when the
-    /// keyboard has it selected.
+    /// A soft rounded surface; hovered it brightens, selected by the keyboard it gets an amber ring.
     #[allow(clippy::too_many_arguments)]
     fn surface(&self, kit: &mut Kit, frame: &PanelFrame, x: f32, y: f32, w: f32, h: f32, r: f32, on: bool, selected: bool) {
         let theme = frame.theme;
@@ -646,10 +666,9 @@ impl ControlsModule {
             kit.canvas.rrect(x, y, w, h, r, theme.bg, frame.alpha);
         }
         if on {
-            kit.canvas.rrect(x, y, w, h, r, theme.fg, frame.alpha * if over { 1.0 } else { 0.94 });
+            kit.canvas.gradient_rrect(x, y, w, h, r, mix(CYAN, Rgb(255, 255, 255), 0.4), CYAN, true, frame.alpha * if over { 1.0 } else { 0.95 });
         } else {
-            let base = f32::from(theme.line.1) / 255.0;
-            kit.canvas.rrect(x, y, w, h, r, theme.line.0, frame.alpha * (base * 1.5 + if over { 0.07 } else { 0.0 }));
+            kit.canvas.rrect(x, y, w, h, r, theme.fg, frame.alpha * (0.09 + if over { 0.07 } else { 0.0 }));
         }
     }
 
@@ -660,21 +679,20 @@ impl ControlsModule {
         selected
     }
 
-    /// A big slider that fills like a progress bar. The icon at the left is a button when `icon_command` is given.
+    /// A slider that fills with colour like a progress bar. The icon at the left is a button when `icon_command` is given.
     #[allow(clippy::too_many_arguments)]
-    fn slider_tile(&mut self, kit: &mut Kit, frame: &PanelFrame, y: f32, icon: Icon, label: &str, value: u8, value_text: &str, faded: bool, target: Target, icon_command: Option<ControlCommand>) {
+    fn slider_tile(&mut self, kit: &mut Kit, frame: &PanelFrame, x: f32, y: f32, color: Rgb, icon: Icon, label: &str, value: u8, value_text: &str, faded: bool, target: Target, icon_command: Option<ControlCommand>) {
         let theme = frame.theme;
-        let (x, w, h, r) = (frame.origin_x + PAD_X, CONTENT_W, SLIDER_H, 14.0);
+        let (w, h, r) = (LEFT_W, SLIDER_H, 13.0);
         self.surface(kit, frame, x, y, w, h, r, false, false);
         let fill = w * f32::from(value) / 100.0;
+        let ink = Rgb(0x04, 0x10, 0x14);
         if value > 0 {
             kit.canvas.push_clip(x, y, fill, h);
-            kit.canvas.rrect(x, y, w, h, r, theme.fg, frame.alpha * if faded { 0.55 } else { 0.94 });
-            slider_content(kit, x, y, w, h, icon, label, value_text, theme.bg, frame.alpha);
-            // The grip at the edge of the fill.
-            if fill > 16.0 && fill < w - 8.0 {
-                kit.canvas.rrect(x + fill - 7.0, y + h / 2.0 - 8.0, 3.0, 16.0, 1.5, theme.bg, frame.alpha * 0.35);
-            }
+            let a = frame.alpha * if faded { 0.55 } else { 1.0 };
+            kit.canvas.gradient_rrect(x, y, w, h, r, mix(color, Rgb(255, 255, 255), 0.45), color, false, a);
+            kit.canvas.glow(x + fill, y + h / 2.0, 34.0, mix(color, Rgb(255, 255, 255), 0.5), a * 0.55);
+            slider_content(kit, x, y, w, h, icon, label, value_text, ink, frame.alpha);
             kit.canvas.pop_clip();
         }
         kit.canvas.push_clip(x + fill, y, w - fill, h);
@@ -682,125 +700,115 @@ impl ControlsModule {
         kit.canvas.pop_clip();
         self.hits.push(Hit { x, y, w, h, target, track: (x, x + w) });
         if let Some(cmd) = icon_command {
-            if self.pointer_over(x, y, 40.0, h) {
-                let lit = if value > 0 { theme.bg } else { theme.fg };
-                kit.canvas.rrect(x + 5.0, y + 5.0, 32.0, h - 10.0, 10.0, lit, frame.alpha * 0.14);
+            if self.pointer_over(x, y, 36.0, h) {
+                kit.canvas.rrect(x + 4.0, y + 4.0, 30.0, h - 8.0, 9.0, if value > 0 { ink } else { theme.fg }, frame.alpha * 0.12);
             }
-            self.push_button(x, y, 40.0, h, cmd);
+            self.push_button(x, y, 36.0, h, cmd);
         }
     }
 
     /// The row showing which output is in use; it opens the page to choose another.
-    fn output_row(&mut self, kit: &mut Kit, frame: &PanelFrame, y: f32, state: &ControlsState, lang: Lang) {
+    fn output_row(&mut self, kit: &mut Kit, frame: &PanelFrame, x: f32, y: f32, state: &ControlsState) {
         let theme = frame.theme;
-        let (x, w, h) = (frame.origin_x + PAD_X, CONTENT_W, OUTPUT_H);
+        let (w, h) = (LEFT_W, OUTPUT_H);
         let many = state.outputs.len() > 1;
-        let selected = if many { self.keyboard && self.drawn_buttons == self.selected } else { false };
+        let selected = many && self.keyboard && self.drawn_buttons == self.selected;
         self.surface(kit, frame, x, y, w, h, 12.0, false, selected);
-        kit.canvas.icon(Icon::Speaker, x + 22.0, y + h / 2.0, 15.0, theme.dim, frame.alpha);
         let active = state.outputs.iter().find(|o| o.active).or(state.outputs.first());
+        kit.canvas.icon(active.map_or(Icon::Speaker, |o| output_icon(&o.name)), x + 20.0, y + h / 2.0, 15.0, theme.dim, frame.alpha);
         let name = active.map_or(String::new(), |o| short_output_name(&o.name));
-        put(kit, Face::Sans, 12.0, x + 44.0, y, h, w - 130.0, &name, theme.fg, frame.alpha);
+        put(kit, Face::Sans, 12.0, x + 38.0, y, h, w - 70.0, &name, theme.fg, frame.alpha);
         if many {
-            let caption = word(lang, "output");
-            let cw = kit.canvas.measure(kit.fonts, Face::Sans, 11.0, caption, 0.0);
-            put(kit, Face::Sans, 11.0, x + w - 34.0 - cw, y, h, cw + 8.0, caption, theme.dim, frame.alpha);
-            kit.canvas.icon(Icon::ChevronRight, x + w - 18.0, y + h / 2.0, 12.0, theme.dim, frame.alpha);
+            kit.canvas.icon(Icon::ChevronRight, x + w - 16.0, y + h / 2.0, 12.0, theme.dim, frame.alpha);
             self.push_button(x, y, w, h, ControlCommand::ShowPage(ControlsPage::Output));
         }
     }
 
-    /// One tile of the grid.
-    fn tile(&mut self, kit: &mut Kit, frame: &PanelFrame, x: f32, y: f32, tv: &TileView) {
+    /// One round button of the grid, with its name under it.
+    fn orb(&mut self, kit: &mut Kit, frame: &PanelFrame, cx: f32, y: f32, tv: &TileView) {
         let theme = frame.theme;
-        let (w, h) = (TILE_W, TILE_H);
+        let cell_w = ORB_CELL_W;
+        let cy = y + ORB_R + 2.0;
         let selected = self.keyboard && self.drawn_buttons == self.selected;
-        self.surface(kit, frame, x, y, w, h, 14.0, tv.on, selected);
-        let ink = if tv.on { theme.bg } else { theme.fg };
-        let quiet = if tv.on { (theme.bg, 0.62) } else { (theme.dim, 1.0) };
-        kit.canvas.icon(tv.icon, x + 21.0, y + 19.0, 17.0, ink, frame.alpha);
-        put(kit, Face::Sans, 12.0, x + 12.0, y + 31.0, 16.0, w - 20.0, &tv.label, ink, frame.alpha);
-        put(kit, Face::Sans, 10.5, x + 12.0, y + 45.0, 14.0, w - 20.0, &tv.sub, quiet.0, frame.alpha * quiet.1);
-        self.push_button(x, y, w, h, tv.command.clone());
+        let over = self.pointer_over(cx - cell_w / 2.0, y, cell_w, CELL_H);
+        if tv.on {
+            kit.canvas.glow(cx, cy, ORB_R + 15.0, CYAN, frame.alpha * 0.34);
+            kit.canvas.orb(cx, cy, ORB_R, mix(CYAN, Rgb(255, 255, 255), 0.6), CYAN, frame.alpha);
+        } else {
+            kit.canvas.circle(cx, cy, ORB_R, theme.fg, frame.alpha * (0.10 + if over { 0.08 } else { 0.0 }));
+        }
+        if selected {
+            kit.canvas.arc(cx, cy, ORB_R + 3.5, 2.0, 0.0, 360.0, theme.soon, frame.alpha);
+        }
+        kit.canvas.icon(tv.icon, cx, cy, 17.0, if tv.on { Rgb(0x04, 0x10, 0x14) } else { theme.fg }, frame.alpha);
+        let label = if tv.on && !tv.sub.is_empty() && tv.label == "Wi-Fi" { &tv.sub } else { &tv.label };
+        put_centered(kit, Face::Sans, 10.5, cx, y + 2.0 * ORB_R + 6.0, 14.0, cell_w - 4.0, label, if tv.on { theme.fg } else { theme.dim }, frame.alpha);
+        self.push_button(cx - cell_w / 2.0, y, cell_w, CELL_H, tv.command.clone());
         if let Some(page) = tv.detail {
-            let (zx, zw) = (x + w - 30.0, 30.0);
-            if self.pointer_over(zx, y, zw, 38.0) {
-                kit.canvas.rrect(zx + 2.0, y + 6.0, zw - 6.0, 26.0, 9.0, ink, frame.alpha * 0.14);
-            }
-            kit.canvas.icon(Icon::ChevronRight, x + w - 15.0, y + 19.0, 11.0, quiet.0, frame.alpha * quiet.1);
-            self.push_button(zx, y, zw, 38.0, ControlCommand::ShowPage(page));
+            // A small badge on the corner opens the list.
+            let (bx, by) = (cx + ORB_R - 2.0, cy - ORB_R + 2.0);
+            let badge_over = self.pointer_over(bx - 9.0, by - 9.0, 18.0, 18.0);
+            kit.canvas.circle(bx, by, 7.5, theme.fg, frame.alpha * if badge_over { 1.0 } else { 0.9 });
+            kit.canvas.icon(Icon::ChevronRight, bx, by, 8.0, theme.bg, frame.alpha);
+            self.push_button(bx - 9.0, by - 9.0, 18.0, 18.0, ControlCommand::ShowPage(page));
         }
     }
 
-    /// The back button at the top of a page.
-    fn back_button(&mut self, kit: &mut Kit, frame: &PanelFrame, y: f32, title: &str, lang: Lang) {
+    /// The round back button where the page arrow would be, at the left of a page of choices.
+    fn back_button(&mut self, kit: &mut Kit, frame: &PanelFrame) {
         let theme = frame.theme;
-        let x = frame.origin_x + PAD_X;
+        let (cx, cy) = (frame.origin_x + 20.0, frame.origin_y + CONTENT_H / 2.0);
         let selected = self.keyboard && self.drawn_buttons == self.selected;
-        let tw = kit.canvas.measure(kit.fonts, Face::Sans, 12.5, title, 0.0);
-        let w = 44.0 + tw + 8.0;
-        self.surface(kit, frame, x, y, w, 30.0, 15.0, false, selected);
-        kit.canvas.icon(Icon::ChevronLeft, x + 16.0, y + 15.0, 12.0, theme.fg, frame.alpha);
-        put(kit, Face::Sans, 12.5, x + 32.0, y, 30.0, tw + 10.0, title, theme.fg, frame.alpha);
-        self.push_button(x, y, w, 30.0, ControlCommand::ShowPage(ControlsPage::Main));
-        let _ = lang;
+        let over = self.pointer_over(cx - 15.0, cy - 15.0, 30.0, 30.0);
+        if selected {
+            kit.canvas.arc(cx, cy, 16.0, 2.0, 0.0, 360.0, theme.soon, frame.alpha);
+        }
+        kit.canvas.circle(cx, cy, 12.5, theme.fg, frame.alpha * if over { 0.4 } else { 0.28 });
+        kit.canvas.icon(Icon::ChevronLeft, cx, cy, 14.0, theme.fg, frame.alpha);
+        self.push_button(cx - 15.0, cy - 15.0, 30.0, 30.0, ControlCommand::ShowPage(ControlsPage::Main));
     }
 
-    /// One choice in a page: an icon, a name, and a check when it is the one in use.
+    /// One choice in a page: an icon, a name, and a mark when it is the one in use.
     #[allow(clippy::too_many_arguments)]
-    fn choice_row(&mut self, kit: &mut Kit, frame: &PanelFrame, y: f32, icon: Icon, name: &str, active: bool, command: ControlCommand) {
+    fn choice_row(&mut self, kit: &mut Kit, frame: &PanelFrame, x: f32, y: f32, w: f32, icon: Icon, name: &str, active: bool, command: ControlCommand) {
         let theme = frame.theme;
-        let (x, w, h) = (frame.origin_x + PAD_X, CONTENT_W, ROW_H);
+        let h = LIST_ROW_H;
         let selected = self.keyboard && self.drawn_buttons == self.selected;
         self.surface(kit, frame, x, y, w, h, 12.0, active, selected);
-        let ink = if active { theme.bg } else { theme.fg };
-        kit.canvas.icon(icon, x + 22.0, y + h / 2.0, 15.0, ink, frame.alpha);
-        put(kit, Face::Sans, 12.5, x + 44.0, y, h, w - 100.0, name, ink, frame.alpha);
+        let ink = if active { Rgb(0x04, 0x10, 0x14) } else { theme.fg };
+        kit.canvas.icon(icon, x + 20.0, y + h / 2.0, 15.0, ink, frame.alpha);
+        put(kit, Face::Sans, 12.0, x + 38.0, y, h, w - 72.0, name, ink, frame.alpha);
         if active {
-            kit.canvas.icon(Icon::Check, x + w - 22.0, y + h / 2.0, 13.0, ink, frame.alpha);
+            kit.canvas.icon(Icon::Check, x + w - 18.0, y + h / 2.0, 13.0, ink, frame.alpha);
         }
         self.push_button(x, y, w, h, command);
     }
 
-    /// A small button at the right end of a page's header row.
-    fn header_action(&mut self, kit: &mut Kit, frame: &PanelFrame, y: f32, text: &str, command: ControlCommand) {
-        let theme = frame.theme;
-        let tw = kit.canvas.measure(kit.fonts, Face::Sans, 12.0, text, 0.0);
-        let w = 40.0 + tw;
-        let x = frame.origin_x + PAD_X + CONTENT_W - w;
-        let selected = self.keyboard && self.drawn_buttons == self.selected;
-        self.surface(kit, frame, x, y, w, 30.0, 15.0, false, selected);
-        put(kit, Face::Sans, 12.0, x + 14.0, y, 30.0, tw + 6.0, text, theme.fg, frame.alpha);
-        kit.canvas.icon(Icon::ArrowUpRight, x + w - 16.0, y + 15.0, 11.0, theme.dim, frame.alpha);
-        self.push_button(x, y, w, 30.0, command);
-    }
-
     /// One network in range: its name, how strong it is, and whether it needs a password.
-    fn network_row(&mut self, kit: &mut Kit, frame: &PanelFrame, y: f32, n: &Network) {
+    fn network_row(&mut self, kit: &mut Kit, frame: &PanelFrame, x: f32, y: f32, w: f32, n: &Network) {
         let theme = frame.theme;
-        let (x, w, h) = (frame.origin_x + PAD_X, CONTENT_W, ROW_H);
+        let h = LIST_ROW_H;
         let selected = self.keyboard && self.drawn_buttons == self.selected;
         self.surface(kit, frame, x, y, w, h, 12.0, n.connected, selected);
-        let ink = if n.connected { theme.bg } else { theme.fg };
-        let quiet = if n.connected { theme.bg } else { theme.dim };
-        kit.canvas.icon(Icon::Wifi, x + 22.0, y + h / 2.0, 15.0, ink, frame.alpha);
-        put(kit, Face::Sans, 12.5, x + 44.0, y, h, w - 150.0, &n.name, ink, frame.alpha);
-        // The right end: a check when connected, a lock when a password is needed, then the signal bars.
-        let mut right = x + w - 18.0;
+        let ink = if n.connected { Rgb(0x04, 0x10, 0x14) } else { theme.fg };
+        let quiet = if n.connected { ink } else { theme.dim };
+        kit.canvas.icon(Icon::Wifi, x + 20.0, y + h / 2.0, 15.0, ink, frame.alpha);
+        // The right end: a check when connected, a lock when a password is needed, the signal bars.
+        let mut right = x + w - 14.0;
         if n.connected {
-            kit.canvas.icon(Icon::Check, right, y + h / 2.0, 13.0, ink, frame.alpha);
-            right -= 26.0;
+            kit.canvas.icon(Icon::Check, right - 2.0, y + h / 2.0, 12.0, ink, frame.alpha);
+            right -= 22.0;
         } else if n.secured && !n.saved {
-            kit.canvas.icon(Icon::Lock, right, y + h / 2.0, 12.0, quiet, frame.alpha);
-            right -= 26.0;
+            kit.canvas.icon(Icon::Lock, right - 3.0, y + h / 2.0, 11.0, quiet, frame.alpha);
+            right -= 22.0;
         }
         let lit = (u32::from(n.signal) + 24) / 25;
         for i in 0..4u32 {
-            let bar_h = 4.0 + 3.0 * i as f32;
-            let bx = right - 20.0 + 5.0 * i as f32;
-            let on = i < lit;
-            kit.canvas.rrect(bx, y + h / 2.0 + 7.0 - bar_h, 3.0, bar_h, 1.0, quiet, frame.alpha * if on { 0.95 } else { 0.28 });
+            let bar_h = 4.0 + 2.6 * i as f32;
+            let bx = right - 17.0 + 4.4 * i as f32;
+            kit.canvas.rrect(bx, y + h / 2.0 + 6.0 - bar_h, 2.6, bar_h, 1.0, quiet, frame.alpha * if i < lit { 0.95 } else { 0.28 });
         }
+        put(kit, Face::Sans, 12.0, x + 38.0, y, h, right - 22.0 - (x + 38.0), &n.name, ink, frame.alpha);
         self.push_button(x, y, w, h, ControlCommand::ConnectWifi(n.name.clone()));
     }
 
@@ -808,105 +816,85 @@ impl ControlsModule {
         let lang = env.t.lang();
         let state = self.backend.state();
         self.settle(&state, env.now_ms);
-        match self.page {
-            ControlsPage::Main => self.layout_main(env, kit, frame, draw, &state, lang),
-            ControlsPage::Output => self.layout_output(kit, frame, draw, &state, lang),
-            ControlsPage::Network => self.layout_network(kit, frame, draw, &state, lang),
+        if draw {
+            match self.page {
+                ControlsPage::Main => self.layout_main(env, kit, frame, &state, lang),
+                ControlsPage::Output => self.layout_output(kit, frame, &state),
+                ControlsPage::Network => self.layout_network(kit, frame, &state, lang),
+            }
         }
+        CONTENT_H
     }
 
-    fn layout_main(&mut self, env: &Env, kit: &mut Kit, frame: &PanelFrame, draw: bool, state: &ControlsState, lang: Lang) -> f32 {
+    fn layout_main(&mut self, env: &Env, kit: &mut Kit, frame: &PanelFrame, state: &ControlsState, lang: Lang) {
         let w = |k| word(lang, k);
         let now = env.now_ms;
-        let x0 = frame.origin_x + PAD_X;
-        let mut y = PAD_TOP;
+        let x0 = frame.content_x();
+        let mut y = frame.origin_y + 2.0;
 
         // Volume: the icon is the mute button.
-        if draw {
-            let value = self.shown_level(&Target::Volume, state.volume, now);
-            let muted = state.muted || value == 0;
-            let text = if state.muted { w("muted").to_string() } else { format!("{value}%") };
-            let icon = if muted { Icon::SpeakerMuted } else { Icon::Speaker };
-            self.slider_tile(kit, frame, y, icon, w("volume"), if state.muted { 0 } else { value }, &text, false, Target::Volume, Some(ControlCommand::ToggleMute));
-        }
-        y += SLIDER_H + 6.0;
-
-        // Where the sound goes.
-        if self.show_output && !state.outputs.is_empty() {
-            if draw {
-                self.output_row(kit, frame, y, state, lang);
-            }
-            y += OUTPUT_H + GAP;
-        }
+        let value = self.shown_level(&Target::Volume, state.volume, now);
+        let muted = state.muted || value == 0;
+        let text = if state.muted { w("muted").to_string() } else { format!("{value}%") };
+        let icon = if muted { Icon::SpeakerMuted } else { Icon::Speaker };
+        self.slider_tile(kit, frame, x0, y, CYAN, icon, w("volume"), if state.muted { 0 } else { value }, &text, false, Target::Volume, Some(ControlCommand::ToggleMute));
+        y += SLIDER_H + V_GAP;
 
         if let Some(b) = state.brightness {
-            if draw {
-                let value = self.shown_level(&Target::Brightness, b, now);
-                self.slider_tile(kit, frame, y, Icon::Sun, w("brightness"), value, &format!("{value}%"), false, Target::Brightness, None);
-            }
-            y += SLIDER_H + 10.0;
-        } else {
-            y += 4.0;
+            let value = self.shown_level(&Target::Brightness, b, now);
+            self.slider_tile(kit, frame, x0, y, AMBER, Icon::Sun, w("brightness"), value, &format!("{value}%"), false, Target::Brightness, None);
+            y += SLIDER_H + V_GAP;
+        }
+        if self.show_output && !state.outputs.is_empty() {
+            self.output_row(kit, frame, x0, y, state);
         }
 
-        // The tiles.
+        // The round buttons.
         let views = self.tile_views(state, lang);
-        if draw {
-            for (i, tv) in views.iter().enumerate() {
-                let (col, row) = (i % TILE_COLS, i / TILE_COLS);
-                let x = x0 + col as f32 * (TILE_W + GAP);
-                self.tile(kit, frame, x, y + row as f32 * (TILE_H + GAP), tv);
-            }
+        let gx = x0 + LEFT_W + SIDE_GAP;
+        for (i, tv) in views.iter().enumerate() {
+            let (col, row) = (i % ORB_COLS, i / ORB_COLS);
+            let cx = gx + ORB_CELL_W * (col as f32 + 0.5);
+            self.orb(kit, frame, cx, frame.origin_y + 2.0 + row as f32 * (CELL_H + 2.0), tv);
         }
-        let rows = views.len().div_ceil(TILE_COLS);
-        if rows > 0 {
-            y += rows as f32 * TILE_H + (rows as f32 - 1.0) * GAP;
-        } else {
-            y -= 10.0;
-        }
-        y + PAD_BOTTOM
     }
 
-    fn layout_output(&mut self, kit: &mut Kit, frame: &PanelFrame, draw: bool, state: &ControlsState, lang: Lang) -> f32 {
-        let mut y = PAD_TOP;
-        if draw {
-            self.back_button(kit, frame, y, word(lang, "output"), lang);
-        }
-        y += 30.0 + GAP;
+    fn list_origin(frame: &PanelFrame) -> (f32, f32, f32) {
+        let x = frame.content_x();
+        let col_w = (frame.content_w() - 12.0) / 2.0;
+        (x, frame.origin_y + 4.0, col_w)
+    }
+
+    fn layout_output(&mut self, kit: &mut Kit, frame: &PanelFrame, state: &ControlsState) {
+        self.back_button(kit, frame);
+        let (x, y0, col_w) = Self::list_origin(frame);
         // The one in use first.
         let mut ordered: Vec<&Output> = state.outputs.iter().collect();
         ordered.sort_by_key(|o| !o.active);
-        let shown = ordered.len().min(MAX_ROWS);
-        for o in ordered.into_iter().take(MAX_ROWS) {
-            if draw {
-                self.choice_row(kit, frame, y, Icon::Speaker, &short_output_name(&o.name), o.active, ControlCommand::SetOutput(o.id.clone()));
-            }
-            y += ROW_H + ROW_GAP;
+        for (i, o) in ordered.into_iter().take(MAX_ROWS).enumerate() {
+            let (col, row) = (i / 3, i % 3);
+            let rx = x + col as f32 * (col_w + 12.0);
+            self.choice_row(kit, frame, rx, y0 + row as f32 * (LIST_ROW_H + LIST_GAP), col_w, output_icon(&o.name), &short_output_name(&o.name), o.active, ControlCommand::SetOutput(o.id.clone()));
         }
-        if shown > 0 {
-            y -= ROW_GAP;
-        }
-        y + PAD_BOTTOM
     }
 
-    fn layout_network(&mut self, kit: &mut Kit, frame: &PanelFrame, draw: bool, state: &ControlsState, lang: Lang) -> f32 {
-        let mut y = PAD_TOP;
-        if draw {
-            self.back_button(kit, frame, y, word(lang, "networks"), lang);
-            self.header_action(kit, frame, y, word(lang, "more"), ControlCommand::WifiSettings);
+    fn layout_network(&mut self, kit: &mut Kit, frame: &PanelFrame, state: &ControlsState, lang: Lang) {
+        self.back_button(kit, frame);
+        let (x, y0, col_w) = Self::list_origin(frame);
+        let shown = state.networks.len().min(MAX_ROWS - 1);
+        for (i, n) in state.networks.iter().take(shown).enumerate() {
+            let (col, row) = (i / 3, i % 3);
+            let rx = x + col as f32 * (col_w + 12.0);
+            self.network_row(kit, frame, rx, y0 + row as f32 * (LIST_ROW_H + LIST_GAP), col_w, n);
         }
-        y += 30.0 + GAP;
-        if state.networks.is_empty() && draw {
+        // "More…" takes the last place: Windows' own list, for networks not heard here or not yet used.
+        let (col, row) = (shown / 3, shown % 3);
+        let rx = x + col as f32 * (col_w + 12.0);
+        if shown == 0 {
             let theme = frame.theme;
-            put(kit, Face::Sans, 12.0, frame.origin_x + PAD_X + 4.0, y, 30.0, CONTENT_W - 8.0, word(lang, "searching"), theme.dim, frame.alpha);
+            put(kit, Face::Sans, 12.0, rx + 4.0, y0 + (LIST_ROW_H + LIST_GAP), LIST_ROW_H, col_w, word(lang, "searching"), theme.dim, frame.alpha);
         }
-        for n in state.networks.iter().take(MAX_ROWS) {
-            if draw {
-                self.network_row(kit, frame, y, n);
-            }
-            y += ROW_H + ROW_GAP;
-        }
-        y + PAD_BOTTOM
+        self.choice_row(kit, frame, rx, y0 + row as f32 * (LIST_ROW_H + LIST_GAP), col_w, Icon::ArrowUpRight, word(lang, "more"), false, ControlCommand::WifiSettings);
     }
 }
 
@@ -917,6 +905,26 @@ impl Module for ControlsModule {
 
     fn title(&self, lang: Lang) -> String {
         word(lang, "title").to_string()
+    }
+
+    fn accent(&self) -> Rgb {
+        CYAN
+    }
+
+    fn page_arrows(&self) -> bool {
+        self.page == ControlsPage::Main
+    }
+
+    fn title_parts(&self, lang: Lang) -> (String, String) {
+        let id = lang == Lang::Id;
+        let (a, b) = match (self.page, id) {
+            (ControlsPage::Main, false) => ("Con", "trols"),
+            (ControlsPage::Main, true) => ("Kon", "trol"),
+            (ControlsPage::Output, false) => ("Out", "put"),
+            (ControlsPage::Output, true) => ("Kelu", "aran"),
+            (ControlsPage::Network, _) => ("Wi-", "Fi"),
+        };
+        (a.to_string(), b.to_string())
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
@@ -966,8 +974,8 @@ impl Module for ControlsModule {
             self.backend.send(ControlCommand::Refresh);
         }
         let theme = crate::ui::theme::Theme::dark();
-        let frame = PanelFrame { theme: &theme, alpha: 1.0, viewport_h: crate::shell::OPEN_MAX_H, origin_x: 0.0, keyboard: false };
-        self.layout(env, kit, &frame, false).max(PANEL_H)
+        let frame = PanelFrame { theme: &theme, alpha: 1.0, viewport_h: crate::shell::OPEN_MAX_H, origin_x: 0.0, origin_y: 0.0, width: crate::shell::OPEN_W, keyboard: false };
+        self.layout(env, kit, &frame, false)
     }
 
     fn draw_panel(&mut self, env: &Env, kit: &mut Kit, frame: &PanelFrame) {

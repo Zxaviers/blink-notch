@@ -1,4 +1,4 @@
-# Gate G2 checks that need no mouse or keyboard: they drive blink.exe through its
+﻿# Gate G2 checks that need no mouse or keyboard: they drive blink.exe through its
 # control pipe, and read hit-testing from Windows itself (WindowFromPoint).
 #   powershell -File scripts\native\gate-g2.ps1 [-Exe path\to\blink.exe]
 # Real-input checks (a real click, the real hotkey) are separate: scripts\native\real-input.ps1.
@@ -42,7 +42,7 @@ try {
   Cmd $c @{cmd='advance'; ms=800} | Out-Null
   $s = Cmd $c @{cmd='state'}
   Check 'hover opens the panel' ($s.state.mode -eq 'open') $s.state.mode
-  $h = Cmd $c @{cmd='hit'; x=320; y=200}
+  $h = Cmd $c @{cmd='hit'; x=320; y=150}
   Check 'open panel takes the mouse' ($h.alpha -eq 255 -and $h.ours)
   $h = Cmd $c @{cmd='hit'; x=100; y=200}
   Check 'beside the open panel still passes through' ($h.alpha -eq 0 -and -not $h.ours)
@@ -157,3 +157,4 @@ if (-not $b.HasExited) { $b.Kill() }
 
 "`n$script:pass passed, $script:fail failed"
 if ($script:fail -gt 0) { exit 1 }
+

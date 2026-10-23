@@ -9,9 +9,9 @@ use serde_json::{json, Value};
 
 use crate::clock::Clock;
 use crate::host::ModuleConfig;
-use crate::modules::{Effect, Env, Key, Kit, Module, PanelFrame, PeekView, PointerKind, RestView};
+use crate::modules::{Effect, Env, Key, Kit, Module, PanelFrame, PeekView, PointerKind, RestView, HEADER_H, PAGER_H};
 use crate::shell::{Mode, RestStyle, Shape, Shell, ShellConfig, OPEN_MAX_H, OPEN_W, REST_FULL, WINDOW_H, WINDOW_W};
-use crate::ui::canvas::Canvas;
+use crate::ui::canvas::{Canvas, Icon};
 use crate::ui::text::{Face, Fonts};
 use crate::ui::theme::{panel_surface, Rgb, Surface, Theme};
 
@@ -29,8 +29,19 @@ pub enum AppEffect {
     Toast { title: String, body: String, url: Option<String> },
 }
 
-/// Height of the tab strip along the bottom of the panel when more than one module is on.
-const TAB_H: f32 = 28.0;
+/// Quiet for this long and the clock gives way to a pair of eyes; much longer and they doze.
+const EYES_AFTER_MS: u64 = 45_000;
+const DOZE_AFTER_MS: u64 = 150_000;
+const BLINK_EVERY_MS: u64 = 4_600;
+const BLINK_MS: u64 = 170;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Eyes {
+    Open,
+    Blink,
+    Doze,
+}
+
 /// Peeks waiting for the notch to be free (a long queue is a bug in a module, not a feature).
 const MAX_QUEUED_PEEKS: usize = 6;
 
@@ -58,8 +69,14 @@ pub struct App {
     /// Which module the showing peek came from, so a click on it opens that module.
     peek_from: Option<usize>,
     peek_queue: Vec<(PeekView, Option<usize>)>,
-    /// Tabs as drawn last frame: (slot index, x, y, w, h) in window coordinates.
+    /// The page dots and arrows as drawn last frame: (slot index, x, y, w, h) in window coordinates.
     tab_rects: Vec<(usize, f32, f32, f32, f32)>,
+    /// Charge and whether it is charging, from the last power event (the header ring shows it).
+    battery: Option<(u8, bool)>,
+    /// When the person last did anything here (the eyes wake up from it).
+    last_activity: u64,
+    /// The panel was open and is still on its way out (its page may still be drawn, fading).
+    panel_shown: bool,
     pointer: Option<(f32, f32)>,
     effects: Vec<AppEffect>,
     /// The last frame's panel height, to retarget the shell when content changes.
@@ -99,6 +116,9 @@ impl App {
             peek_from: None,
             peek_queue: Vec::new(),
             tab_rects: Vec::new(),
+            battery: None,
+            last_activity: 0,
+            panel_shown: false,
             pointer: None,
             effects: Vec::new(),
             last_panel_h: 0.0,
@@ -130,6 +150,9 @@ impl App {
 
     /// Something happened on the computer: tell every module that is on.
     pub fn system_event(&mut self, event: crate::events::SystemEvent) {
+        if let crate::events::SystemEvent::Power { percent, charging, .. } = &event {
+            self.battery = percent.map(|p| (p, *charging));
+        }
         let tz = self.tz.clone();
         let env = self.env(&tz);
         for i in self.enabled_indices() {
@@ -168,7 +191,7 @@ impl App {
     }
 
     fn tabs_height(&self) -> f32 {
-        if self.panel_indices().len() > 1 { TAB_H } else { 0.0 }
+        if self.panel_indices().len() > 1 { PAGER_H } else { 0.0 }
     }
 
     /// Apply the user's choice of modules: order and on/off. Ids the app does not know are
@@ -315,7 +338,7 @@ impl App {
         let env = self.env(&tz);
         let tabs = self.tabs_height();
         let mut kit = Kit { canvas: &mut self.canvas, fonts: &mut self.fonts };
-        let h = self.slots[self.active].module.panel_height(&env, &mut kit) + tabs;
+        let h = HEADER_H + self.slots[self.active].module.panel_height(&env, &mut kit) + tabs;
         self.last_panel_h = h;
         let now = self.clock.now_ms();
         self.shell.set_open_height(h, now);
@@ -382,6 +405,7 @@ impl App {
     /// window whose pixels are transparent there.
     pub fn pointer(&mut self, kind: PointerKind, x: f32, y: f32) {
         let now = self.clock.now_ms();
+        self.last_activity = now;
         let shape = self.shell.shape(now);
         let sx = (WINDOW_W - shape.w) / 2.0;
         let inside = x >= sx && x < sx + shape.w && y >= 0.0 && y < shape.h;
@@ -477,6 +501,7 @@ impl App {
 
     pub fn key(&mut self, key: Key) {
         let now = self.clock.now_ms();
+        self.last_activity = now;
         if self.shell.mode() != Mode::Open {
             return;
         }
@@ -506,6 +531,7 @@ impl App {
     /// The global hotkey: open and take keyboard focus, or close.
     pub fn hotkey(&mut self) {
         let now = self.clock.now_ms();
+        self.last_activity = now;
         if self.shell.keyboard() {
             self.close_panel(now);
             return;
@@ -574,6 +600,7 @@ impl App {
 
     fn start_peek(&mut self, view: PeekView, from: Option<usize>) {
         let now = self.clock.now_ms();
+        self.last_activity = now;
         let ms = view.ttl_ms.unwrap_or(self.shell.config().peek_ms);
         self.peek = Some(view);
         self.peek_from = from;
@@ -643,7 +670,13 @@ impl App {
         let shown = if open { self.active } else { self.rest_owner };
         let mut nodes = self.slots[shown].module.accessibility(&env, open);
         if open && self.tabs_height() > 0.0 {
+            let mut seen: Vec<usize> = Vec::new();
             for (slot, x, y, w, h) in self.tab_rects.clone() {
+                // The dots come first; the arrows point at the same pages and add nothing a reader needs.
+                if seen.contains(&slot) {
+                    continue;
+                }
+                seen.push(slot);
                 let mut tab = Node::new(200 + slot as i32, ROOT, Role::Button, self.slots[slot].module.title(env.t.lang()));
                 tab.rect = (x, y, w, h);
                 tab.action = Some(crate::access::NodeAction::SwitchTab(slot));
@@ -702,6 +735,8 @@ impl App {
         let env = self.env(&tz);
         let showing = matches!(self.shell.mode(), Mode::Open | Mode::Peek);
         let mut wake = self.shell.next_wake();
+        let now = self.clock.now_ms();
+        wake = [wake, self.eyes_wake(now, &env)].into_iter().flatten().min();
         for i in self.enabled_indices() {
             let w = self.slots[i].module.next_wake(&env, showing && i == self.active);
             wake = [wake, w].into_iter().flatten().min();
@@ -756,8 +791,13 @@ impl App {
             Mode::Rest => {
                 let rest_alpha = (1.0 - openness * 3.0).clamp(0.0, 1.0) * if reduced { 1.0 - fade * 0.0 } else { 1.0 };
                 if self.shell.rest_style() == RestStyle::Full && rest_alpha > 0.0 {
-                    let rv = self.slots[self.rest_owner].module.rest(&env);
-                    self.draw_rest(&rv, &pill, rest_alpha);
+                    match self.eyes_at(now, &env) {
+                        Some(eyes) => self.draw_eyes(eyes, &pill, rest_alpha),
+                        None => {
+                            let rv = self.slots[self.rest_owner].module.rest(&env);
+                            self.draw_rest(&rv, &pill, rest_alpha, &env);
+                        }
+                    }
                 }
             }
             Mode::Peek => {
@@ -768,100 +808,279 @@ impl App {
             Mode::Open => {}
         }
         let open_alpha = ((openness - 0.35) / 0.5).clamp(0.0, 1.0) * fade;
-        if open_alpha > 0.0 && (self.shell.mode() == Mode::Open || openness > 0.0) {
+        // A peek is as tall as a quarter of a page, but it is not one: only draw the page while it is open or closing.
+        match self.shell.mode() {
+            Mode::Open => self.panel_shown = true,
+            Mode::Peek => self.panel_shown = false,
+            Mode::Rest => {
+                if !self.shell.is_animating(now) {
+                    self.panel_shown = false;
+                }
+            }
+        }
+        if open_alpha > 0.0 && self.panel_shown {
             let frame = PanelFrame {
                 theme: &panel_theme,
                 alpha: open_alpha,
-                // The module sees the panel without the tab strip along the bottom.
-                viewport_h: self.shell.target().h.max(REST_FULL.h) - self.tabs_height(),
+                // The module sees its page: the panel without the header above and the pager below.
+                viewport_h: (self.shell.target().h.max(REST_FULL.h) - HEADER_H - self.tabs_height()).max(0.0),
                 origin_x: (WINDOW_W - OPEN_W) / 2.0,
+                origin_y: HEADER_H,
+                width: OPEN_W,
                 keyboard: self.shell.keyboard(),
             };
             let mut kit = Kit { canvas: &mut self.canvas, fonts: &mut self.fonts };
             self.slots[self.active].module.draw_panel(&env, &mut kit, &frame);
-            self.draw_tabs(&panel_theme, open_alpha, &env);
+            self.draw_header(&panel_theme, open_alpha, &env);
+            self.draw_pager(&panel_theme, open_alpha, &env, frame.viewport_h);
         } else {
             self.tab_rects.clear();
         }
         self.canvas.pop_clip();
     }
 
-    /// The strip of module tabs along the bottom of the panel (only with more than one module on).
-    fn draw_tabs(&mut self, theme: &Theme, alpha: f32, env: &Env) {
+    /// The row above a page: its name (the second half in its colour), the date and time with a
+    /// small ring (the battery, or how much of the day has gone), and the activity bars.
+    fn draw_header(&mut self, theme: &Theme, alpha: f32, env: &Env) {
+        let left = (WINDOW_W - OPEN_W) / 2.0 + 24.0;
+        let right = (WINDOW_W + OPEN_W) / 2.0 - 24.0;
+        let cy = 23.0;
+        let lang = env.t.lang();
+        let (first, second) = self.slots[self.active].module.title_parts(lang);
+        let accent = self.slots[self.active].module.accent();
+        let size = 15.0;
+        let base = cy - 10.0 + self.fonts.baseline(Face::SansBold, size, 20.0);
+        let adv = self.canvas.text(&mut self.fonts, Face::SansBold, size, left, base, &first, theme.fg, alpha, 0.0);
+        if !second.is_empty() {
+            self.canvas.text(&mut self.fonts, Face::SansBold, size, left + adv, base, &second, accent, alpha, 0.0);
+        }
+
+        // The middle: ring, date, time.
+        let date = crate::modules::clock::short_date(env.wall_ms, env.tz, lang);
+        let time = crate::modules::clock::hhmm(env.wall_ms, env.tz);
+        let dw = self.canvas.measure(&mut self.fonts, Face::Sans, 13.0, &date, 0.0);
+        let tw = self.canvas.measure(&mut self.fonts, Face::SansBold, 13.0, &time, 0.0);
+        let total = 14.0 + 8.0 + dw + 7.0 + tw;
+        let x = WINDOW_W / 2.0 - total / 2.0;
+        let (fraction, ring) = match self.battery {
+            Some((p, charging)) => (f32::from(p) / 100.0, if charging || p > 20 { Rgb(0x34, 0xd3, 0x99) } else if p > 10 { theme.soon } else { theme.late }),
+            None => (((env.wall_ms.rem_euclid(86_400_000)) as f32 / 86_400_000.0).clamp(0.0, 1.0), accent),
+        };
+        let faint = f32::from(theme.line.1) / 255.0 * alpha * 1.6;
+        self.canvas.arc(x + 7.0, cy, 5.8, 2.2, -90.0, 359.0, theme.line.0, faint);
+        self.canvas.arc(x + 7.0, cy, 5.8, 2.2, -90.0, 360.0 * fraction.max(0.03), ring, alpha);
+        let tb = cy - 10.0 + self.fonts.baseline(Face::Sans, 13.0, 20.0);
+        self.canvas.text(&mut self.fonts, Face::Sans, 13.0, x + 22.0, tb, &date, theme.dim, alpha, 0.0);
+        self.canvas.text(&mut self.fonts, Face::SansBold, 13.0, x + 22.0 + dw + 7.0, tb, &time, theme.fg, alpha, 0.0);
+
+        // The right: activity bars (flat while nothing plays).
+        for (i, h) in [4.0_f32, 4.0, 4.0, 4.0].iter().enumerate() {
+            let bx = right - 14.0 + i as f32 * 4.0;
+            self.canvas.rrect(bx, cy - h / 2.0, 2.0, *h, 1.0, theme.fg, alpha * 0.7);
+        }
+    }
+
+    /// The dots along the bottom and the round buttons that turn the page (only with more than one page).
+    fn draw_pager(&mut self, theme: &Theme, alpha: f32, _env: &Env, page_h: f32) {
         self.tab_rects.clear();
-        let tabs_h = self.tabs_height();
-        if tabs_h <= 0.0 {
+        let order = self.panel_indices();
+        if order.len() < 2 {
             return;
         }
-        let top = self.shell.target().h.max(REST_FULL.h) - tabs_h;
-        let size = 11.0;
-        let pad = 11.0;
-        let gap = 4.0;
-        let items: Vec<(usize, String)> = self.panel_indices().into_iter().map(|i| (i, self.slots[i].module.title(env.t.lang()))).collect();
-        let widths: Vec<f32> = items.iter().map(|(_, t)| self.canvas.measure(&mut self.fonts, Face::Sans, size, t, 0.0) + 2.0 * pad).collect();
-        let total: f32 = widths.iter().sum::<f32>() + gap * (items.len() as f32 - 1.0);
-        let mut x = (WINDOW_W - total) / 2.0;
-        let h = tabs_h - 8.0;
-        let y = top + 3.0;
-        let faint = f32::from(theme.line.1) / 255.0 * alpha;
-        for ((slot, title), w) in items.iter().zip(&widths) {
-            let active = *slot == self.active;
-            let over = self.pointer.is_some_and(|(px, py)| px >= x && px < x + w && py >= y && py < y + h);
-            if active {
-                self.canvas.rrect(x, y, *w, h, h / 2.0, theme.line.0, faint * 1.6);
-            } else if over {
-                self.canvas.rrect(x, y, *w, h, h / 2.0, theme.line.0, faint);
-            }
-            let base = y + self.fonts.baseline(Face::Sans, size, h);
-            let color = if active { theme.fg } else { theme.dim };
-            self.canvas.text(&mut self.fonts, Face::Sans, size, x + pad, base, title, color, alpha, 0.0);
-            self.tab_rects.push((*slot, x, top, *w, tabs_h));
+        let notch_h = self.shell.target().h.max(REST_FULL.h);
+        let dot_y = notch_h - PAGER_H / 2.0 - 1.0;
+        let (small, wide, gap) = (5.0_f32, 20.0_f32, 6.0_f32);
+        let total: f32 = order.iter().map(|i| if *i == self.active { wide } else { small }).sum::<f32>() + gap * (order.len() as f32 - 1.0);
+        let mut x = WINDOW_W / 2.0 - total / 2.0;
+        for &slot in &order {
+            let active = slot == self.active;
+            let w = if active { wide } else { small };
+            self.canvas.rrect(x, dot_y - small / 2.0, w, small, small / 2.0, theme.fg, alpha * if active { 1.0 } else { 0.28 });
+            self.tab_rects.push((slot, x - 4.0, dot_y - 9.0, w + 8.0, 18.0));
             x += w + gap;
         }
-    }
-
-    fn draw_rest(&mut self, rv: &RestView, theme: &Theme, alpha: f32) {
-        let size = 12.5;
-        let s = self.canvas.scale;
-        let label = self.fonts.ellipsize(Face::Mono, &rv.label, size * s, 0.0, 96.0 * s);
-        let label_w = if label.is_empty() { 0.0 } else { self.canvas.measure(&mut self.fonts, Face::Mono, size, &label, 0.0) };
-        let count_w = self.canvas.measure(&mut self.fonts, Face::Mono, size, &rv.count, 0.0);
-        let gap = if label.is_empty() { 0.0 } else { 8.0 };
-        let total = label_w + gap + count_w;
-        let x = (WINDOW_W - total) / 2.0;
-        let base = self.fonts.baseline(Face::Mono, size, REST_FULL.h);
-        if !label.is_empty() {
-            self.canvas.text(&mut self.fonts, Face::Mono, size, x, base, &label, theme.dim, alpha, 0.0);
+        if !self.slots[self.active].module.page_arrows() {
+            return;
         }
-        self.canvas.text(&mut self.fonts, Face::Mono, size, x + label_w + gap, base, &rv.count, theme.urgency(rv.urgency), alpha, 0.0);
+        let at = order.iter().position(|i| *i == self.active).unwrap_or(0);
+        let mid_y = HEADER_H + page_h / 2.0;
+        let cx_left = (WINDOW_W - OPEN_W) / 2.0 + 20.0;
+        let cx_right = (WINDOW_W + OPEN_W) / 2.0 - 20.0;
+        let arrow = |this: &mut Self, slot: usize, cx: f32, icon: crate::ui::canvas::Icon| {
+            let over = this.pointer.is_some_and(|(px, py)| (px - cx).abs() <= 15.0 && (py - mid_y).abs() <= 15.0);
+            this.canvas.circle(cx, mid_y, 12.5, theme.line.0, f32::from(theme.line.1) / 255.0 * alpha * if over { 4.0 } else { 2.6 });
+            this.canvas.icon(icon, cx, mid_y, 14.0, theme.fg, alpha);
+            this.tab_rects.push((slot, cx - 15.0, mid_y - 15.0, 30.0, 30.0));
+        };
+        if at > 0 {
+            arrow(self, order[at - 1], cx_left, crate::ui::canvas::Icon::ChevronLeft);
+        }
+        if at + 1 < order.len() {
+            arrow(self, order[at + 1], cx_right, crate::ui::canvas::Icon::ChevronRight);
+        }
     }
 
+    // ------------------------------------------------------------ eyes
+
+    /// Whether the eyes are showing instead of the clock, and how: after a while of quiet
+    /// (when the clock owns the pill) they open, blink now and then, and finally doze.
+    fn eyes_at(&mut self, now: u64, env: &Env) -> Option<Eyes> {
+        if !self.eyes_possible(env) {
+            return None;
+        }
+        let idle = now.saturating_sub(self.last_activity);
+        if idle < EYES_AFTER_MS {
+            return None;
+        }
+        if idle >= DOZE_AFTER_MS {
+            return Some(Eyes::Doze);
+        }
+        let t = (idle - EYES_AFTER_MS) % BLINK_EVERY_MS;
+        Some(if t >= BLINK_EVERY_MS - BLINK_MS { Eyes::Blink } else { Eyes::Open })
+    }
+
+    /// Eyes need a quiet pill: the clock, or a deadline that is not close yet (never one that is
+    /// near or missed, which the pill must keep showing).
+    fn eyes_possible(&mut self, env: &Env) -> bool {
+        if self.shell.mode() != Mode::Rest || self.shell.rest_style() != RestStyle::Full {
+            return false;
+        }
+        let calm = self.slots[self.rest_owner].module.id() == "clock" || self.slots[self.rest_owner].module.rest(env).urgency == "later";
+        calm && self.module_mut::<crate::modules::clock::ClockModule>().is_none_or(|c| c.eyes)
+    }
+
+    /// The next moment the eyes change: opening, a blink starting or ending, dozing off.
+    fn eyes_wake(&mut self, now: u64, env: &Env) -> Option<u64> {
+        if !self.eyes_possible(env) {
+            return None;
+        }
+        let idle = now.saturating_sub(self.last_activity);
+        if idle < EYES_AFTER_MS {
+            return Some(self.last_activity + EYES_AFTER_MS);
+        }
+        if idle >= DOZE_AFTER_MS {
+            return None;
+        }
+        let t = (idle - EYES_AFTER_MS) % BLINK_EVERY_MS;
+        let base = now - t;
+        let next_change = if t < BLINK_EVERY_MS - BLINK_MS { base + BLINK_EVERY_MS - BLINK_MS } else { base + BLINK_EVERY_MS };
+        Some(next_change.min(self.last_activity + DOZE_AFTER_MS))
+    }
+
+    fn draw_eyes(&mut self, eyes: Eyes, theme: &Theme, alpha: f32) {
+        let cx = WINDOW_W / 2.0;
+        let cy = REST_FULL.h / 2.0 - 1.0;
+        let glow = Rgb(0x9a, 0xe0, 0xff);
+        for dx in [-15.0_f32, 15.0] {
+            let x = cx + dx;
+            match eyes {
+                Eyes::Open => {
+                    self.canvas.glow(x, cy, 13.0, glow, alpha * 0.35);
+                    self.canvas.rrect(x - 4.5, cy - 7.5, 9.0, 15.0, 4.5, theme.fg, alpha);
+                }
+                Eyes::Blink => {
+                    self.canvas.rrect(x - 4.5, cy - 1.2, 9.0, 2.4, 1.2, theme.fg, alpha);
+                }
+                Eyes::Doze => {
+                    // Eyes nearly shut: a thin dim line, a little lower.
+                    self.canvas.rrect(x - 4.5, cy + 1.0, 9.0, 2.2, 1.1, theme.dim, alpha * 0.8);
+                }
+            }
+        }
+        // A soft light under the notch, like a screen glowing in the dark.
+        let line_w = if eyes == Eyes::Doze { 40.0 } else { 90.0 };
+        let (c0, c1) = (Rgb(0x38, 0xd6, 0xe8), Rgb(0xa7, 0x8b, 0xfa));
+        self.canvas.gradient_rrect(cx - line_w / 2.0, REST_FULL.h - 2.5, line_w, 2.0, 1.0, c0, c1, false, alpha * if eyes == Eyes::Doze { 0.4 } else { 0.85 });
+    }
+
+    // --------------------------------------------------------- pill and peek
+
+    /// The ring in the header and the pill: the battery when there is one, otherwise how much of the day has gone.
+    fn ring_state(&self, theme: &Theme, wall_ms: i64, accent: Rgb) -> (f32, Rgb) {
+        match self.battery {
+            Some((p, charging)) => (f32::from(p) / 100.0, if charging || p > 20 { Rgb(0x34, 0xd3, 0x99) } else if p > 10 { theme.soon } else { theme.late }),
+            None => ((wall_ms.rem_euclid(86_400_000) as f32 / 86_400_000.0).clamp(0.0, 1.0), accent),
+        }
+    }
+
+    /// The resting pill: a ring at the left, the text in the middle, quiet bars at the right.
+    fn draw_rest(&mut self, rv: &RestView, theme: &Theme, alpha: f32, env: &Env) {
+        let s = self.canvas.scale;
+        let left = (WINDOW_W - REST_FULL.w) / 2.0 + 17.0;
+        let right = (WINDOW_W + REST_FULL.w) / 2.0 - 17.0;
+        let cy = REST_FULL.h / 2.0;
+        let accent = self.slots[self.rest_owner].module.accent();
+        let (fraction, color) = self.ring_state(theme, env.wall_ms, accent);
+        let faint = f32::from(theme.line.1) / 255.0 * alpha * 1.6;
+        self.canvas.arc(left, cy, 5.8, 2.2, -90.0, 359.0, theme.line.0, faint);
+        self.canvas.arc(left, cy, 5.8, 2.2, -90.0, 360.0 * fraction.max(0.03), color, alpha);
+        for (i, h) in [4.0_f32, 4.0, 4.0, 4.0].iter().enumerate() {
+            self.canvas.rrect(right - 12.0 + i as f32 * 4.0, cy - h / 2.0, 2.0, *h, 1.0, theme.fg, alpha * 0.6);
+        }
+
+        let room = right - left - 40.0;
+        let label = self.fonts.ellipsize(Face::Mono, &rv.label, 11.5 * s, 0.0, (room - 50.0).max(30.0).min(96.0) * s);
+        let label_w = if label.is_empty() { 0.0 } else { self.canvas.measure(&mut self.fonts, Face::Mono, 11.5, &label, 0.0) };
+        let size = if rv.label.is_empty() { 15.0 } else { 13.5 };
+        let count = self.fonts.ellipsize(Face::SansBold, &rv.count, size * s, 0.0, (room - label_w - 8.0).max(30.0) * s);
+        let count_w = self.canvas.measure(&mut self.fonts, Face::SansBold, size, &count, 0.0);
+        let gap = if label.is_empty() { 0.0 } else { 8.0 };
+        let x = WINDOW_W / 2.0 - (label_w + gap + count_w) / 2.0;
+        if !label.is_empty() {
+            let base = self.fonts.baseline(Face::Mono, 11.5, REST_FULL.h);
+            self.canvas.text(&mut self.fonts, Face::Mono, 11.5, x, base, &label, theme.dim, alpha, 0.0);
+        }
+        let base = self.fonts.baseline(Face::SansBold, size, REST_FULL.h);
+        self.canvas.text(&mut self.fonts, Face::SansBold, size, x + label_w + gap, base, &count, theme.urgency(rv.urgency), alpha, 0.0);
+    }
+
+    /// A peek: a ring with a picture at the left (it fills with the level, when there is one), the
+    /// words beside it, and the big number at the right.
     fn draw_peek(&mut self, p: &PeekView, theme: &Theme, alpha: f32) {
         let s = self.canvas.scale;
-        let left = (WINDOW_W - crate::shell::PEEK.w) / 2.0 + 18.0;
-        let right = (WINDOW_W + crate::shell::PEEK.w) / 2.0 - 18.0;
-        // With a bar underneath, the text sits a little higher so the pair is centred.
-        let line_h = crate::shell::PEEK.h - if p.progress.is_some() { 14.0 } else { 0.0 };
-        let base = self.fonts.baseline(Face::Mono, 12.0, line_h);
-        let code = self.fonts.ellipsize(Face::Mono, &p.code, 12.0 * s, 0.0, 110.0 * s);
-        let cw = self.canvas.text(&mut self.fonts, Face::Mono, 12.0, left, base, &code, theme.dim, alpha, 0.0);
-        let count_w = self.canvas.measure(&mut self.fonts, Face::Mono, 13.0, &p.count, 0.0);
-        let title_x = left + cw + 10.0;
-        let title_w = (right - count_w - 10.0 - title_x).max(20.0);
-        let title = self.fonts.ellipsize(Face::SansSemibold, &p.title, 13.0 * s, 0.0, title_w * s);
-        let base_t = self.fonts.baseline(Face::SansSemibold, 13.0, line_h);
-        self.canvas.text(&mut self.fonts, Face::SansSemibold, 13.0, title_x, base_t, &title, theme.fg, alpha, 0.0);
-        let base_c = self.fonts.baseline(Face::Mono, 13.0, line_h);
-        self.canvas.text(&mut self.fonts, Face::Mono, 13.0, right - count_w, base_c, &p.count, theme.urgency(p.urgency), alpha, 0.0);
-        if let Some(progress) = p.progress {
-            // A thin bar along the bottom: the track, then the filled part.
-            let (y, h) = (crate::shell::PEEK.h - 18.0, 3.0);
-            let width = right - left;
-            self.canvas.rrect(left, y, width, h, h / 2.0, theme.line.0, f32::from(theme.line.1) / 255.0 * alpha * 1.4);
-            let filled = (width * progress.clamp(0.0, 1.0)).max(if progress > 0.0 { h } else { 0.0 });
-            if filled > 0.0 {
-                self.canvas.rrect(left, y, filled, h, h / 2.0, theme.fg, alpha);
-            }
+        let shape = crate::shell::PEEK;
+        let left = (WINDOW_W - shape.w) / 2.0 + 22.0;
+        let right = (WINDOW_W + shape.w) / 2.0 - 22.0;
+        let cy = shape.h / 2.0;
+        let accent = p.accent.unwrap_or(match p.urgency {
+            "late" => theme.late,
+            "soon" => theme.soon,
+            _ => Rgb(0x4e, 0xa8, 0xff),
+        });
+
+        // The ring.
+        let (rx, rr) = (left + 19.0, 16.5);
+        self.canvas.glow(rx, cy, 36.0, accent, alpha * 0.30);
+        self.canvas.arc(rx, cy, rr, 3.0, -90.0, 359.0, theme.fg, alpha * 0.16);
+        self.canvas.arc(rx, cy, rr, 3.0, -90.0, 360.0 * p.progress.unwrap_or(1.0).clamp(0.02, 1.0), accent, alpha);
+        self.canvas.icon(p.icon.unwrap_or(Icon::Alarm), rx, cy, 16.0, accent, alpha);
+
+        // The big number.
+        let count_w = if p.count.is_empty() { 0.0 } else { self.canvas.measure(&mut self.fonts, Face::SansLight, 28.0, &p.count, 0.0) };
+        if count_w > 0.0 {
+            let base = cy - 18.0 + self.fonts.baseline(Face::SansLight, 28.0, 36.0);
+            let color = match p.urgency {
+                "late" => theme.late,
+                "soon" => theme.soon,
+                _ => theme.fg,
+            };
+            self.canvas.text(&mut self.fonts, Face::SansLight, 28.0, right - count_w, base, &p.count, color, alpha, 0.0);
+        }
+
+        // The words: a bold line and a quiet one under it.
+        let (bold, quiet) = if p.title.is_empty() { (p.code.as_str(), "") } else { (p.title.as_str(), p.code.as_str()) };
+        let tx = left + 50.0;
+        let max_w = (right - tx - if count_w > 0.0 { count_w + 14.0 } else { 0.0 }).max(40.0);
+        let bold = self.fonts.ellipsize(Face::SansBold, bold, 15.0 * s, 0.0, max_w * s);
+        if quiet.is_empty() {
+            let base = cy - 12.0 + self.fonts.baseline(Face::SansBold, 15.0, 24.0);
+            self.canvas.text(&mut self.fonts, Face::SansBold, 15.0, tx, base, &bold, theme.fg, alpha, 0.0);
+        } else {
+            let base = cy - 21.0 + self.fonts.baseline(Face::SansBold, 15.0, 22.0);
+            self.canvas.text(&mut self.fonts, Face::SansBold, 15.0, tx, base, &bold, theme.fg, alpha, 0.0);
+            let quiet = self.fonts.ellipsize(Face::Sans, quiet, 12.5 * s, 0.0, max_w * s);
+            let base = cy + 1.0 + self.fonts.baseline(Face::Sans, 12.5, 18.0);
+            self.canvas.text(&mut self.fonts, Face::Sans, 12.5, tx, base, &quiet, theme.dim, alpha, 0.0);
         }
     }
 
