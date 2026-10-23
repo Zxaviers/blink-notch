@@ -154,7 +154,11 @@ fn the_hotkey_opens_with_keyboard_focus_and_keys_navigate_mark_done_snooze_and_c
     assert!(app.module_mut::<DeadlinesModule>().unwrap().source_mut().done().contains_key(&first));
 
     app.key(Key::Escape);
-    assert_eq!(app.take_effects(), vec![AppEffect::KeyboardFocus(false)]);
+    let effects = app.take_effects();
+    let announced: Vec<&str> = effects.iter().filter_map(|e| if let AppEffect::Announce(t) = e { Some(t.as_str()) } else { None }).collect();
+    assert_eq!(announced, ["Snoozed: Problem Set 4", "Marked done: Problem Set 4"], "each action is spoken for a screen reader");
+    let rest: Vec<&AppEffect> = effects.iter().filter(|e| !matches!(e, AppEffect::Announce(_))).collect();
+    assert_eq!(rest, vec![&AppEffect::KeyboardFocus(false)]);
     settle(&mut app);
     assert_eq!(mode(&mut app), "rest");
     assert!(!app.state_json()["keyboard"].as_bool().unwrap());
