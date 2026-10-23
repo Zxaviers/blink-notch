@@ -67,3 +67,21 @@ The app now owns a list of modules (`Slot`: module plus on/off). Which are on an
 - **Checks:** 10 new app-level tests, 3 for `host.json`, 1 for the clock, `scripts/native/gate-host.ps1` (17 checks through the real window). Earlier gates unchanged: 47, 26, 27 and 8 still pass.
 
 Not done in 6a: the settings page for modules and themes (6f), the theme system and visual polish of the host. The deadlines list now scrolls a little sooner because the tab strip takes 28 px.
+
+### 6b: system peeks, built (2026-10-23)
+`modules/system.rs` is a module with no panel (no tab, never owns the pill) that turns events into peeks. Event sources are in `platform/sysevents.rs` and are all event driven:
+
+| Peek | Source | Notes |
+|---|---|---|
+| Charger connected or removed, fully charged, battery low (20%) and almost empty (10%) | power-setting notifications | First report is only a baseline; each warning fires once per drop; the 10% one is urgent and outranks other peeks |
+| Wi-Fi connected (with the network name) or disconnected | WLAN service notifications | Desktops without Wi-Fi simply have no source |
+| Headphones, earbuds or speakers appearing, going, or becoming the default output | MMDevice notifications | Switching back to speakers is not announced |
+| Volume and mute, with a bar | default output's endpoint volume | Steps update one peek |
+| Bluetooth devices (earbuds, controller, mouse, keyboard) connecting or disconnecting, with the battery level the device reports | a watcher over paired Bluetooth devices (classic and low energy) | Earbuds' battery fills in the same peek; their audio output is not announced a second time; a low battery on a connected device warns once. Battery shows only for devices that report it to Windows |
+| Caps Lock on or off, keyboard layout changes | raw keyboard input | Looks at a key's code only for Caps Lock and the layout-switch keys (Shift, Alt, Windows, Space, Control), drops everything else, stores and sends nothing; layouts are also rechecked when the foreground window changes |
+
+Each kind can be switched off in `host.json` (module options `battery`, `wifi`, `audio`, `bluetooth`, `volume`, `caps`, `language`). Words in English and Indonesian.
+
+Verified: 13 unit tests of the event-to-peek rules, 4 app-level tests, `scripts/native/gate-system.ps1` (28 checks through the real window with injected events, plus a check that the real sources register: all five did on this laptop). Cost with every source running: 4.9 MB private at rest, 0% idle CPU (the Bluetooth watcher adds about 1.2 MB).
+
+Not verified: any real event firing (needs real hardware actions; `scripts/native/real-system.ps1` does the Caps Lock, volume and layout ones with supervision), reading a real earbuds battery, Bluetooth on or off, brightness (skipped by choice), and the key source while an elevated (administrator) app has focus.

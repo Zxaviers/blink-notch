@@ -948,7 +948,7 @@ impl Runtime {
             "fullscreen": self.fullscreen,
             "hotkey": self.hotkey,
             "tray": self.tray.is_some(),
-            "sources": { "power": self.sources.power, "wifi": self.sources.wifi, "audio": self.sources.audio, "keys": self.sources.keys },
+            "sources": { "power": self.sources.power, "wifi": self.sources.wifi, "audio": self.sources.audio, "bluetooth": self.sources.bluetooth, "keys": self.sources.keys },
             "surface": { "w": self.surface.w, "h": self.surface.h },
         })
     }

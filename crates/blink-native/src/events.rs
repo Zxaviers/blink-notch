@@ -21,6 +21,9 @@ pub enum SystemEvent {
     /// System volume (0 to 100) or mute changed.
     Volume { percent: u8, muted: bool },
     CapsLock(bool),
+    /// A paired Bluetooth device connected or disconnected, or its battery level changed.
+    /// `audio` is true for headphones, earbuds and speakers.
+    Bluetooth { name: String, connected: bool, battery: Option<u8>, audio: bool },
     /// The keyboard layout in use changed: a short code ("EN") and a name ("English (United States)").
     KeyboardLayout { code: String, name: String },
 }
@@ -45,6 +48,7 @@ impl SystemEvent {
             "audio" => SystemEvent::AudioDevice { name: text("name")?, kind: kind_from(&text("kind").unwrap_or_default()), connected: flag("connected")? },
             "volume" => SystemEvent::Volume { percent: num("percent")?.min(100) as u8, muted: flag("muted").unwrap_or(false) },
             "caps" => SystemEvent::CapsLock(flag("on")?),
+            "bluetooth" => SystemEvent::Bluetooth { name: text("name")?, connected: flag("connected")?, battery: num("battery").map(|b| b.min(100) as u8), audio: flag("audio").unwrap_or(false) },
             "layout" => SystemEvent::KeyboardLayout { code: text("code")?, name: text("name").unwrap_or_default() },
             _ => return None,
         })

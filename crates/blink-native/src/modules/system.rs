@@ -19,19 +19,30 @@ pub struct Kinds {
     pub volume: bool,
     pub caps: bool,
     pub language: bool,
+    pub bluetooth: bool,
 }
 
 impl Default for Kinds {
     fn default() -> Self {
-        Kinds { battery: true, wifi: true, audio: true, volume: true, caps: true, language: true }
+        Kinds { battery: true, wifi: true, audio: true, volume: true, caps: true, language: true, bluetooth: true }
     }
 }
 
 impl Kinds {
     pub fn from_options(options: &Value) -> Kinds {
         let on = |k: &str| options.get(k).and_then(Value::as_bool).unwrap_or(true);
-        Kinds { battery: on("battery"), wifi: on("wifi"), audio: on("audio"), volume: on("volume"), caps: on("caps"), language: on("language") }
+        Kinds { battery: on("battery"), wifi: on("wifi"), audio: on("audio"), volume: on("volume"), caps: on("caps"), language: on("language"), bluetooth: on("bluetooth") }
     }
+}
+
+/// How long after a Bluetooth device connects its battery reading may still update the same peek.
+const BT_SETTLE_MS: u64 = 10_000;
+
+#[derive(Clone, Copy)]
+struct Bt {
+    connected: bool,
+    connected_at: u64,
+    low_said: bool,
 }
 
 /// Where the battery is, for "low" and "critical" warnings that fire once per drop.
@@ -46,6 +57,11 @@ pub struct SystemModule {
     announced_low: bool,
     announced_critical: bool,
     announced_full: bool,
+    /// Bluetooth devices seen so far, by name.
+    bt: std::collections::HashMap<String, Bt>,
+    /// When an audio-class Bluetooth device last connected: its audio output follows within
+    /// moments and is the same news.
+    bt_audio_at: Option<u64>,
 }
 
 impl SystemModule {
@@ -78,6 +94,8 @@ fn words(lang: Lang, key: &str) -> &'static str {
         "caps_on" => if id { "Caps Lock menyala" } else { "Caps Lock on" },
         "caps_off" => if id { "Caps Lock mati" } else { "Caps Lock off" },
         "keyboard" => if id { "Papan ketik" } else { "Keyboard" },
+        "bluetooth" => "Bluetooth",
+        "battery_low_device" => if id { "baterai lemah" } else { "battery low" },
         _ => "",
     }
 }
@@ -126,6 +144,55 @@ impl SystemModule {
     }
 }
 
+impl SystemModule {
+    fn bluetooth(&mut self, lang: Lang, now_ms: u64, name: &str, connected: bool, battery: Option<u8>, audio: bool) -> Option<PeekView> {
+        let w = |k| words(lang, k);
+        let before = self.bt.get(name).copied();
+        let mut state = before.unwrap_or(Bt { connected: false, connected_at: 0, low_said: false });
+        let code = if audio { w("headphones") } else { w("bluetooth") };
+        let key = if audio { "audio".to_string() } else { format!("bt:{name}") };
+        let progress = battery.map(|b| f32::from(b) / 100.0);
+        let count_connected = battery.map(|b| format!("{b}%")).unwrap_or_else(|| w("connected").to_string());
+
+        let peek = if connected && !state.connected {
+            // A new connection (a device seen for the first time already connected is only a baseline).
+            state.connected = true;
+            state.connected_at = now_ms;
+            state.low_said = false;
+            if audio {
+                self.bt_audio_at = Some(now_ms);
+            }
+            before.map(|_| view(code, name.to_string(), count_connected, "later", 1, &key, None, progress))
+        } else if connected {
+            // Already connected: a battery reading is news right after connecting (it fills in the
+            // same peek) or when the charge runs low.
+            let settling = now_ms.saturating_sub(state.connected_at) <= BT_SETTLE_MS;
+            match battery {
+                Some(_) if settling && before.is_some() => Some(view(code, name.to_string(), count_connected, "later", 1, &key, None, progress)),
+                Some(b) if b <= LOW && !state.low_said && before.is_some() => {
+                    state.low_said = true;
+                    let urgency = if b <= CRITICAL { "late" } else { "soon" };
+                    Some(view(code, format!("{name} {}", w("battery_low_device")), format!("{b}%"), urgency, 2, &key, Some(5000), progress))
+                }
+                Some(b) => {
+                    if b > LOW + 5 {
+                        state.low_said = false;
+                    }
+                    None
+                }
+                None => None,
+            }
+        } else if state.connected {
+            state.connected = false;
+            Some(view(code, name.to_string(), w("disconnected").to_string(), "soon", 1, &key, None, None))
+        } else {
+            None
+        };
+        self.bt.insert(name.to_string(), state);
+        peek
+    }
+}
+
 impl Module for SystemModule {
     fn id(&self) -> &'static str {
         "system"
@@ -163,6 +230,17 @@ impl Module for SystemModule {
                     (false, _) => (w("wifi_off").to_string(), "soon"),
                 };
                 Some(view(w("wifi"), title, String::new(), urgency, 1, "wifi", None, None))
+            }
+            SystemEvent::Bluetooth { name, connected, battery, audio } => {
+                // Keep track even when switched off, so switching it on does not announce the past.
+                let p = self.bluetooth(lang, env.now_ms, name, *connected, *battery, *audio);
+                if self.kinds.bluetooth { p } else { None }
+            }
+            SystemEvent::AudioDevice { connected: true, kind: AudioKind::Headphones, .. }
+                if self.bt_audio_at.is_some_and(|at| env.now_ms.saturating_sub(at) <= BT_SETTLE_MS) =>
+            {
+                // The Bluetooth event for this device already said it, with its battery.
+                None
             }
             SystemEvent::AudioDevice { name, kind, connected } if self.kinds.audio => {
                 let what = match kind {
@@ -315,5 +393,68 @@ mod tests {
         m.set_options(&serde_json::json!({}));
         assert!(run(&mut m, Lang::En, power(true, 50)).is_some(), "on again: it knew the state all along, so plugging in is news");
         assert!(run(&mut m, Lang::En, SystemEvent::Volume { percent: 1, muted: false }).is_some());
+    }
+
+    fn run_at(m: &mut SystemModule, now_ms: u64, ev: SystemEvent) -> Option<PeekView> {
+        let tz = TimeZone::UTC;
+        let env = Env { now_ms, wall_ms: 0, tz: &tz, t: Translator::new(Lang::En) };
+        m.on_event(&ev, &env).into_iter().find_map(|e| if let Effect::ShowPeek(p) = e { Some(p) } else { None })
+    }
+
+    fn bt(name: &str, connected: bool, battery: Option<u8>, audio: bool) -> SystemEvent {
+        SystemEvent::Bluetooth { name: name.into(), connected, battery, audio }
+    }
+
+    #[test]
+    fn a_bluetooth_device_is_announced_when_it_connects_and_when_it_goes() {
+        let mut m = SystemModule::new();
+        assert!(run_at(&mut m, 0, bt("MX Master", true, Some(80), false)).is_none(), "already connected at startup: only a baseline");
+        let gone = run_at(&mut m, 1000, bt("MX Master", false, None, false)).unwrap();
+        assert_eq!((gone.code.as_str(), gone.title.as_str(), gone.count.as_str()), ("Bluetooth", "MX Master", "disconnected"));
+        let back = run_at(&mut m, 9000, bt("MX Master", true, Some(79), false)).unwrap();
+        assert_eq!((back.count.as_str(), back.progress.map(|p| (p * 100.0).round() as i32)), ("79%", Some(79)));
+        assert_eq!(back.key.as_deref(), Some("system:bt:MX Master"));
+    }
+
+    #[test]
+    fn the_battery_reading_that_arrives_just_after_connecting_fills_in_the_same_peek() {
+        let mut m = SystemModule::new();
+        run_at(&mut m, 0, bt("AirBuds Pro", false, None, true));
+        let first = run_at(&mut m, 1000, bt("AirBuds Pro", true, None, true)).unwrap();
+        assert_eq!((first.code.as_str(), first.count.as_str(), first.progress), ("Headphones", "connected", None));
+        let filled = run_at(&mut m, 3000, bt("AirBuds Pro", true, Some(70), true)).unwrap();
+        assert_eq!((filled.count.as_str(), filled.key.clone()), ("70%", first.key.clone()), "same key: it updates the peek in place");
+        assert!(run_at(&mut m, 60_000, bt("AirBuds Pro", true, Some(69), true)).is_none(), "a later change of a percent is not news");
+    }
+
+    #[test]
+    fn a_low_battery_on_a_connected_device_warns_once() {
+        let mut m = SystemModule::new();
+        run_at(&mut m, 0, bt("Keyboard", false, None, false));
+        run_at(&mut m, 1000, bt("Keyboard", true, Some(60), false));
+        assert!(run_at(&mut m, 120_000, bt("Keyboard", true, Some(30), false)).is_none());
+        let low = run_at(&mut m, 130_000, bt("Keyboard", true, Some(20), false)).unwrap();
+        assert_eq!((low.title.as_str(), low.priority), ("Keyboard battery low", 2));
+        assert!(run_at(&mut m, 140_000, bt("Keyboard", true, Some(19), false)).is_none(), "once");
+    }
+
+    #[test]
+    fn the_audio_output_of_a_bluetooth_headset_is_not_announced_a_second_time() {
+        let mut m = SystemModule::new();
+        run_at(&mut m, 0, bt("AirBuds Pro", false, None, true));
+        run_at(&mut m, 1000, bt("AirBuds Pro", true, Some(70), true)).unwrap();
+        let audio = SystemEvent::AudioDevice { name: "Headphones (AirBuds Pro Stereo)".into(), kind: AudioKind::Headphones, connected: true };
+        assert!(run_at(&mut m, 1500, audio.clone()).is_none(), "the Bluetooth peek already said it, with the battery");
+        assert!(run_at(&mut m, 30_000, audio).is_some(), "an unrelated headphones event much later still speaks");
+    }
+
+    #[test]
+    fn bluetooth_can_be_switched_off_without_forgetting_what_is_connected() {
+        let mut m = SystemModule::new();
+        m.set_options(&serde_json::json!({ "bluetooth": false }));
+        run_at(&mut m, 0, bt("Pad", false, None, false));
+        assert!(run_at(&mut m, 1000, bt("Pad", true, None, false)).is_none());
+        m.set_options(&serde_json::json!({}));
+        assert!(run_at(&mut m, 5000, bt("Pad", false, None, false)).is_some(), "it knew it was connected, so the disconnect is news");
     }
 }
