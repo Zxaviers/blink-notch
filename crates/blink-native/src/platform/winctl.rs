@@ -357,8 +357,9 @@ fn set_default_output(id: &str) {
 // ------------------------------------------------------------------ brightness
 
 // The video driver's brightness controls for the built-in screen.
-const IOCTL_VIDEO_QUERY_DISPLAY_BRIGHTNESS: u32 = 0x0023_0494;
-const IOCTL_VIDEO_SET_DISPLAY_BRIGHTNESS: u32 = 0x0023_0498;
+// ntddvdeo.h: 0x230494 is QUERY_SUPPORTED_BRIGHTNESS (the list of levels), not this one.
+const IOCTL_VIDEO_QUERY_DISPLAY_BRIGHTNESS: u32 = 0x0023_0498;
+const IOCTL_VIDEO_SET_DISPLAY_BRIGHTNESS: u32 = 0x0023_049C;
 
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
