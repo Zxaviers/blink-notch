@@ -43,12 +43,14 @@ use windows::Win32::UI::WindowsAndMessaging::{
 use super::control::{self, Request, WM_CONTROL, WM_IPC};
 use super::focus;
 use super::system::{self, WM_SHOW_ME};
+use super::sysevents::{self, KeyHint, Sources, WM_INPUT, WM_SYSEVENT};
 use super::uia;
 use super::tray::{self, MenuLabels, Tray, WM_TRAY};
 use crate::app::{App, AppEffect};
 use crate::clock::Clock;
 use crate::live::LiveSource;
 use crate::modules::clock::ClockModule;
+use crate::modules::system::SystemModule;
 use crate::modules::deadlines::{DeadlineSource, DeadlinesModule, DemoSource};
 use crate::modules::{Key, Module, PointerKind};
 use crate::shell::{WINDOW_H, WINDOW_W};
@@ -59,6 +61,7 @@ const TIMER_WAKE: usize = 1;
 const TIMER_QUIT: usize = 2;
 const TIMER_POLL: usize = 3;
 const TIMER_A11Y: usize = 4;
+const TIMER_KEYS: usize = 5;
 /// Keep screen-reader snapshots at most this often (mouse moves arrive far faster).
 const A11Y_EVERY_MS: u128 = 100;
 /// Slow safety net for the fullscreen check (the foreground hook is the fast path).
@@ -259,6 +262,11 @@ struct Runtime {
     frame_times: Vec<f32>,
     last_frame: Option<Instant>,
     last_a11y: Instant,
+    sources: Sources,
+    caps_last: bool,
+    layout_last: Option<String>,
+    /// What the key timer should check when it fires: bit 0 Caps Lock, bit 1 the keyboard layout.
+    key_checks: u8,
 }
 
 thread_local! {
@@ -562,6 +570,48 @@ impl Runtime {
         self.after();
     }
 
+    /// Look at Caps Lock and the layout a moment from now (Windows updates them just after the key).
+    fn check_keys_soon(&mut self, what: u8, ms: u32) {
+        self.key_checks |= what;
+        unsafe {
+            SetTimer(Some(self.hwnd), TIMER_KEYS, ms, None);
+        }
+    }
+
+    fn check_keys(&mut self) {
+        let checks = std::mem::take(&mut self.key_checks);
+        if checks & 1 != 0 {
+            let on = sysevents::caps_lock_on();
+            if on != self.caps_last {
+                self.caps_last = on;
+                self.app.system_event(crate::events::SystemEvent::CapsLock(on));
+            }
+        }
+        if checks & 2 != 0 {
+            if let Some((code, name)) = sysevents::foreground_layout() {
+                if self.layout_last.as_deref() != Some(code.as_str()) {
+                    let first = self.layout_last.is_none();
+                    self.layout_last = Some(code.clone());
+                    if !first {
+                        self.app.system_event(crate::events::SystemEvent::KeyboardLayout { code, name });
+                    }
+                }
+            }
+        }
+        self.after();
+    }
+
+    /// Start listening to Windows for power, Wi-Fi, audio and the two kinds of key.
+    fn start_sources(&mut self) {
+        self.sources = sysevents::start(self.hwnd);
+        // The state now is the baseline: nothing is announced for how things already were.
+        if let Some(event) = sysevents::power_event() {
+            self.app.system_event(event);
+        }
+        self.caps_last = sysevents::caps_lock_on();
+        self.layout_last = sysevents::foreground_layout().map(|(code, _)| code);
+    }
+
     /// A system notification, unless the notch is paused.
     fn toast(&mut self, title: &str, body: &str, url: Option<String>) -> bool {
         if self.paused {
@@ -762,6 +812,12 @@ impl Runtime {
                 }
                 TIMER_QUIT => unsafe { PostQuitMessage(0) },
                 TIMER_POLL => self.refresh_fullscreen(),
+                TIMER_KEYS => {
+                    unsafe {
+                        let _ = KillTimer(Some(self.hwnd), TIMER_KEYS);
+                    }
+                    self.check_keys();
+                }
                 TIMER_A11Y => {
                     unsafe {
                         let _ = KillTimer(Some(self.hwnd), TIMER_A11Y);
@@ -776,7 +832,13 @@ impl Runtime {
                     self.after();
                 }
             }
-            WM_FOREGROUND => self.refresh_fullscreen(),
+            WM_FOREGROUND => {
+                self.refresh_fullscreen();
+                // Layouts belong to windows: a different app may be typing in a different language.
+                if self.sources.keys {
+                    self.check_keys_soon(2, 90);
+                }
+            }
             uia::WM_A11Y_INVOKE => {
                 self.app.accessible_invoke(wparam.0 as i32);
                 self.after();
@@ -784,6 +846,26 @@ impl Runtime {
             WM_DATA => {
                 self.app.data_changed();
                 self.after();
+            }
+            WM_POWERBROADCAST if wparam.0 == sysevents::PBT_POWERSETTINGCHANGE => {
+                if let Some(event) = sysevents::power_event() {
+                    self.app.system_event(event);
+                    self.after();
+                }
+            }
+            WM_SYSEVENT => {
+                let event = unsafe { Box::from_raw(lparam.0 as *mut crate::events::SystemEvent) };
+                self.app.system_event(*event);
+                self.after();
+            }
+            WM_INPUT => {
+                // Raw keyboard input: only Caps Lock and the layout-switching keys matter; the rest is dropped.
+                match sysevents::key_hint(lparam) {
+                    KeyHint::Caps => self.check_keys_soon(1, 40),
+                    KeyHint::LayoutKey => self.check_keys_soon(2, 90),
+                    KeyHint::Other => {}
+                }
+                return None; // let Windows finish its own handling of the raw input
             }
             WM_POWERBROADCAST if wparam.0 == PBT_RESUME || wparam.0 == PBT_RESUME_SUSPEND => {
                 // Back from sleep: timers did not run, and the clock jumped.
@@ -866,6 +948,7 @@ impl Runtime {
             "fullscreen": self.fullscreen,
             "hotkey": self.hotkey,
             "tray": self.tray.is_some(),
+            "sources": { "power": self.sources.power, "wifi": self.sources.wifi, "audio": self.sources.audio, "keys": self.sources.keys },
             "surface": { "w": self.surface.w, "h": self.surface.h },
         })
     }
@@ -1014,9 +1097,14 @@ impl Runtime {
                     priority: v["priority"].as_u64().unwrap_or(1) as u8,
                     ttl_ms: v["ttl"].as_u64(),
                     key: v["key"].as_str().map(String::from),
+                    progress: v["progress"].as_f64().map(|p| p as f32),
                 };
                 self.app.offer_peek(view, None);
             }
+            "system_event" => match crate::events::SystemEvent::from_json(v) {
+                Some(event) => self.app.system_event(event),
+                None => return Err("unknown or incomplete system event".into()),
+            },
             "reload_host" => self.reload_host(),
             "host" => {
                 // Write host.json from the command, as the settings program will, then apply it.
@@ -1235,7 +1323,7 @@ pub fn run(opts: Options) -> Result<(), String> {
     } else {
         Box::new(live_source(&opts, &store, &settings, tz.clone(), target.clone())?)
     };
-    let modules: Vec<Box<dyn Module>> = vec![Box::new(DeadlinesModule::new(source)), Box::new(ClockModule::new())];
+    let modules: Vec<Box<dyn Module>> = vec![Box::new(DeadlinesModule::new(source)), Box::new(ClockModule::new()), Box::new(SystemModule::new())];
     let mut app = App::new(clock, settings, tz, scale, &system_language(), modules)?;
     app.configure_modules(&crate::host::parse_modules(store.get_json("host").ok().flatten().as_ref()));
     app.set_reduced_motion(!animations_enabled());
@@ -1278,6 +1366,10 @@ pub fn run(opts: Options) -> Result<(), String> {
             frame_times: Vec::new(),
             last_frame: None,
             last_a11y: Instant::now(),
+            sources: Sources::default(),
+            caps_last: false,
+            layout_last: None,
+            key_checks: 0,
         });
     });
     // Show first: the checks below may hide it again (a fullscreen app is already in front).
@@ -1298,6 +1390,10 @@ pub fn run(opts: Options) -> Result<(), String> {
             rt.effects_log.push(format!("hotkey:{status}"));
         }
         rt.refresh_fullscreen();
+        // Scripted runs inject their own events; real sources would add real ones to the test.
+        if !control || std::env::var_os("BLINK_REAL_SOURCES").is_some() {
+            rt.start_sources();
+        }
         let _ = &rt.store;
     });
     unsafe { SetTimer(Some(hwnd), TIMER_POLL, POLL_MS, None) };

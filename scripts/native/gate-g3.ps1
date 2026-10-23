@@ -51,6 +51,7 @@ try {
   $s = State $c
   Check "window visible within 150 ms of the process answering ($($sw.ElapsedMilliseconds) ms from launch)" ($s.window.visible -and $sw.ElapsedMilliseconds -lt 1500)
   $ok = WaitFor { $s = State $c; $s.state.module.sync.kind -ne 'syncing' -and $s.state.module.upcoming.Count -gt 0 }
+  $s = State $c
   Check 'the feed is fetched and parsed' $ok
   $m = $s.state.module
   Check 'four upcoming and one overdue deadline from the fixture' ($m.upcoming.Count -eq 4 -and $m.overdue.Count -eq 1) "upcoming=$($m.upcoming.Count) overdue=$($m.overdue.Count)"
@@ -109,6 +110,7 @@ try {
   $p = Start-Blink 'g3b' $envs
   $c = Connect-Blink 'g3b'
   $ok = WaitFor { $s = State $c; $s.state.module.sync.kind -ne 'syncing' -and $s.state.module.upcoming.Count -gt 0 }
+  $s = State $c
   Check 'the notch comes back with the data' $ok
   Check 'the done deadline is still done' ($s.state.module.doneList -contains 'Problem Set 4')
   Start-Sleep -Milliseconds 800; Flush $c
@@ -118,11 +120,13 @@ try {
   $server.Kill(); Start-Sleep -Milliseconds 500
   Send-Blink $c @{cmd='refresh'} | Out-Null
   $ok = WaitFor { $s = State $c; $s.state.module.sync.kind -in @('offline', 'error') } 15000
+  $s = State $c
   Check 'with the server gone the footer says so' $ok "kind=$($s.state.module.sync.kind) text=$($s.state.module.sync.text)"
   Check 'the cached deadlines stay on screen' ($s.state.module.upcoming.Count -gt 0)
   $server = Start-Server; Start-Sleep -Milliseconds 800
   Send-Blink $c @{cmd='refresh'} | Out-Null
   $ok = WaitFor { $s = State $c; $s.state.module.sync.kind -eq 'ok' } 15000
+  $s = State $c
   Check 'once it is back, a refresh recovers' $ok "kind=$($s.state.module.sync.kind)"
 
   'personal events and settings'
@@ -147,6 +151,7 @@ try {
     $p = Start-Blink 'g3cm' @{ BLINK_DATA_DIR = $cmRoot; BLINK_TZ = 'Asia/Jakarta' }
     $c = Connect-Blink 'g3cm'
     $ok = WaitFor { $s = State $c; $s.state.module.sync.kind -ne 'syncing' -and $s.state.module.upcoming.Count -gt 0 }
+    $s = State $c
     Check 'a feed whose link is only in Credential Manager is fetched' $ok "kind=$($s.state.module.sync.kind)"
     Send-Blink $c @{cmd='quit'} | Out-Null
   } finally {

@@ -82,7 +82,7 @@ impl App {
         for slot in slots.iter_mut() {
             slot.module.configure(&settings);
         }
-        let first = slots.iter().position(|s| s.enabled).unwrap_or(0);
+        let first = slots.iter().position(|s| s.enabled && s.module.has_panel()).unwrap_or(0);
         Ok(App {
             clock,
             shell: Shell::new(cfg),
@@ -128,6 +128,18 @@ impl App {
         self.slots.iter_mut().find_map(|s| s.module.as_any_mut().downcast_mut::<T>())
     }
 
+    /// Something happened on the computer: tell every module that is on.
+    pub fn system_event(&mut self, event: crate::events::SystemEvent) {
+        let tz = self.tz.clone();
+        let env = self.env(&tz);
+        for i in self.enabled_indices() {
+            let effects = self.slots[i].module.on_event(&event, &env);
+            if !effects.is_empty() {
+                self.apply_module_effects(i, effects);
+            }
+        }
+    }
+
     /// The peek showing right now, if any.
     pub fn current_peek(&self) -> Option<&PeekView> {
         if self.shell.mode() == Mode::Peek { self.peek.as_ref() } else { None }
@@ -150,8 +162,13 @@ impl App {
         self.slots.iter().enumerate().filter(|(_, s)| s.enabled).map(|(i, _)| i).collect()
     }
 
+    /// The modules that are on and have a panel: the ones with tabs, the ones that can own the pill.
+    fn panel_indices(&self) -> Vec<usize> {
+        self.slots.iter().enumerate().filter(|(_, s)| s.enabled && s.module.has_panel()).map(|(i, _)| i).collect()
+    }
+
     fn tabs_height(&self) -> f32 {
-        if self.slots.iter().filter(|s| s.enabled).count() > 1 { TAB_H } else { 0.0 }
+        if self.panel_indices().len() > 1 { TAB_H } else { 0.0 }
     }
 
     /// Apply the user's choice of modules: order and on/off. Ids the app does not know are
@@ -168,18 +185,22 @@ impl App {
             }
         }
         ordered.extend(rest);
-        // Never leave the notch with nothing to show.
-        if !ordered.iter().any(|s| s.enabled) {
-            if let Some(first) = ordered.first_mut() {
+        // Never leave the notch with nothing to show: one module with a panel stays on.
+        if !ordered.iter().any(|s| s.enabled && s.module.has_panel()) {
+            if let Some(first) = ordered.iter_mut().find(|s| s.module.has_panel()) {
                 first.enabled = true;
             }
+        }
+        for slot in ordered.iter_mut() {
+            let options = config.iter().find(|c| c.id == slot.module.id()).map(|c| c.options.clone()).unwrap_or(serde_json::Value::Null);
+            slot.module.set_options(&options);
         }
         self.slots = ordered;
         self.active = self
             .slots
             .iter()
-            .position(|s| s.enabled && s.module.id() == active_id)
-            .or_else(|| self.slots.iter().position(|s| s.enabled))
+            .position(|s| s.enabled && s.module.has_panel() && s.module.id() == active_id)
+            .or_else(|| self.slots.iter().position(|s| s.enabled && s.module.has_panel()))
             .unwrap_or(0);
         self.peek_queue.clear();
         self.update_rest_style();
@@ -190,7 +211,7 @@ impl App {
 
     /// Show another module's panel (index into the module list; it must be on).
     pub fn switch_to(&mut self, slot: usize) {
-        if slot >= self.slots.len() || !self.slots[slot].enabled || slot == self.active {
+        if slot >= self.slots.len() || !self.slots[slot].enabled || !self.slots[slot].module.has_panel() || slot == self.active {
             return;
         }
         let tz = self.tz.clone();
@@ -209,7 +230,7 @@ impl App {
 
     /// The next (+1) or previous (-1) module that is on, wrapping around.
     pub fn switch_by(&mut self, delta: i32) {
-        let on = self.enabled_indices();
+        let on = self.panel_indices();
         let Some(at) = on.iter().position(|i| *i == self.active) else { return };
         let next = (at as i32 + delta).rem_euclid(on.len() as i32) as usize;
         self.switch_to(on[next]);
@@ -281,6 +302,8 @@ impl App {
             return;
         }
         let want = if self.shell.mode() == Mode::Peek { self.peek_from.unwrap_or(self.rest_owner) } else { self.rest_owner };
+        // A module that only peeks has no panel to open: fall back to the one on the pill.
+        let want = if want < self.slots.len() && self.slots[want].module.has_panel() { want } else { self.rest_owner };
         if want < self.slots.len() && self.slots[want].enabled {
             self.active = want;
         }
@@ -303,7 +326,7 @@ impl App {
         let env = self.env(&tz);
         // The module with the most to say owns the pill; ties go to the earlier one.
         let mut best: Option<(usize, u8)> = None;
-        for i in self.enabled_indices() {
+        for i in self.panel_indices() {
             let p = self.slots[i].module.rest_priority(&env, &self.settings);
             if best.is_none_or(|(_, bp)| p > bp) {
                 best = Some((i, p));
@@ -321,6 +344,7 @@ impl App {
 
     fn apply_module_effects(&mut self, from: usize, effects: Vec<Effect>) {
         let mut want_peek = false;
+        let mut peeks: Vec<PeekView> = Vec::new();
         for e in effects {
             match e {
                 Effect::OpenUrl(u) => self.effects.push(AppEffect::OpenUrl(u)),
@@ -335,6 +359,7 @@ impl App {
                     }
                 }
                 Effect::Peek => want_peek = true,
+                Effect::ShowPeek(view) => peeks.push(view),
             }
         }
         if self.shell.mode() == Mode::Open {
@@ -344,6 +369,9 @@ impl App {
         self.update_rest_style();
         if want_peek {
             self.request_peek(from);
+        }
+        for view in peeks {
+            self.offer_peek(view, Some(from));
         }
     }
 
@@ -432,7 +460,7 @@ impl App {
         if self.shell.mode() != Mode::Open {
             return;
         }
-        if matches!(key, Key::Left | Key::Right | Key::Tab) && self.slots.iter().filter(|s| s.enabled).count() > 1 {
+        if matches!(key, Key::Left | Key::Right | Key::Tab) && self.panel_indices().len() > 1 {
             self.switch_by(if key == Key::Left { -1 } else { 1 });
             return;
         }
@@ -749,7 +777,7 @@ impl App {
         let size = 11.0;
         let pad = 11.0;
         let gap = 4.0;
-        let items: Vec<(usize, String)> = self.enabled_indices().into_iter().map(|i| (i, self.slots[i].module.title(env.t.lang()))).collect();
+        let items: Vec<(usize, String)> = self.panel_indices().into_iter().map(|i| (i, self.slots[i].module.title(env.t.lang()))).collect();
         let widths: Vec<f32> = items.iter().map(|(_, t)| self.canvas.measure(&mut self.fonts, Face::Sans, size, t, 0.0) + 2.0 * pad).collect();
         let total: f32 = widths.iter().sum::<f32>() + gap * (items.len() as f32 - 1.0);
         let mut x = (WINDOW_W - total) / 2.0;
@@ -792,17 +820,29 @@ impl App {
         let s = self.canvas.scale;
         let left = (WINDOW_W - crate::shell::PEEK.w) / 2.0 + 18.0;
         let right = (WINDOW_W + crate::shell::PEEK.w) / 2.0 - 18.0;
-        let base = self.fonts.baseline(Face::Mono, 12.0, crate::shell::PEEK.h);
+        // With a bar underneath, the text sits a little higher so the pair is centred.
+        let line_h = crate::shell::PEEK.h - if p.progress.is_some() { 14.0 } else { 0.0 };
+        let base = self.fonts.baseline(Face::Mono, 12.0, line_h);
         let code = self.fonts.ellipsize(Face::Mono, &p.code, 12.0 * s, 0.0, 110.0 * s);
         let cw = self.canvas.text(&mut self.fonts, Face::Mono, 12.0, left, base, &code, theme.dim, alpha, 0.0);
         let count_w = self.canvas.measure(&mut self.fonts, Face::Mono, 13.0, &p.count, 0.0);
         let title_x = left + cw + 10.0;
         let title_w = (right - count_w - 10.0 - title_x).max(20.0);
         let title = self.fonts.ellipsize(Face::SansSemibold, &p.title, 13.0 * s, 0.0, title_w * s);
-        let base_t = self.fonts.baseline(Face::SansSemibold, 13.0, crate::shell::PEEK.h);
+        let base_t = self.fonts.baseline(Face::SansSemibold, 13.0, line_h);
         self.canvas.text(&mut self.fonts, Face::SansSemibold, 13.0, title_x, base_t, &title, theme.fg, alpha, 0.0);
-        let base_c = self.fonts.baseline(Face::Mono, 13.0, crate::shell::PEEK.h);
+        let base_c = self.fonts.baseline(Face::Mono, 13.0, line_h);
         self.canvas.text(&mut self.fonts, Face::Mono, 13.0, right - count_w, base_c, &p.count, theme.urgency(p.urgency), alpha, 0.0);
+        if let Some(progress) = p.progress {
+            // A thin bar along the bottom: the track, then the filled part.
+            let (y, h) = (crate::shell::PEEK.h - 18.0, 3.0);
+            let width = right - left;
+            self.canvas.rrect(left, y, width, h, h / 2.0, theme.line.0, f32::from(theme.line.1) / 255.0 * alpha * 1.4);
+            let filled = (width * progress.clamp(0.0, 1.0)).max(if progress > 0.0 { h } else { 0.0 });
+            if filled > 0.0 {
+                self.canvas.rrect(left, y, filled, h, h / 2.0, theme.fg, alpha);
+            }
+        }
     }
 
     /// Render and write the frame as a PNG.
@@ -847,6 +887,7 @@ impl App {
             "modules": modules,
             "tabs": self.tabs_height() > 0.0,
             "queuedPeeks": self.peek_queue.len(),
+            "peek": self.current_peek().map(|p| json!({ "code": p.code, "title": p.title, "count": p.count, "progress": p.progress, "priority": p.priority })),
         })
     }
 

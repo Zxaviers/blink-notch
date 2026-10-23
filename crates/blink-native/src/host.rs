@@ -16,6 +16,8 @@ use serde_json::Value;
 pub struct ModuleConfig {
     pub id: String,
     pub enabled: bool,
+    /// Per-module settings (for the system peeks: which kinds to show). Null when none.
+    pub options: Value,
 }
 
 /// Parse `host.json`'s content. Anything unusable gives an empty list (all defaults).
@@ -27,13 +29,23 @@ pub fn parse_modules(value: Option<&Value>) -> Vec<ModuleConfig> {
         if out.iter().any(|m| m.id == id) {
             continue;
         }
-        out.push(ModuleConfig { id: id.to_string(), enabled: item.get("enabled").and_then(Value::as_bool).unwrap_or(true) });
+        out.push(ModuleConfig {
+            id: id.to_string(),
+            enabled: item.get("enabled").and_then(Value::as_bool).unwrap_or(true),
+            options: item.get("options").filter(|o| o.is_object()).cloned().unwrap_or(Value::Null),
+        });
     }
     out
 }
 
 pub fn to_json(modules: &[ModuleConfig]) -> Value {
-    serde_json::json!({ "modules": modules.iter().map(|m| serde_json::json!({ "id": m.id, "enabled": m.enabled })).collect::<Vec<_>>() })
+    serde_json::json!({ "modules": modules.iter().map(|m| {
+        let mut o = serde_json::json!({ "id": m.id, "enabled": m.enabled });
+        if !m.options.is_null() {
+            o["options"] = m.options.clone();
+        }
+        o
+    }).collect::<Vec<_>>() })
 }
 
 #[cfg(test)]
@@ -46,7 +58,7 @@ mod tests {
         let v = json!({ "modules": [ { "id": "clock", "enabled": false }, { "id": " deadlines " }, { "id": "clock" }, { "enabled": true }, 7 ] });
         assert_eq!(
             parse_modules(Some(&v)),
-            vec![ModuleConfig { id: "clock".into(), enabled: false }, ModuleConfig { id: "deadlines".into(), enabled: true }]
+            vec![ModuleConfig { id: "clock".into(), enabled: false, options: Value::Null }, ModuleConfig { id: "deadlines".into(), enabled: true, options: Value::Null }]
         );
     }
 
@@ -59,7 +71,7 @@ mod tests {
 
     #[test]
     fn it_round_trips() {
-        let list = vec![ModuleConfig { id: "a".into(), enabled: true }, ModuleConfig { id: "b".into(), enabled: false }];
+        let list = vec![ModuleConfig { id: "a".into(), enabled: true, options: Value::Null }, ModuleConfig { id: "b".into(), enabled: false, options: json!({ "x": 1 }) }];
         assert_eq!(parse_modules(Some(&to_json(&list))), list);
     }
 }

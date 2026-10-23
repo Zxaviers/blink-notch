@@ -8,7 +8,9 @@ use blink_native::access::NodeAction;
 use blink_native::app::App;
 use blink_native::clock::Clock;
 use blink_native::host::ModuleConfig;
+use blink_native::events::{AudioKind, SystemEvent};
 use blink_native::modules::clock::ClockModule;
+use blink_native::modules::system::SystemModule;
 use blink_native::modules::deadlines::{DeadlinesModule, DemoSource};
 use blink_native::modules::{Key, Module, PeekView, PointerKind};
 use blink_native::shell::Mode;
@@ -21,11 +23,11 @@ fn two_modules(settings: serde_json::Value) -> App {
 }
 
 fn cfg(list: &[(&str, bool)]) -> Vec<ModuleConfig> {
-    list.iter().map(|(id, on)| ModuleConfig { id: id.to_string(), enabled: *on }).collect()
+    list.iter().map(|(id, on)| ModuleConfig { id: id.to_string(), enabled: *on, options: serde_json::Value::Null }).collect()
 }
 
 fn peek(text: &str, priority: u8, key: Option<&str>, ttl: Option<u64>) -> PeekView {
-    PeekView { code: "X".into(), title: text.into(), count: "1".into(), urgency: "later", priority, ttl_ms: ttl, key: key.map(String::from) }
+    PeekView { code: "X".into(), title: text.into(), count: "1".into(), urgency: "later", priority, ttl_ms: ttl, key: key.map(String::from), progress: None }
 }
 
 fn shown(app: &App) -> Option<String> {
@@ -189,4 +191,68 @@ fn clicking_a_peek_from_a_module_opens_that_module() {
     settle(&mut app);
     assert_eq!(app.state_json()["mode"], "open");
     assert_eq!(app.active_module(), "deadlines", "opening from that peek shows what it was about");
+}
+
+fn with_system() -> App {
+    let modules: Vec<Box<dyn Module>> =
+        vec![Box::new(DeadlinesModule::new(Box::new(DemoSource::new(WALL_BASE)))), Box::new(ClockModule::new()), Box::new(SystemModule::new())];
+    let mut app = App::new(Clock::manual(WALL_BASE), normalize_settings(None), tz(), 1.0, "en", modules).expect("app");
+    app.tick();
+    app
+}
+
+#[test]
+fn a_module_without_a_panel_gets_no_tab_but_can_still_peek() {
+    let mut app = with_system();
+    assert_eq!(app.module_list().len(), 3);
+    open_by_hover(&mut app);
+    // Two modules have panels, so there are two tabs; the system module is not one of them.
+    app.render();
+    let tabs: Vec<String> = app.accessibility().nodes.iter().filter(|n| matches!(n.action, Some(NodeAction::SwitchTab(_)))).map(|n| n.name.clone()).collect();
+    assert_eq!(tabs, ["Deadlines", "Clock"]);
+    app.key(Key::Right);
+    app.key(Key::Right);
+    assert_eq!(app.active_module(), "deadlines", "arrows cycle through panels only");
+    app.pointer(PointerKind::Leave, 0.0, 0.0);
+    advance(&mut app, 600);
+    settle(&mut app);
+
+    app.system_event(SystemEvent::Volume { percent: 42, muted: false });
+    let p = app.current_peek().expect("volume peeks");
+    assert_eq!((p.count.as_str(), p.progress), ("42%", Some(0.42)));
+}
+
+#[test]
+fn opening_from_a_system_peek_shows_a_panel_not_nothing() {
+    let mut app = with_system();
+    app.system_event(SystemEvent::AudioDevice { name: "AirBuds Pro".into(), kind: AudioKind::Headphones, connected: true });
+    assert_eq!(app.current_peek().map(|p| p.code.clone()).as_deref(), Some("Headphones"));
+    settle(&mut app);
+    app.pointer(PointerKind::Move, 320.0, 20.0);
+    advance(&mut app, 250);
+    settle(&mut app);
+    assert_eq!(app.state_json()["mode"], "open");
+    assert_eq!(app.active_module(), "deadlines", "the system module has no panel; the pill's module opens");
+}
+
+#[test]
+fn volume_steps_collapse_and_a_deadline_alert_outranks_them() {
+    let mut app = with_system();
+    for v in [30, 32, 34, 36] {
+        app.system_event(SystemEvent::Volume { percent: v, muted: false });
+    }
+    assert_eq!(app.state_json()["queuedPeeks"], 0);
+    assert_eq!(app.current_peek().unwrap().count, "36%");
+    app.offer_peek(peek("Quiz in 1h", 3, None, None), None);
+    assert_eq!(app.current_peek().unwrap().title, "Quiz in 1h");
+}
+
+#[test]
+fn the_system_options_come_from_host_json() {
+    let mut app = with_system();
+    app.configure_modules(&[ModuleConfig { id: "system".into(), enabled: true, options: json!({ "volume": false }) }]);
+    app.system_event(SystemEvent::Volume { percent: 50, muted: false });
+    assert!(app.current_peek().is_none(), "volume peeks are switched off");
+    app.system_event(SystemEvent::CapsLock(true));
+    assert_eq!(app.current_peek().unwrap().title, "Caps Lock on");
 }

@@ -820,6 +820,7 @@ impl Module for DeadlinesModule {
             priority: 3,
             ttl_ms: None,
             key: Some(format!("deadline:{}", task.id)),
+            progress: None,
         })
     }
 

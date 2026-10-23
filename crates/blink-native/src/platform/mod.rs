@@ -2,6 +2,7 @@
 
 pub mod control;
 pub mod focus;
+pub mod sysevents;
 pub mod system;
 pub mod uia;
 pub mod tray;

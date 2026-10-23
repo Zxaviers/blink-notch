@@ -4,6 +4,7 @@
 
 pub mod clock;
 pub mod deadlines;
+pub mod system;
 
 use blink_core::i18n::Translator;
 use jiff::tz::TimeZone;
@@ -50,6 +51,8 @@ pub struct PeekView {
     pub ttl_ms: Option<u64>,
     /// A peek with the same key replaces the one showing (or waiting) instead of queueing.
     pub key: Option<String>,
+    /// A bar under the text, 0.0 to 1.0 (volume, battery).
+    pub progress: Option<f32>,
 }
 
 /// Something a click or a key asks for.
@@ -75,6 +78,8 @@ pub enum Effect {
     Redraw,
     /// Something a screen reader should say (an action was carried out).
     Announce(String),
+    /// Offer this peek now (the module built it from an event).
+    ShowPeek(PeekView),
     /// A reminder: a system notification (when the user wants them).
     Toast { title: String, body: String, url: Option<String> },
     /// The module has something to peek about (see `Module::peek`).
@@ -127,6 +132,19 @@ pub struct PanelFrame<'a> {
 
 pub trait Module {
     fn id(&self) -> &'static str;
+
+    /// Whether the module has a panel (and so a tab). A module without one only speaks in peeks.
+    fn has_panel(&self) -> bool {
+        true
+    }
+
+    /// The module's options from `host.json`.
+    fn set_options(&mut self, _options: &serde_json::Value) {}
+
+    /// Something happened on the computer (power, network, audio, keys).
+    fn on_event(&mut self, _event: &crate::events::SystemEvent, _env: &Env) -> Vec<Effect> {
+        Vec::new()
+    }
 
     /// The name on the module's tab.
     fn title(&self, _lang: blink_core::i18n::Lang) -> String {

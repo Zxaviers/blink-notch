@@ -7,6 +7,7 @@
 pub mod access;
 pub mod app;
 pub mod clock;
+pub mod events;
 pub mod host;
 pub mod live;
 pub mod modules;

@@ -17,7 +17,7 @@ try {
 
   'modules and the pill'
   $m = Ctl @{cmd='modules'}
-  Check 'deadlines and the clock are both on, deadlines first' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'deadlines:True,clock:True') (($m.modules | ConvertTo-Json -Compress))
+  Check 'deadlines, the clock and the system peeks are on, in that order' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'deadlines:True,clock:True,system:True') (($m.modules | ConvertTo-Json -Compress))
   Check 'the nearest deadline owns the pill' ($m.restOwner -eq 'deadlines')
   Ctl @{cmd='settings'; patch=@{restingStyle='when-due'; dueHorizonHours=1}} | Out-Null
   Ctl @{cmd='advance'; ms=600} | Out-Null
@@ -38,11 +38,11 @@ try {
   Ctl @{cmd='mouse'; kind='leave'} | Out-Null; Ctl @{cmd='advance'; ms=1500} | Out-Null
   Ctl @{cmd='host'; config=@{ modules = @(@{id='clock'; enabled=$true}, @{id='deadlines'; enabled=$false}) }} | Out-Null
   $m = Ctl @{cmd='modules'}
-  Check 'the order and flags are applied' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'clock:True,deadlines:False')
+  Check 'the order and flags are applied' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'clock:True,deadlines:False,system:True')
   Check 'host.json was written' (Test-Path (Join-Path $data 'host.json'))
   Check 'with one module on there are no tabs and the clock owns the pill' ((St).tabs -eq $false -and $m.restOwner -eq 'clock')
   Ctl @{cmd='host'; config=@{ modules = @(@{id='clock'; enabled=$false}, @{id='deadlines'; enabled=$false}) }} | Out-Null
-  Check 'turning everything off still leaves one module' (@((Ctl @{cmd='modules'}).modules | Where-Object { $_.enabled }).Count -eq 1)
+  Check 'turning everything off still leaves one module' (@((Ctl @{cmd='modules'}).modules | Where-Object { $_.enabled -and $_.id -ne 'system' }).Count -eq 1)
   Ctl @{cmd='host'; config=@{ modules = @(@{id='deadlines'; enabled=$true}, @{id='clock'; enabled=$true}) }} | Out-Null
 
   'peeks'
