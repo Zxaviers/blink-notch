@@ -17,7 +17,7 @@ try {
 
   'modules and the pill'
   $m = Ctl @{cmd='modules'}
-  Check 'deadlines, the clock and the system peeks are on, in that order' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'deadlines:True,clock:True,system:True') (($m.modules | ConvertTo-Json -Compress))
+  Check 'deadlines, controls, the clock and the system peeks are on, in that order' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'deadlines:True,controls:True,clock:True,system:True') (($m.modules | ConvertTo-Json -Compress))
   Check 'the nearest deadline owns the pill' ($m.restOwner -eq 'deadlines')
   Ctl @{cmd='settings'; patch=@{restingStyle='when-due'; dueHorizonHours=1}} | Out-Null
   Ctl @{cmd='advance'; ms=600} | Out-Null
@@ -30,20 +30,20 @@ try {
   Check 'hovering the clock pill opens the clock' ((Ctl @{cmd='modules'}).active -eq 'clock' -and $s.mode -eq 'open')
   Check 'with two modules on, the panel has tabs' ($s.tabs -eq $true)
   Ctl @{cmd='key'; key='left'} | Out-Null
-  Check 'the left arrow goes to the other module' ((Ctl @{cmd='modules'}).active -eq 'deadlines')
+  Check 'the left arrow goes to the previous tab' ((Ctl @{cmd='modules'}).active -eq 'controls')
   Ctl @{cmd='switch'; to='clock'} | Out-Null
   Check 'switching by name works, and a wrong name is refused' (((Ctl @{cmd='modules'}).active -eq 'clock') -and (Send-Blink $c @{cmd='switch'; to='nope'}).ok -eq $false)
 
   'turning modules off from the host file'
   Ctl @{cmd='mouse'; kind='leave'} | Out-Null; Ctl @{cmd='advance'; ms=1500} | Out-Null
-  Ctl @{cmd='host'; config=@{ modules = @(@{id='clock'; enabled=$true}, @{id='deadlines'; enabled=$false}) }} | Out-Null
+  Ctl @{cmd='host'; config=@{ modules = @(@{id='clock'; enabled=$true}, @{id='deadlines'; enabled=$false}, @{id='controls'; enabled=$false}) }} | Out-Null
   $m = Ctl @{cmd='modules'}
-  Check 'the order and flags are applied' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'clock:True,deadlines:False,system:True')
+  Check 'the order and flags are applied' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'clock:True,deadlines:False,controls:False,system:True')
   Check 'host.json was written' (Test-Path (Join-Path $data 'host.json'))
   Check 'with one module on there are no tabs and the clock owns the pill' ((St).tabs -eq $false -and $m.restOwner -eq 'clock')
-  Ctl @{cmd='host'; config=@{ modules = @(@{id='clock'; enabled=$false}, @{id='deadlines'; enabled=$false}) }} | Out-Null
+  Ctl @{cmd='host'; config=@{ modules = @(@{id='clock'; enabled=$false}, @{id='deadlines'; enabled=$false}, @{id='controls'; enabled=$false}) }} | Out-Null
   Check 'turning everything off still leaves one module' (@((Ctl @{cmd='modules'}).modules | Where-Object { $_.enabled -and $_.id -ne 'system' }).Count -eq 1)
-  Ctl @{cmd='host'; config=@{ modules = @(@{id='deadlines'; enabled=$true}, @{id='clock'; enabled=$true}) }} | Out-Null
+  Ctl @{cmd='host'; config=@{ modules = @(@{id='deadlines'; enabled=$true}, @{id='controls'; enabled=$true}, @{id='clock'; enabled=$true}) }} | Out-Null
 
   'peeks'
   Ctl @{cmd='offer_peek'; title='Charger connected'; code='Battery'; count='70%'; priority=1; key='power'} | Out-Null
@@ -81,7 +81,7 @@ try {
   'fullscreen: only games hide it by default'
   Ctl @{cmd='fullscreen'; on=$true; kind='app'} | Out-Null
   Check 'an ordinary app that covers the screen (a browser, a chat app) does not hide it' ((Ctl @{cmd='state'}).window.hidden -eq $false)
-  $mods = @(@{id='deadlines'; enabled=$true}, @{id='clock'; enabled=$true}, @{id='system'; enabled=$true})
+  $mods = @(@{id='deadlines'; enabled=$true}, @{id='controls'; enabled=$true}, @{id='clock'; enabled=$true}, @{id='system'; enabled=$true})
   Ctl @{cmd='host'; config=@{ hideInFullscreen='all'; modules=$mods }} | Out-Null
   Check 'unless the user asks for it to hide for any fullscreen app' ((Ctl @{cmd='state'}).window.hiddenBy -eq 'fullscreen')
   Ctl @{cmd='host'; config=@{ hideInFullscreen='never'; modules=$mods }} | Out-Null

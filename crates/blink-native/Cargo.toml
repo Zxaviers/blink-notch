@@ -30,6 +30,9 @@ windows-collections = "0.3"
 [target.'cfg(windows)'.dependencies.windows]
 version = "0.62"
 features = [
+  "Win32_NetworkManagement_Ndis",
+  "Win32_Devices_Display",
+  "Devices_Radios",
   "Win32_System_WinRT",
   "Foundation_Collections",
   "Foundation",

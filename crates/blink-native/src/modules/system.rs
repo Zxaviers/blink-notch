@@ -19,18 +19,19 @@ pub struct Kinds {
     pub volume: bool,
     pub caps: bool,
     pub bluetooth: bool,
+    pub brightness: bool,
 }
 
 impl Default for Kinds {
     fn default() -> Self {
-        Kinds { battery: true, wifi: true, audio: true, volume: true, caps: true, bluetooth: true }
+        Kinds { battery: true, wifi: true, audio: true, volume: true, caps: true, bluetooth: true, brightness: true }
     }
 }
 
 impl Kinds {
     pub fn from_options(options: &Value) -> Kinds {
         let on = |k: &str| options.get(k).and_then(Value::as_bool).unwrap_or(true);
-        Kinds { battery: on("battery"), wifi: on("wifi"), audio: on("audio"), volume: on("volume"), caps: on("caps"), bluetooth: on("bluetooth") }
+        Kinds { battery: on("battery"), wifi: on("wifi"), audio: on("audio"), volume: on("volume"), caps: on("caps"), bluetooth: on("bluetooth"), brightness: on("brightness") }
     }
 }
 
@@ -93,6 +94,7 @@ fn words(lang: Lang, key: &str) -> &'static str {
         "caps_on" => if id { "Caps Lock menyala" } else { "Caps Lock on" },
         "caps_off" => if id { "Caps Lock mati" } else { "Caps Lock off" },
         "bluetooth" => "Bluetooth",
+        "brightness" => if id { "Kecerahan" } else { "Brightness" },
         "battery_low_device" => if id { "baterai lemah" } else { "battery low" },
         _ => "",
     }
@@ -252,6 +254,9 @@ impl Module for SystemModule {
             SystemEvent::Volume { percent, muted } if self.kinds.volume => {
                 let (count, progress) = if *muted { (w("muted").to_string(), 0.0) } else { (format!("{percent}%"), f32::from(*percent) / 100.0) };
                 Some(view(w("volume"), String::new(), count, "later", 1, "volume", Some(1400), Some(progress)))
+            }
+            SystemEvent::Brightness { percent } if self.kinds.brightness => {
+                Some(view(w("brightness"), String::new(), format!("{percent}%"), "later", 1, "brightness", Some(1400), Some(f32::from(*percent) / 100.0)))
             }
             SystemEvent::CapsLock(on) if self.kinds.caps => {
                 let title = if *on { w("caps_on") } else { w("caps_off") };

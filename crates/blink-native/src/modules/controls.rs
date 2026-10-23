@@ -54,6 +54,8 @@ pub struct ControlsState {
     pub bluetooth: Option<bool>,
     pub networks: Vec<Network>,
     pub project: Option<ProjectMode>,
+    /// How many screens are connected. The projection modes only mean something with two or more.
+    pub displays: u8,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -102,6 +104,7 @@ impl FakeControls {
                 bluetooth: Some(true),
                 networks: vec![Network { name: "Campus".into(), connected: true }, Network { name: "Home".into(), connected: false }],
                 project: Some(ProjectMode::Extend),
+                displays: 2,
             }),
             log: Mutex::new(VecDeque::new()),
         })
@@ -149,6 +152,18 @@ impl ControlsBackend for FakeControls {
         drop(s);
         self.log.lock().unwrap().push_back(command);
     }
+}
+
+/// A name that fits on a chip. Windows names outputs "Speakers (Realtek(R) Audio)" or
+/// "Headphones (AirBuds Pro Stereo)": a generic word first, the device in brackets.
+pub fn short_output_name(name: &str) -> String {
+    let Some(open) = name.find(" (") else { return name.to_string() };
+    let (head, rest) = (name[..open].trim(), name[open + 2..].trim_end_matches(')').trim());
+    const GENERIC: [&str; 6] = ["speakers", "headphones", "headset", "line out", "digital audio", "output"];
+    let generic = GENERIC.iter().any(|g| head.to_lowercase().starts_with(g));
+    // "Headphones (AirBuds Pro Stereo)" names the device inside; "Speakers (Realtek(R) Audio)" names a chip.
+    let chip = ["realtek", "high definition", "nvidia", "intel", "amd", "usb audio"].iter().any(|c| rest.to_lowercase().starts_with(c));
+    if generic && !chip && !rest.is_empty() { rest.to_string() } else { head.to_string() }
 }
 
 // ------------------------------------------------------------------- strings
@@ -295,7 +310,7 @@ impl ControlsModule {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn slider(&mut self, kit: &mut Kit, frame: &PanelFrame, y: f32, icon: Icon, icon_hit: Option<ControlCommand>, value: u8, target: Target, label: &str) {
+    fn slider(&mut self, kit: &mut Kit, frame: &PanelFrame, y: f32, icon: Icon, icon_hit: Option<ControlCommand>, value: u8, target: Target) {
         let theme = frame.theme;
         let x0 = frame.origin_x + PAD_X;
         // The icon (a button when it does something, like mute).
@@ -346,8 +361,7 @@ impl ControlsModule {
         // Volume: the icon is the mute button.
         if draw {
             let icon = if state.muted || state.volume == 0 { Icon::SpeakerMuted } else { Icon::Speaker };
-            let tip = if state.muted { w("unmute") } else { w("mute") };
-            self.slider(kit, frame, y, icon, Some(ControlCommand::ToggleMute), if state.muted { 0 } else { state.volume }, Target::Volume, tip);
+            self.slider(kit, frame, y, icon, Some(ControlCommand::ToggleMute), if state.muted { 0 } else { state.volume }, Target::Volume);
         }
         y += ROW + 2.0;
 
@@ -356,10 +370,14 @@ impl ControlsModule {
             if draw {
                 let mut x = x0 + 40.0;
                 let right = x0 + CONTENT_W;
-                for o in state.outputs.iter().take(3) {
+                // The one in use first, then the others: choosing one makes it the first, so
+                // pressing through them walks the whole list.
+                let mut ordered: Vec<&Output> = state.outputs.iter().collect();
+                ordered.sort_by_key(|o| !o.active);
+                for o in ordered.into_iter().take(3) {
                     let avail = (right - x).max(40.0);
                     let l = look(o.active);
-                    x += self.chip(kit, frame, x, y, &o.name, l, ControlCommand::SetOutput(o.id.clone()), avail.min(170.0)) + 6.0;
+                    x += self.chip(kit, frame, x, y, &short_output_name(&o.name), l, ControlCommand::SetOutput(o.id.clone()), avail.min(170.0)) + 6.0;
                     if x > right - 40.0 {
                         break;
                     }
@@ -370,7 +388,7 @@ impl ControlsModule {
 
         if let Some(b) = state.brightness {
             if draw {
-                self.slider(kit, frame, y, Icon::Sun, None, b, Target::Brightness, w("brightness"));
+                self.slider(kit, frame, y, Icon::Sun, None, b, Target::Brightness);
             }
             y += ROW + 4.0;
         }
@@ -412,20 +430,24 @@ impl ControlsModule {
             y += CHIP_H + 12.0;
         }
 
-        // Projection.
-        if draw {
-            let base = y + kit.fonts.baseline(Face::Sans, 11.0, 16.0);
-            kit.canvas.text(kit.fonts, Face::Sans, 11.0, x0, base, w("project"), theme.dim, frame.alpha, 0.0);
-        }
-        y += 18.0;
-        if draw {
-            let mut x = x0;
-            for m in [ProjectMode::PcOnly, ProjectMode::Duplicate, ProjectMode::Extend, ProjectMode::SecondOnly] {
-                let l = look(state.project == Some(m));
-                x += self.chip(kit, frame, x, y, w(mode_word(m)), l, ControlCommand::Project(m), 130.0) + 6.0;
+        // Projection: only with a second screen to project to.
+        if state.displays >= 2 {
+            if draw {
+                let base = y + kit.fonts.baseline(Face::Sans, 11.0, 16.0);
+                kit.canvas.text(kit.fonts, Face::Sans, 11.0, x0, base, w("project"), theme.dim, frame.alpha, 0.0);
             }
+            y += 18.0;
+            if draw {
+                let mut x = x0;
+                for m in [ProjectMode::PcOnly, ProjectMode::Duplicate, ProjectMode::Extend, ProjectMode::SecondOnly] {
+                    let l = look(state.project == Some(m));
+                    x += self.chip(kit, frame, x, y, w(mode_word(m)), l, ControlCommand::Project(m), 130.0) + 6.0;
+                }
+            }
+            y += CHIP_H + PAD_TOP;
+        } else {
+            y += PAD_TOP - 6.0;
         }
-        y += CHIP_H + PAD_TOP;
         y
     }
 }
@@ -601,6 +623,13 @@ impl Module for ControlsModule {
         Vec::new()
     }
 
+    fn debug_now(&mut self, _env: &Env) -> serde_json::Value {
+        serde_json::json!({
+            "hits": self.hits.iter().map(|h| serde_json::json!({ "x": h.x, "y": h.y, "w": h.w, "h": h.h, "target": format!("{:?}", h.target) })).collect::<Vec<_>>(),
+            "dragging": self.dragging.is_some(),
+        })
+    }
+
     fn accessibility(&mut self, env: &Env, open: bool) -> Vec<Node> {
         if !open {
             return Vec::new();
@@ -624,7 +653,7 @@ impl Module for ControlsModule {
         push(&mut out, format!("{} -5", w("volume")), ControlCommand::VolumeStep(-5), vol_rect);
         for o in &state.outputs {
             let r = rect_of(&self.hits, &|h| h.target == Target::Command(ControlCommand::SetOutput(o.id.clone())));
-            push(&mut out, format!("{}: {}{}", w("output"), o.name, if o.active { " ✓" } else { "" }), ControlCommand::SetOutput(o.id.clone()), r);
+            push(&mut out, format!("{}: {}{}", w("output"), short_output_name(&o.name), if o.active { " ✓" } else { "" }), ControlCommand::SetOutput(o.id.clone()), r);
         }
         if let Some(b) = state.brightness {
             let r = rect_of(&self.hits, &|h| h.target == Target::Brightness);
@@ -643,7 +672,7 @@ impl Module for ControlsModule {
             let r = rect_of(&self.hits, &|h| h.target == Target::Command(ControlCommand::ConnectWifi(n.name.clone())));
             push(&mut out, format!("{}{}", n.name, if n.connected { " ✓" } else { "" }), ControlCommand::ConnectWifi(n.name.clone()), r);
         }
-        for m in [ProjectMode::PcOnly, ProjectMode::Duplicate, ProjectMode::Extend, ProjectMode::SecondOnly] {
+        for m in [ProjectMode::PcOnly, ProjectMode::Duplicate, ProjectMode::Extend, ProjectMode::SecondOnly].into_iter().filter(|_| state.displays >= 2) {
             let r = rect_of(&self.hits, &|h| h.target == Target::Command(ControlCommand::Project(m)));
             push(&mut out, format!("{}: {}{}", w("project"), w(mode_word(m)), if state.project == Some(m) { " ✓" } else { "" }), ControlCommand::Project(m), r);
         }

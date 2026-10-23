@@ -34,8 +34,8 @@ use windows::Win32::NetworkManagement::WiFi::{
 };
 use windows::Win32::System::Com::StructuredStorage::{PropVariantToStringAlloc, PropVariantToUInt32, PROPVARIANT};
 use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CLSCTX_ALL, COINIT_MULTITHREADED, STGM_READ};
-use windows::Win32::System::Power::{GetSystemPowerStatus, RegisterPowerSettingNotification, SYSTEM_POWER_STATUS};
-use windows::Win32::System::SystemServices::{GUID_ACDC_POWER_SOURCE, GUID_BATTERY_PERCENTAGE_REMAINING};
+use windows::Win32::System::Power::{GetSystemPowerStatus, RegisterPowerSettingNotification, POWERBROADCAST_SETTING, SYSTEM_POWER_STATUS};
+use windows::Win32::System::SystemServices::{GUID_ACDC_POWER_SOURCE, GUID_BATTERY_PERCENTAGE_REMAINING, GUID_VIDEO_CURRENT_MONITOR_BRIGHTNESS};
 use windows::Win32::UI::Input::KeyboardAndMouse::GetKeyState;
 use windows::Win32::UI::Input::{GetRawInputData, RegisterRawInputDevices, HRAWINPUT, RAWINPUT, RAWINPUTDEVICE, RAWINPUTHEADER, RIDEV_INPUTSINK, RID_INPUT};
 use windows::Win32::UI::WindowsAndMessaging::{PostMessageW, DEVICE_NOTIFY_WINDOW_HANDLE};
@@ -82,8 +82,21 @@ fn start_power(hwnd: HWND) -> bool {
     unsafe {
         let a = RegisterPowerSettingNotification(HANDLE(hwnd.0), &GUID_ACDC_POWER_SOURCE, DEVICE_NOTIFY_WINDOW_HANDLE);
         let b = RegisterPowerSettingNotification(HANDLE(hwnd.0), &GUID_BATTERY_PERCENTAGE_REMAINING, DEVICE_NOTIFY_WINDOW_HANDLE);
+        // The built-in screen's brightness, whoever changed it (Fn keys, Windows, this notch).
+        let _ = RegisterPowerSettingNotification(HANDLE(hwnd.0), &GUID_VIDEO_CURRENT_MONITOR_BRIGHTNESS, DEVICE_NOTIFY_WINDOW_HANDLE);
         a.is_ok() && b.is_ok()
     }
+}
+
+/// What a power-setting notification (`WM_POWERBROADCAST` with `PBT_POWERSETTINGCHANGE`) means:
+/// a brightness reading, or a change of power source or charge.
+pub fn power_setting_event(lparam: LPARAM) -> Option<SystemEvent> {
+    let setting = unsafe { (lparam.0 as *const POWERBROADCAST_SETTING).as_ref()? };
+    if setting.PowerSetting == GUID_VIDEO_CURRENT_MONITOR_BRIGHTNESS && setting.DataLength >= 4 {
+        let percent = unsafe { std::ptr::read_unaligned(setting.Data.as_ptr().cast::<u32>()) };
+        return Some(SystemEvent::Brightness { percent: percent.min(100) as u8 });
+    }
+    power_event()
 }
 
 /// The current power state, as an event.

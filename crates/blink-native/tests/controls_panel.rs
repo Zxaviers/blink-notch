@@ -40,6 +40,9 @@ fn the_panel_shows_what_windows_reports() {
     let names: Vec<String> = app.accessibility().nodes.iter().map(|n| n.name.clone()).collect();
     assert!(names.iter().any(|n| n.starts_with("Volume 40%")), "{names:?}");
     assert!(names.iter().any(|n| n == "Output: Speakers ✓"));
+    assert_eq!(blink_native::modules::controls::short_output_name("Headphones (AirBuds Pro Stereo)"), "AirBuds Pro Stereo");
+    assert_eq!(blink_native::modules::controls::short_output_name("Speakers (Realtek(R) Audio)"), "Speakers");
+    assert_eq!(blink_native::modules::controls::short_output_name("SteelSeries Sonar - Gaming (SteelSeries Sonar Virtual Audio Device)"), "SteelSeries Sonar - Gaming");
     assert!(names.iter().any(|n| n == "Output: AirBuds Pro"));
     assert!(names.iter().any(|n| n.starts_with("Brightness 70%")));
     assert!(names.iter().any(|n| n == "Wi-Fi: on"));
@@ -152,7 +155,7 @@ fn opening_the_panel_asks_windows_to_re_read_everything_but_not_over_and_over() 
 #[test]
 fn a_screen_without_brightness_control_shows_none() {
     use blink_native::modules::controls::ControlsState;
-    let fake = FakeControls::with_state(ControlsState { volume: 10, brightness: None, wifi: None, bluetooth: None, ..ControlsState::default() });
+    let fake = FakeControls::with_state(ControlsState { volume: 10, brightness: None, wifi: None, bluetooth: None, displays: 1, ..ControlsState::default() });
     let modules: Vec<Box<dyn Module>> = vec![Box::new(DeadlinesModule::new(Box::new(DemoSource::new(WALL_BASE)))), Box::new(ControlsModule::new(fake))];
     let mut app = App::new(Clock::manual(WALL_BASE), normalize_settings(None), tz(), 1.0, "en", modules).expect("app");
     app.tick();
@@ -162,4 +165,5 @@ fn a_screen_without_brightness_control_shows_none() {
     let names: Vec<String> = app.accessibility().nodes.iter().map(|n| n.name.clone()).collect();
     assert!(!names.iter().any(|n| n.starts_with("Brightness") || n.starts_with("Wi-Fi") || n.starts_with("Bluetooth")), "{names:?}");
     assert!(names.iter().any(|n| n.starts_with("Volume 10%")));
+    assert!(!names.iter().any(|n| n.starts_with("Project")), "no second screen: nothing to project to");
 }

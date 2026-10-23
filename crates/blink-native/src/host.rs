@@ -43,6 +43,12 @@ pub fn parse_fullscreen_mode(value: Option<&Value>) -> FullscreenMode {
     }
 }
 
+/// Whether the notch takes over the volume keys, so Windows' volume bar does not show
+/// (`takeOverVolumeKeys` in `host.json`, on by default).
+pub fn parse_take_over_volume_keys(value: Option<&Value>) -> bool {
+    value.and_then(|v| v.get("takeOverVolumeKeys")).and_then(Value::as_bool).unwrap_or(true)
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ModuleConfig {
     pub id: String,

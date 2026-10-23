@@ -43,6 +43,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 use super::control::{self, Request, WM_CONTROL, WM_IPC};
 use super::focus;
 use super::system::{self, WM_SHOW_ME};
+use super::mediakeys::{self, WM_MEDIAKEY};
 use super::sysevents::{self, KeyHint, Sources, WM_INPUT, WM_SYSEVENT};
 use super::uia;
 use super::tray::{self, MenuLabels, Tray, WM_TRAY};
@@ -271,6 +272,11 @@ struct Runtime {
     last_frame: Option<Instant>,
     last_a11y: Instant,
     sources: Sources,
+    /// The user wants the volume keys taken over (the hook only acts while the notch is showing).
+    take_volume_keys: bool,
+    media_keys: bool,
+    winctl: Option<std::sync::Arc<super::winctl::WinControls>>,
+    fake_controls: Option<std::sync::Arc<FakeControls>>,
     caps_last: bool,
     /// Whether the key timer should look at Caps Lock when it fires.
     key_checks: u8,
@@ -554,6 +560,7 @@ impl Runtime {
             return;
         }
         self.hidden = want;
+        self.apply_media_keys();
         unsafe {
             let _ = ShowWindow(self.hwnd, if want { SW_HIDE } else { SW_SHOWNOACTIVATE });
         }
@@ -661,6 +668,33 @@ impl Runtime {
         }
     }
 
+    /// The hook takes the volume keys only while the user wants that and the notch is showing
+    /// (hidden, it could not show where the volume went, so Windows keeps its own bar).
+    fn apply_media_keys(&self) {
+        mediakeys::set_enabled(self.media_keys && self.take_volume_keys && !self.hidden);
+    }
+
+    /// A volume key was pressed and swallowed: change the volume (in the same 2% steps Windows takes).
+    fn media_key(&mut self, vk: u32) {
+        use crate::modules::controls::{ControlCommand, ControlsBackend};
+        let command = match vk {
+            mediakeys::VK_VOLUME_UP => ControlCommand::VolumeStep(2),
+            mediakeys::VK_VOLUME_DOWN => ControlCommand::VolumeStep(-2),
+            _ => ControlCommand::ToggleMute,
+        };
+        match &self.winctl {
+            Some(c) => c.send(command),
+            None => self.effects_log.push(format!("media_key:{vk:#x}")),
+        }
+    }
+
+    /// Keep the controls panel's picture of Windows current when something changes elsewhere.
+    fn note_event(&self, event: &crate::events::SystemEvent) {
+        if let Some(c) = &self.winctl {
+            c.apply_event(event);
+        }
+    }
+
     fn check_keys(&mut self) {
         let checks = std::mem::take(&mut self.key_checks);
         if checks & 1 != 0 {
@@ -676,6 +710,8 @@ impl Runtime {
     /// Start listening to Windows for power, Wi-Fi, audio and the two kinds of key.
     fn start_sources(&mut self) {
         self.sources = sysevents::start(self.hwnd);
+        self.media_keys = mediakeys::start(self.hwnd);
+        self.apply_media_keys();
         // The state now is the baseline: nothing is announced for how things already were.
         if let Some(event) = sysevents::power_event() {
             self.app.system_event(event);
@@ -739,6 +775,8 @@ impl Runtime {
     fn reload_host(&mut self) {
         let file = self.store.get_json("host").ok().flatten();
         self.fullscreen_mode = crate::host::parse_fullscreen_mode(file.as_ref());
+        self.take_volume_keys = crate::host::parse_take_over_volume_keys(file.as_ref());
+        self.apply_media_keys();
         self.refresh_fullscreen();
         self.app.configure_modules(&crate::host::parse_modules(file.as_ref()));
         let status = self.register_visibility_hotkey(&crate::host::parse_visibility_hotkey(file.as_ref()));
@@ -923,6 +961,7 @@ impl Runtime {
                     self.after();
                 }
             }
+            WM_MEDIAKEY => self.media_key(wparam.0 as u32),
             WM_FOREGROUND => {
                 self.refresh_fullscreen();
             }
@@ -935,13 +974,15 @@ impl Runtime {
                 self.after();
             }
             WM_POWERBROADCAST if wparam.0 == sysevents::PBT_POWERSETTINGCHANGE => {
-                if let Some(event) = sysevents::power_event() {
+                if let Some(event) = sysevents::power_setting_event(lparam) {
+                    self.note_event(&event);
                     self.app.system_event(event);
                     self.after();
                 }
             }
             WM_SYSEVENT => {
                 let event = unsafe { Box::from_raw(lparam.0 as *mut crate::events::SystemEvent) };
+                self.note_event(&event);
                 self.app.system_event(*event);
                 self.after();
             }
@@ -1036,7 +1077,7 @@ impl Runtime {
             "fullscreen": self.fullscreen,
             "hotkey": self.hotkey,
             "tray": self.tray.is_some(),
-            "sources": { "power": self.sources.power, "wifi": self.sources.wifi, "audio": self.sources.audio, "bluetooth": self.sources.bluetooth, "keys": self.sources.keys },
+            "sources": { "power": self.sources.power, "wifi": self.sources.wifi, "audio": self.sources.audio, "bluetooth": self.sources.bluetooth, "keys": self.sources.keys, "volumeKeys": self.media_keys && self.take_volume_keys && !self.hidden },
             "surface": { "w": self.surface.w, "h": self.surface.h },
         })
     }
@@ -1194,6 +1235,32 @@ impl Runtime {
                 Some(event) => self.app.system_event(event),
                 None => return Err("unknown or incomplete system event".into()),
             },
+            "controls" => {
+                // Send a command to the real (or stand-in) controls: for scripted checks.
+                use crate::modules::controls::{ControlCommand, ControlsBackend};
+                let value = v["value"].as_u64().unwrap_or(0).min(100) as u8;
+                let command = match v["action"].as_str().unwrap_or("") {
+                    "set_volume" => ControlCommand::SetVolume(value),
+                    "set_brightness" => ControlCommand::SetBrightness(value),
+                    "mute" => ControlCommand::ToggleMute,
+                    "refresh" => ControlCommand::Refresh,
+                    other => return Err(format!("unknown controls action {other}")),
+                };
+                match (&self.winctl, &self.fake_controls) {
+                    (Some(real), _) => real.send(command),
+                    (None, Some(fake)) => fake.send(command),
+                    _ => {}
+                }
+            }
+            "controls_log" => {
+                let log = self.fake_controls.as_ref().map(|f| f.take_log().iter().map(|c| format!("{c:?}")).collect::<Vec<_>>()).unwrap_or_default();
+                return Ok(json!({ "commands": log }));
+            }
+            "controls_state" => {
+                let state = self.winctl.as_ref().map(|c| crate::modules::controls::ControlsBackend::state(c.as_ref()));
+                return Ok(json!({ "real": self.winctl.is_some(), "debug": format!("{state:?}") }));
+            }
+            "media_key" => self.media_key(v["vk"].as_u64().unwrap_or(0xAF) as u32),
             "reload_host" => self.reload_host(),
             "host" => {
                 // Write host.json from the command, as the settings program will, then apply it.
@@ -1419,7 +1486,21 @@ pub fn run(opts: Options) -> Result<(), String> {
     } else {
         Box::new(live_source(&opts, &store, &settings, tz.clone(), target.clone())?)
     };
-    let modules: Vec<Box<dyn Module>> = vec![Box::new(DeadlinesModule::new(source)), Box::new(ControlsModule::new(FakeControls::new())), Box::new(ClockModule::new()), Box::new(SystemModule::new())];
+    // The real controls talk to Windows; scripted runs get a stand-in that only remembers.
+    let real_controls = !opts.control.is_some() || std::env::var_os("BLINK_REAL_SOURCES").is_some();
+    let winctl = real_controls.then(super::winctl::WinControls::start);
+    let fake_controls = winctl.is_none().then(FakeControls::new);
+    let controls_backend: std::sync::Arc<dyn crate::modules::controls::ControlsBackend> = match (&winctl, &fake_controls) {
+        (Some(real), _) => real.clone(),
+        (None, Some(fake)) => fake.clone(),
+        _ => unreachable!("one of the two exists"),
+    };
+    let modules: Vec<Box<dyn Module>> = vec![
+        Box::new(DeadlinesModule::new(source)),
+        Box::new(ControlsModule::new(controls_backend)),
+        Box::new(ClockModule::new()),
+        Box::new(SystemModule::new()),
+    ];
     let mut app = App::new(clock, settings, tz, scale, &system_language(), modules)?;
     app.configure_modules(&crate::host::parse_modules(store.get_json("host").ok().flatten().as_ref()));
     app.set_reduced_motion(!animations_enabled());
@@ -1466,6 +1547,10 @@ pub fn run(opts: Options) -> Result<(), String> {
             last_frame: None,
             last_a11y: Instant::now(),
             sources: Sources::default(),
+            take_volume_keys: true,
+            media_keys: false,
+            winctl,
+            fake_controls,
             caps_last: false,
             key_checks: 0,
         });
@@ -1489,6 +1574,7 @@ pub fn run(opts: Options) -> Result<(), String> {
         }
         let file = rt.store.get_json("host").ok().flatten();
         rt.fullscreen_mode = crate::host::parse_fullscreen_mode(file.as_ref());
+        rt.take_volume_keys = crate::host::parse_take_over_volume_keys(file.as_ref());
         let status = rt.register_visibility_hotkey(&crate::host::parse_visibility_hotkey(file.as_ref()));
         if status != "ok" {
             rt.effects_log.push(format!("hotkey:visibility:{status}"));
