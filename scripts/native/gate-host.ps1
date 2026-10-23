@@ -57,6 +57,27 @@ try {
   Ctl @{cmd='advance'; ms=4500} | Out-Null; Ctl @{cmd='advance'; ms=600} | Out-Null
   Check 'then it rests again' ((St).mode -eq 'rest')
 
+  'show and hide the notch from the keyboard'
+  $w = (St); $win = (Ctl @{cmd='state'}).window
+  Check 'there is a show/hide shortcut, Ctrl+Alt+H by default' ($win.visibilityHotkey -eq 'Ctrl+Alt+H' -or $win.visibilityHotkey -eq '') ($win.visibilityHotkey)
+  Ctl @{cmd='toggle_visibility'} | Out-Null
+  $win = (Ctl @{cmd='state'}).window
+  Check 'the shortcut hides it' ($win.hidden -eq $true -and $win.hiddenBy -eq 'paused' -and $win.visible -eq $false) ($win | ConvertTo-Json -Compress)
+  Ctl @{cmd='toggle_visibility'} | Out-Null
+  $win = (Ctl @{cmd='state'}).window
+  Check 'and shows it again' ($win.hidden -eq $false -and $win.visible -eq $true)
+  Ctl @{cmd='fullscreen'; on=$true} | Out-Null
+  $win = (Ctl @{cmd='state'}).window
+  Check 'a fullscreen app hides it, and the state says why' ($win.hidden -eq $true -and $win.hiddenBy -eq 'fullscreen')
+  Ctl @{cmd='toggle_visibility'} | Out-Null
+  $win = (Ctl @{cmd='state'}).window
+  Check 'the shortcut brings it back even over a fullscreen app' ($win.hidden -eq $false -and $win.visible -eq $true)
+  Ctl @{cmd='fullscreen'; on=$false} | Out-Null
+  Ctl @{cmd='fullscreen'; on=$true} | Out-Null
+  Check 'after that app is gone, the next fullscreen app hides it again as usual' ((Ctl @{cmd='state'}).window.hiddenBy -eq 'fullscreen')
+  Ctl @{cmd='fullscreen'; on=$false} | Out-Null
+  Check 'and leaving fullscreen shows it' ((Ctl @{cmd='state'}).window.hidden -eq $false)
+
   'drawing'
   Ctl @{cmd='mouse'; kind='move'; x=320; y=10} | Out-Null; Ctl @{cmd='advance'; ms=800} | Out-Null
   $dib = Ctl @{cmd='dibcheck'}

@@ -1,5 +1,5 @@
 # Real system events: this PRESSES KEYS for about 15 seconds (Caps Lock twice, the volume keys
-# up and down, and, if you have two keyboard layouts, Win+Space twice). Keep your hands off the
+# up and down). Keep your hands off the
 # keyboard, close games, and expect your volume to move by a few percent and come back.
 #   powershell -File scripts\native\real-system.ps1 [-Exe ...]
 param([string]$Exe = "$PSScriptRoot\..\..\target\release\blink.exe")
@@ -38,18 +38,6 @@ try {
   Press 0xAE   # volume down: back where it was
   Start-Sleep -Milliseconds 400
 
-  'Keyboard layout'
-  $layouts = @(Get-WinUserLanguageList).Count
-  if ($layouts -gt 1) {
-    Start-Sleep -Milliseconds 2000
-    foreach ($i in 1..2) {
-      [K]::keybd_event(0x5B, 0, 1, [UIntPtr]::Zero); Press 0x20; [K]::keybd_event(0x5B, 0, 3, [UIntPtr]::Zero)
-      Start-Sleep -Milliseconds 700
-      $k = Peek
-      Check "Win+Space ($i of 2) shows the layout" ($null -ne $k -and $k.code -eq 'Keyboard') ($k | ConvertTo-Json -Compress)
-      Start-Sleep -Milliseconds 2000
-    }
-  } else { '        (one keyboard layout installed: skipped)' }
   Send-Blink $c @{cmd='quit'} | Out-Null
 } finally { Start-Sleep -Milliseconds 300; if (-not $p.HasExited) { $p.Kill() } }
 "`n$script:pass passed, $script:fail failed"

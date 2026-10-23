@@ -31,7 +31,7 @@ use windows::Win32::UI::Accessibility::{SetWinEventHook, HWINEVENTHOOK};
 use windows::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, TrackMouseEvent, UnregisterHotKey, HOT_KEY_MODIFIERS, TME_LEAVE, TRACKMOUSEEVENT};
 use windows::Win32::UI::Shell::ShellExecuteW;
 use windows::Win32::UI::WindowsAndMessaging::{
-    RegisterWindowMessageW, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetClassNameW, GetForegroundWindow, GetMessageW, GetQueueStatus,
+    SetWindowPos, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, RegisterWindowMessageW, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetClassNameW, GetForegroundWindow, GetMessageW, GetQueueStatus,
     GetWindowLongPtrW, GetWindowRect, IsWindowVisible, KillTimer, LoadCursorW, PeekMessageW, PostMessageW, PostQuitMessage,
     RegisterClassExW, SetTimer, ShowWindow, SystemParametersInfoW, TranslateMessage, UpdateLayeredWindow, WindowFromPoint, CS_HREDRAW,
     CS_VREDRAW, GWL_EXSTYLE, IDC_ARROW, MSG, PM_REMOVE, QS_ALLINPUT, SPI_GETCLIENTAREAANIMATION, SW_SHOWNOACTIVATE, SW_SHOWNORMAL,
@@ -69,6 +69,8 @@ const POLL_MS: u32 = 3000;
 /// Posted by the foreground hook.
 const WM_FOREGROUND: u32 = 0x8000 + 4;
 const HOTKEY_ID: i32 = 1;
+/// Shows or hides the whole notch.
+const HOTKEY_VISIBILITY_ID: i32 = 2;
 /// Posted by a feed worker when it has new data.
 const WM_DATA: u32 = 0x8000 + 5;
 const WM_POWERBROADCAST: u32 = 0x0218;
@@ -258,14 +260,17 @@ struct Runtime {
     toast_url: Option<String>,
     taskbar_created: u32,
     hotkey: String,
+    /// The shortcut that shows or hides the notch, as registered ("" when off).
+    vis_hotkey: String,
+    /// The user showed the notch while a fullscreen app is in front: stays until that app is gone.
+    fullscreen_override: bool,
     /// Time between consecutive animation frames (ms), for the pacing check.
     frame_times: Vec<f32>,
     last_frame: Option<Instant>,
     last_a11y: Instant,
     sources: Sources,
     caps_last: bool,
-    layout_last: Option<String>,
-    /// What the key timer should check when it fires: bit 0 Caps Lock, bit 1 the keyboard layout.
+    /// Whether the key timer should look at Caps Lock when it fires.
     key_checks: u8,
 }
 
@@ -489,13 +494,53 @@ impl Runtime {
         let busy = self.fullscreen_sim.unwrap_or_else(system::fullscreen_app_active);
         if busy != self.fullscreen {
             self.fullscreen = busy;
+            if !busy {
+                self.fullscreen_override = false;
+            }
             self.update_hidden();
         }
+        self.keep_on_top();
+    }
+
+    /// Other always-on-top windows (the taskbar, a game overlay, the Start menu) can end up above
+    /// the notch; put it back on top whenever the foreground changes and on the slow check.
+    fn keep_on_top(&self) {
+        if !self.hidden {
+            unsafe {
+                let _ = SetWindowPos(self.hwnd, Some(HWND_TOPMOST), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            }
+        }
+    }
+
+    /// Why the notch is not showing, if it is not: "paused" (the tray or the shortcut), or
+    /// "fullscreen" (an app is fullscreen and the notch steps aside).
+    fn hidden_by(&self) -> Option<&'static str> {
+        if self.paused {
+            Some("paused")
+        } else if self.fullscreen && !self.fullscreen_override {
+            Some("fullscreen")
+        } else {
+            None
+        }
+    }
+
+    /// The show or hide shortcut: whatever the reason it is gone, bring it back; otherwise hide it.
+    fn toggle_visibility(&mut self) {
+        if self.hidden {
+            self.paused = false;
+            if self.fullscreen {
+                self.fullscreen_override = true;
+            }
+        } else {
+            self.paused = true;
+        }
+        self.update_hidden();
+        self.after();
     }
 
     /// Hide while paused or while a fullscreen app is in front.
     fn update_hidden(&mut self) {
-        let want = self.paused || self.fullscreen;
+        let want = self.hidden_by().is_some();
         if want == self.hidden {
             return;
         }
@@ -549,6 +594,35 @@ impl Runtime {
         "ok"
     }
 
+    /// Same as `register_hotkey`, for the show/hide shortcut.
+    fn register_visibility_hotkey(&mut self, accelerator: &str) -> &'static str {
+        let wanted = accelerator.trim();
+        if wanted == self.vis_hotkey {
+            return "ok";
+        }
+        let parsed = if wanted.is_empty() {
+            None
+        } else {
+            match blink_core::hotkey::parse_accelerator(wanted) {
+                Some(p) => Some(p),
+                None => return "HOTKEY_INVALID",
+            }
+        };
+        unsafe {
+            let _ = UnregisterHotKey(Some(self.hwnd), HOTKEY_VISIBILITY_ID);
+            if let Some((mods, vk)) = parsed {
+                if RegisterHotKey(Some(self.hwnd), HOTKEY_VISIBILITY_ID, HOT_KEY_MODIFIERS(mods | 0x4000), vk).is_err() {
+                    if let Some((m, k)) = blink_core::hotkey::parse_accelerator(&self.vis_hotkey) {
+                        let _ = RegisterHotKey(Some(self.hwnd), HOTKEY_VISIBILITY_ID, HOT_KEY_MODIFIERS(m | 0x4000), k);
+                    }
+                    return "HOTKEY_IN_USE";
+                }
+            }
+        }
+        self.vis_hotkey = wanted.to_string();
+        "ok"
+    }
+
     fn menu_labels(&self) -> MenuLabels {
         let t = self.app.translator();
         MenuLabels { pause: t.t("tray.pause", &[]), refresh: t.t("tray.refresh", &[]), settings: t.t("tray.settings", &[]), quit: t.t("tray.quit", &[]) }
@@ -570,7 +644,7 @@ impl Runtime {
         self.after();
     }
 
-    /// Look at Caps Lock and the layout a moment from now (Windows updates them just after the key).
+    /// Look at Caps Lock a moment from now (Windows updates it just after the key).
     fn check_keys_soon(&mut self, what: u8, ms: u32) {
         self.key_checks |= what;
         unsafe {
@@ -587,17 +661,6 @@ impl Runtime {
                 self.app.system_event(crate::events::SystemEvent::CapsLock(on));
             }
         }
-        if checks & 2 != 0 {
-            if let Some((code, name)) = sysevents::foreground_layout() {
-                if self.layout_last.as_deref() != Some(code.as_str()) {
-                    let first = self.layout_last.is_none();
-                    self.layout_last = Some(code.clone());
-                    if !first {
-                        self.app.system_event(crate::events::SystemEvent::KeyboardLayout { code, name });
-                    }
-                }
-            }
-        }
         self.after();
     }
 
@@ -609,7 +672,6 @@ impl Runtime {
             self.app.system_event(event);
         }
         self.caps_last = sysevents::caps_lock_on();
-        self.layout_last = sysevents::foreground_layout().map(|(code, _)| code);
     }
 
     /// A system notification, unless the notch is paused.
@@ -666,8 +728,12 @@ impl Runtime {
 
     /// Re-read which modules are on and in what order (`host.json`).
     fn reload_host(&mut self) {
-        let config = crate::host::parse_modules(self.store.get_json("host").ok().flatten().as_ref());
-        self.app.configure_modules(&config);
+        let file = self.store.get_json("host").ok().flatten();
+        self.app.configure_modules(&crate::host::parse_modules(file.as_ref()));
+        let status = self.register_visibility_hotkey(&crate::host::parse_visibility_hotkey(file.as_ref()));
+        if status != "ok" {
+            self.effects_log.push(format!("hotkey:visibility:{status}"));
+        }
     }
 
     /// Redacted facts about the running notch, appended to the settings program's report.
@@ -826,6 +892,7 @@ impl Runtime {
                 }
                 _ => {}
             },
+            WM_HOTKEY if wparam.0 as i32 == HOTKEY_VISIBILITY_ID => self.toggle_visibility(),
             WM_HOTKEY => {
                 if !self.hidden {
                     self.app.hotkey();
@@ -834,10 +901,6 @@ impl Runtime {
             }
             WM_FOREGROUND => {
                 self.refresh_fullscreen();
-                // Layouts belong to windows: a different app may be typing in a different language.
-                if self.sources.keys {
-                    self.check_keys_soon(2, 90);
-                }
             }
             uia::WM_A11Y_INVOKE => {
                 self.app.accessible_invoke(wparam.0 as i32);
@@ -859,10 +922,9 @@ impl Runtime {
                 self.after();
             }
             WM_INPUT => {
-                // Raw keyboard input: only Caps Lock and the layout-switching keys matter; the rest is dropped.
+                // Raw keyboard input: only Caps Lock matters; every other key is dropped here.
                 match sysevents::key_hint(lparam) {
                     KeyHint::Caps => self.check_keys_soon(1, 40),
-                    KeyHint::LayoutKey => self.check_keys_soon(2, 90),
                     KeyHint::Other => {}
                 }
                 return None; // let Windows finish its own handling of the raw input
@@ -944,6 +1006,8 @@ impl Runtime {
             "hwnd": self.hwnd.0 as isize,
             "frames": self.frames,
             "hidden": self.hidden,
+            "hiddenBy": self.hidden_by(),
+            "visibilityHotkey": self.vis_hotkey,
             "paused": self.paused,
             "fullscreen": self.fullscreen,
             "hotkey": self.hotkey,
@@ -1139,6 +1203,7 @@ impl Runtime {
                 self.paused = v["on"].as_bool().unwrap_or(true);
                 self.update_hidden();
             }
+            "toggle_visibility" => self.toggle_visibility(),
             "fullscreen" => {
                 // Pretend a fullscreen app is (or is not) in front; null goes back to asking Windows.
                 self.fullscreen_sim = v["on"].as_bool();
@@ -1363,12 +1428,13 @@ pub fn run(opts: Options) -> Result<(), String> {
             toast_url: None,
             taskbar_created: unsafe { RegisterWindowMessageW(w!("TaskbarCreated")) },
             hotkey: String::new(),
+            vis_hotkey: String::new(),
+            fullscreen_override: false,
             frame_times: Vec::new(),
             last_frame: None,
             last_a11y: Instant::now(),
             sources: Sources::default(),
             caps_last: false,
-            layout_last: None,
             key_checks: 0,
         });
     });
@@ -1388,6 +1454,11 @@ pub fn run(opts: Options) -> Result<(), String> {
         let status = rt.register_hotkey(&accelerator);
         if status != "ok" {
             rt.effects_log.push(format!("hotkey:{status}"));
+        }
+        let file = rt.store.get_json("host").ok().flatten();
+        let status = rt.register_visibility_hotkey(&crate::host::parse_visibility_hotkey(file.as_ref()));
+        if status != "ok" {
+            rt.effects_log.push(format!("hotkey:visibility:{status}"));
         }
         rt.refresh_fullscreen();
         // Scripted runs inject their own events; real sources would add real ones to the test.

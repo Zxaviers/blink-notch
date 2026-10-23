@@ -81,9 +81,6 @@ try {
   Ev @{type='caps'; on=$true}
   Check 'Caps Lock on' ((St).peek.title -eq 'Caps Lock on')
   Calm
-  Ev @{type='layout'; code='ID'; name='Indonesian'}
-  Check 'keyboard layout change' ((St).peek.title -eq 'Indonesian' -and (St).peek.count -eq 'ID')
-  Calm
 
   'a deadline alert beats a volume change'
   Ev @{type='volume'; percent=20; muted=$false}

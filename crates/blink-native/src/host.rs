@@ -12,6 +12,17 @@
 
 use serde_json::Value;
 
+/// The shortcut that shows or hides the whole notch (`visibilityHotkey` in `host.json`).
+/// Empty turns it off.
+pub const DEFAULT_VISIBILITY_HOTKEY: &str = "Ctrl+Alt+H";
+
+pub fn parse_visibility_hotkey(value: Option<&Value>) -> String {
+    match value.and_then(|v| v.get("visibilityHotkey")).and_then(Value::as_str) {
+        Some(s) => s.trim().to_string(),
+        None => DEFAULT_VISIBILITY_HOTKEY.to_string(),
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ModuleConfig {
     pub id: String,
@@ -67,6 +78,14 @@ mod tests {
         assert!(parse_modules(None).is_empty());
         assert!(parse_modules(Some(&json!({ "modules": "no" }))).is_empty());
         assert!(parse_modules(Some(&json!([]))).is_empty());
+    }
+
+    #[test]
+    fn the_visibility_shortcut_has_a_default_and_can_be_turned_off() {
+        assert_eq!(parse_visibility_hotkey(None), "Ctrl+Alt+H");
+        assert_eq!(parse_visibility_hotkey(Some(&json!({}))), "Ctrl+Alt+H");
+        assert_eq!(parse_visibility_hotkey(Some(&json!({ "visibilityHotkey": " Ctrl+Shift+N " }))), "Ctrl+Shift+N");
+        assert_eq!(parse_visibility_hotkey(Some(&json!({ "visibilityHotkey": "" }))), "", "empty means off");
     }
 
     #[test]

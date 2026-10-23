@@ -7,9 +7,9 @@
 //!   one, and the default output's volume and mute. These run on their own thread.
 //! - **Bluetooth**: a watcher over the paired Bluetooth devices (classic and low energy) that reports
 //!   when one connects or disconnects and what battery level it reports.
-//! - **Keys**: raw keyboard input, used for exactly two things: the Caps Lock key and the keys
-//!   that switch the keyboard layout (Shift, Alt, Windows, Space). Every other key is looked at
-//!   for its code only to throw it away; nothing is stored, logged or sent anywhere.
+//! - **Keys**: raw keyboard input, used for exactly one thing: the Caps Lock key. (It used to
+//!   Every other key is looked at for its code only to throw it away; nothing is stored,
+//!   logged or sent anywhere.
 //!
 //! Sources run on other threads post a `SystemEvent` to the window thread as `WM_SYSEVENT`.
 
@@ -24,7 +24,6 @@ use windows::Devices::Enumeration::{DeviceInformation, DeviceInformationKind, De
 use windows::Foundation::{IPropertyValue, TypedEventHandler};
 use windows::Win32::System::WinRT::{RoInitialize, RO_INIT_MULTITHREADED};
 use windows::Win32::Foundation::{HANDLE, HWND, LPARAM, PROPERTYKEY, WPARAM};
-use windows::Win32::Globalization::{GetLocaleInfoW, LOCALE_SENGLISHDISPLAYNAME, LOCALE_SISO639LANGNAME};
 use windows::Win32::Media::Audio::Endpoints::{IAudioEndpointVolume, IAudioEndpointVolumeCallback, IAudioEndpointVolumeCallback_Impl};
 use windows::Win32::Media::Audio::{
     eConsole, eRender, EDataFlow, ERole, IMMDeviceEnumerator, IMMEndpoint, IMMNotificationClient, IMMNotificationClient_Impl, MMDeviceEnumerator,
@@ -37,9 +36,9 @@ use windows::Win32::System::Com::StructuredStorage::{PropVariantToStringAlloc, P
 use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CLSCTX_ALL, COINIT_MULTITHREADED, STGM_READ};
 use windows::Win32::System::Power::{GetSystemPowerStatus, RegisterPowerSettingNotification, SYSTEM_POWER_STATUS};
 use windows::Win32::System::SystemServices::{GUID_ACDC_POWER_SOURCE, GUID_BATTERY_PERCENTAGE_REMAINING};
-use windows::Win32::UI::Input::KeyboardAndMouse::{GetKeyboardLayout, GetKeyState};
+use windows::Win32::UI::Input::KeyboardAndMouse::GetKeyState;
 use windows::Win32::UI::Input::{GetRawInputData, RegisterRawInputDevices, HRAWINPUT, RAWINPUT, RAWINPUTDEVICE, RAWINPUTHEADER, RIDEV_INPUTSINK, RID_INPUT};
-use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId, PostMessageW, DEVICE_NOTIFY_WINDOW_HANDLE};
+use windows::Win32::UI::WindowsAndMessaging::{PostMessageW, DEVICE_NOTIFY_WINDOW_HANDLE};
 
 use crate::events::{AudioKind, SystemEvent};
 
@@ -413,8 +412,6 @@ fn start_keys(hwnd: HWND) -> bool {
 pub enum KeyHint {
     /// Caps Lock was pressed.
     Caps,
-    /// A key that can switch the keyboard layout was released.
-    LayoutKey,
     /// Anything else: dropped here.
     Other,
 }
@@ -440,8 +437,6 @@ pub fn key_hint(lparam: LPARAM) -> KeyHint {
         let released = k.Flags & 1 != 0;
         match k.VKey {
             VK_CAPITAL if !released => KeyHint::Caps,
-            // Shift, Control, Alt, Windows, Space (and their left and right variants)
-            0x10 | 0x11 | 0x12 | 0x20 | 0x5B | 0x5C | 0xA0..=0xA5 if released => KeyHint::LayoutKey,
             _ => KeyHint::Other,
         }
     }
@@ -449,20 +444,4 @@ pub fn key_hint(lparam: LPARAM) -> KeyHint {
 
 pub fn caps_lock_on() -> bool {
     unsafe { GetKeyState(i32::from(VK_CAPITAL)) & 1 != 0 }
-}
-
-/// The keyboard layout of the window you are typing in: (short code, name).
-pub fn foreground_layout() -> Option<(String, String)> {
-    unsafe {
-        let thread = GetWindowThreadProcessId(GetForegroundWindow(), None);
-        let hkl = GetKeyboardLayout(thread);
-        let lang = (hkl.0 as usize & 0xffff) as u32;
-        let info = |kind| {
-            let mut buf = [0u16; 96];
-            let n = GetLocaleInfoW(lang, kind, Some(&mut buf));
-            (n > 1).then(|| String::from_utf16_lossy(&buf[..n as usize - 1]))
-        };
-        let code = info(LOCALE_SISO639LANGNAME)?.to_uppercase();
-        Some((code, info(LOCALE_SENGLISHDISPLAYNAME).unwrap_or_default()))
-    }
 }

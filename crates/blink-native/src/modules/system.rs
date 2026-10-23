@@ -1,6 +1,6 @@
 //! System peeks: a short expansion when the charger is plugged in or pulled, the battery
 //! runs low, Wi-Fi connects or drops, headphones appear or go, volume changes, Caps Lock
-//! turns on or the keyboard layout changes. No panel of its own: it only speaks up.
+//! turns on. No panel of its own: it only speaks up.
 //!
 //! Each kind can be switched off in the module's options (`host.json`):
 //! `{ "battery": true, "wifi": true, "audio": true, "volume": true, "caps": true, "language": true }`.
@@ -18,20 +18,19 @@ pub struct Kinds {
     pub audio: bool,
     pub volume: bool,
     pub caps: bool,
-    pub language: bool,
     pub bluetooth: bool,
 }
 
 impl Default for Kinds {
     fn default() -> Self {
-        Kinds { battery: true, wifi: true, audio: true, volume: true, caps: true, language: true, bluetooth: true }
+        Kinds { battery: true, wifi: true, audio: true, volume: true, caps: true, bluetooth: true }
     }
 }
 
 impl Kinds {
     pub fn from_options(options: &Value) -> Kinds {
         let on = |k: &str| options.get(k).and_then(Value::as_bool).unwrap_or(true);
-        Kinds { battery: on("battery"), wifi: on("wifi"), audio: on("audio"), volume: on("volume"), caps: on("caps"), language: on("language"), bluetooth: on("bluetooth") }
+        Kinds { battery: on("battery"), wifi: on("wifi"), audio: on("audio"), volume: on("volume"), caps: on("caps"), bluetooth: on("bluetooth") }
     }
 }
 
@@ -93,7 +92,6 @@ fn words(lang: Lang, key: &str) -> &'static str {
         "muted" => if id { "Senyap" } else { "Muted" },
         "caps_on" => if id { "Caps Lock menyala" } else { "Caps Lock on" },
         "caps_off" => if id { "Caps Lock mati" } else { "Caps Lock off" },
-        "keyboard" => if id { "Papan ketik" } else { "Keyboard" },
         "bluetooth" => "Bluetooth",
         "battery_low_device" => if id { "baterai lemah" } else { "battery low" },
         _ => "",
@@ -259,9 +257,6 @@ impl Module for SystemModule {
                 let title = if *on { w("caps_on") } else { w("caps_off") };
                 Some(view("Caps", title.to_string(), String::new(), if *on { "soon" } else { "later" }, 1, "caps", Some(1600), None))
             }
-            SystemEvent::KeyboardLayout { code, name } if self.kinds.language => {
-                Some(view(w("keyboard"), name.clone(), code.clone(), "later", 1, "layout", Some(1800), None))
-            }
             _ => None,
         };
         peek.map(Effect::ShowPeek).into_iter().collect()
@@ -370,7 +365,7 @@ mod tests {
     }
 
     #[test]
-    fn devices_wifi_caps_and_layout_have_their_words_in_both_languages() {
+    fn devices_wifi_and_caps_have_their_words_in_both_languages() {
         let mut m = SystemModule::new();
         let p = run(&mut m, Lang::En, SystemEvent::AudioDevice { name: "AirBuds Pro".into(), kind: AudioKind::Headphones, connected: true }).unwrap();
         assert_eq!((p.code.as_str(), p.title.as_str(), p.count.as_str()), ("Headphones", "AirBuds Pro", "connected"));
@@ -379,8 +374,6 @@ mod tests {
         assert_eq!(run(&mut m, Lang::En, SystemEvent::Wifi { connected: true, ssid: Some("Campus".into()) }).unwrap().title, "Connected to Campus");
         assert_eq!(run(&mut m, Lang::Id, SystemEvent::Wifi { connected: false, ssid: None }).unwrap().title, "Wi-Fi terputus");
         assert_eq!(run(&mut m, Lang::En, SystemEvent::CapsLock(true)).unwrap().title, "Caps Lock on");
-        let l = run(&mut m, Lang::En, SystemEvent::KeyboardLayout { code: "ID".into(), name: "Indonesian".into() }).unwrap();
-        assert_eq!((l.title.as_str(), l.count.as_str()), ("Indonesian", "ID"));
     }
 
     #[test]
