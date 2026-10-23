@@ -562,6 +562,14 @@ function renderAll () {
 // --------------------------------------------------------------------- init
 
 async function init () {
+  // The notch opens this on the part it was asked from: the deadlines' feeds, or Blink's general settings.
+  if (typeof window.__SECTION__ === 'string' && window.__SECTION__ in BUILDERS) section = window.__SECTION__
+  window.__openSection = (name) => {
+    if (name in BUILDERS) {
+      section = name
+      renderAll()
+    }
+  }
   const [rawSettings, events] = await Promise.all([
     api.storeGet('settings').catch(() => null),
     api.storeGet('local_events').catch(() => null)

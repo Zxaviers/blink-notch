@@ -870,7 +870,8 @@ impl ControlsModule {
         let (x, y0, col_w) = Self::list_origin(frame);
         // The one in use first.
         let mut ordered: Vec<&Output> = state.outputs.iter().collect();
-        ordered.sort_by_key(|o| !o.active);
+        // The one in use, then what is plugged in or paired, then software (mixers, virtual cables).
+        ordered.sort_by_key(|o| (!o.active, crate::events::is_software_audio(&o.name)));
         for (i, o) in ordered.into_iter().take(MAX_ROWS).enumerate() {
             let (col, row) = (i / 3, i % 3);
             let rx = x + col as f32 * (col_w + 12.0);

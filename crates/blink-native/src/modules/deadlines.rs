@@ -696,6 +696,11 @@ impl Module for DeadlinesModule {
         AMBER
     }
 
+    fn due_dates(&mut self, env: &Env) -> Vec<(i64, &'static str)> {
+        let model = self.model(env);
+        model.view.upcoming.iter().chain(model.view.overdue.iter()).map(|t| (t.due_ms, urgency_of(t.due_ms, env.wall_ms))).collect()
+    }
+
     fn title_parts(&self, lang: blink_core::i18n::Lang) -> (String, String) {
         let (a, b) = if lang == blink_core::i18n::Lang::Id { ("Teng", "gat") } else { ("Dead", "lines") };
         (a.to_string(), b.to_string())

@@ -461,7 +461,8 @@ impl Runtime {
                         open_url(&url);
                     }
                 }
-                AppEffect::OpenSettings => self.open_settings(),
+                AppEffect::OpenSettings => self.open_settings("feeds"),
+                AppEffect::OpenAppSettings => self.open_settings("general"),
                 AppEffect::RefreshFeeds => self.effects_log.push("refresh_feeds".into()),
                 AppEffect::Toast { title, body, url } => {
                     if self.control {
@@ -651,7 +652,7 @@ impl Runtime {
                 self.update_hidden();
             }
             tray::CMD_REFRESH => self.app.refresh_sources(),
-            tray::CMD_SETTINGS => self.open_settings(),
+            tray::CMD_SETTINGS => self.open_settings("general"),
             tray::CMD_QUIT => unsafe {
                 let _ = PostMessageW(Some(self.hwnd), windows::Win32::UI::WindowsAndMessaging::WM_CLOSE, WPARAM(0), LPARAM(0));
             },
@@ -742,19 +743,20 @@ impl Runtime {
     }
 
     /// The settings program is a separate executable next to this one (Phase 4).
-    fn open_settings(&mut self) {
+    /// Open the settings program, on one of its sections (`feeds` for the deadlines, `general` for Blink).
+    fn open_settings(&mut self, section: &str) {
         let path = std::env::var_os("BLINK_SETTINGS_EXE")
             .map(std::path::PathBuf::from)
             .or_else(|| std::env::current_exe().ok().map(|p| p.with_file_name("blink-settings.exe")))
             .filter(|p| p.exists());
         // Scripted runs only log it, unless they name a settings program to start.
         if self.control && std::env::var_os("BLINK_SETTINGS_EXE").is_none() {
-            self.effects_log.push("open_settings".into());
+            self.effects_log.push(format!("open_settings:{section}"));
             return;
         }
         // A second launch of the settings program just brings the open one to the front.
         if let Some(path) = path {
-            let _ = std::process::Command::new(path).spawn();
+            let _ = std::process::Command::new(path).args(["--section", section]).spawn();
         }
     }
 
@@ -1205,7 +1207,7 @@ impl Runtime {
                 let shown = self.toast(title, body, v["url"].as_str().map(String::from));
                 return Ok(json!({ "handedToWindows": shown }));
             }
-            "open_settings" => self.open_settings(),
+            "open_settings" => self.open_settings(v["section"].as_str().unwrap_or("general")),
             "modules" => {
                 let list: Vec<Value> = self.app.module_list().iter().map(|(id, on)| json!({ "id": id, "enabled": on })).collect();
                 return Ok(json!({ "modules": list, "active": self.app.active_module(), "restOwner": self.app.rest_owner_module() }));
@@ -1498,9 +1500,10 @@ pub fn run(opts: Options) -> Result<(), String> {
         _ => unreachable!("one of the two exists"),
     };
     let modules: Vec<Box<dyn Module>> = vec![
+        // The pages in the order they turn: time and calendar, then deadlines, then the controls.
+        Box::new(ClockModule::new()),
         Box::new(DeadlinesModule::new(source)),
         Box::new(ControlsModule::new(controls_backend)),
-        Box::new(ClockModule::new()),
         Box::new(SystemModule::new()),
     ];
     let mut app = App::new(clock, settings, tz, scale, &system_language(), modules)?;
@@ -1598,7 +1601,7 @@ pub fn run(opts: Options) -> Result<(), String> {
         // First run: no feeds and never set up. Open the settings program, which shows its wizard.
         let first_run = with_rt(|rt| !rt.app.settings().onboarded && rt.app.settings().feeds.is_empty()).unwrap_or(false);
         if first_run {
-            with_rt(|rt| rt.open_settings());
+            with_rt(|rt| rt.open_settings("feeds"));
         }
     }
     if let Some(seconds) = opts.seconds {

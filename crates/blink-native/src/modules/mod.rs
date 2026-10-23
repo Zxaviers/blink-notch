@@ -191,6 +191,11 @@ pub trait Module {
         true
     }
 
+    /// Deadlines this module knows of, for the calendar to mark: when, and how pressing ("later", "soon", "overdue").
+    fn due_dates(&mut self, _env: &Env) -> Vec<(i64, &'static str)> {
+        Vec::new()
+    }
+
     /// The colour of this page: its title, its highlights.
     fn accent(&self) -> Rgb {
         Rgb(0xf2, 0xf2, 0xf2)

@@ -24,6 +24,8 @@ pub enum NodeAction {
     OpenPanel,
     /// Show this module (by position among the enabled ones).
     SwitchTab(usize),
+    /// Open Blink's own settings (the button at the top right of the panel).
+    AppSettings,
     Module(Action),
 }
 
@@ -117,6 +119,7 @@ pub fn word(lang: blink_core::i18n::Lang, key: &str) -> &'static str {
     match key {
         "notch" => "Blink",
         "next" => if id { "Tenggat berikutnya" } else { "Next deadline" },
+        "app_settings" => if id { "Pengaturan Blink" } else { "Blink settings" },
         "none" => if id { "Tidak ada tenggat" } else { "No deadlines" },
         "upcoming" => if id { "Tenggat mendatang" } else { "Upcoming deadlines" },
         "overdue" => if id { "Terlewat" } else { "Overdue" },

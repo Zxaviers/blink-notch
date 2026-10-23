@@ -19,7 +19,10 @@ use crate::ui::theme::{panel_surface, Rgb, Surface, Theme};
 #[derive(Clone, Debug, PartialEq)]
 pub enum AppEffect {
     OpenUrl(String),
+    /// The settings of the deadlines (feeds, notifications, my events).
     OpenSettings,
+    /// Blink's own settings (the button at the top right).
+    OpenAppSettings,
     RefreshFeeds,
     /// Take (true) or give back (false) real keyboard focus.
     KeyboardFocus(bool),
@@ -27,19 +30,6 @@ pub enum AppEffect {
     Announce(String),
     /// A system notification; `url` is what clicking it opens.
     Toast { title: String, body: String, url: Option<String> },
-}
-
-/// Quiet for this long and the clock gives way to a pair of eyes; much longer and they doze.
-const EYES_AFTER_MS: u64 = 45_000;
-const DOZE_AFTER_MS: u64 = 150_000;
-const BLINK_EVERY_MS: u64 = 4_600;
-const BLINK_MS: u64 = 170;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Eyes {
-    Open,
-    Blink,
-    Doze,
 }
 
 /// Peeks waiting for the notch to be free (a long queue is a bug in a module, not a feature).
@@ -77,6 +67,8 @@ pub struct App {
     last_activity: u64,
     /// The panel was open and is still on its way out (its page may still be drawn, fading).
     panel_shown: bool,
+    /// The eyes are moving (set by the last frame; the window keeps drawing frames while it is true).
+    eyes_moving: bool,
     pointer: Option<(f32, f32)>,
     effects: Vec<AppEffect>,
     /// The last frame's panel height, to retarget the shell when content changes.
@@ -119,6 +111,7 @@ impl App {
             battery: None,
             last_activity: 0,
             panel_shown: false,
+            eyes_moving: false,
             pointer: None,
             effects: Vec::new(),
             last_panel_h: 0.0,
@@ -460,6 +453,10 @@ impl App {
                     return;
                 }
                 if self.shell.mode() == Mode::Open {
+                    if self.in_menu(x, y) {
+                        self.effects.push(AppEffect::OpenAppSettings);
+                        return;
+                    }
                     if let Some(tab) = self.tab_at(x, y) {
                         self.switch_to(tab);
                         return;
@@ -481,6 +478,17 @@ impl App {
             }
         }
         self.sync_open_height();
+    }
+
+    /// The button at the right end of the header: Blink's settings.
+    fn menu_rect() -> (f32, f32, f32, f32) {
+        let right = (WINDOW_W + OPEN_W) / 2.0 - 16.0;
+        (right - 28.0, 23.0 - 14.0, 28.0, 28.0)
+    }
+
+    fn in_menu(&self, x: f32, y: f32) -> bool {
+        let (mx, my, mw, mh) = Self::menu_rect();
+        x >= mx && x < mx + mw && y >= my && y < my + mh
     }
 
     fn tab_at(&self, x: f32, y: f32) -> Option<usize> {
@@ -669,6 +677,13 @@ impl App {
         let env = self.env(&tz);
         let shown = if open { self.active } else { self.rest_owner };
         let mut nodes = self.slots[shown].module.accessibility(&env, open);
+        if open {
+            let (mx, my, mw, mh) = Self::menu_rect();
+            let mut menu = Node::new(250, ROOT, Role::Button, crate::access::word(env.t.lang(), "app_settings"));
+            menu.rect = (mx, my, mw, mh);
+            menu.action = Some(crate::access::NodeAction::AppSettings);
+            nodes.push(menu);
+        }
         if open && self.tabs_height() > 0.0 {
             let mut seen: Vec<usize> = Vec::new();
             for (slot, x, y, w, h) in self.tab_rects.clone() {
@@ -710,6 +725,7 @@ impl App {
                 self.apply_module_effects(self.active, effects);
             }
             NodeAction::SwitchTab(i) => self.switch_to(i),
+            NodeAction::AppSettings => self.effects.push(AppEffect::OpenAppSettings),
         }
     }
 
@@ -745,7 +761,7 @@ impl App {
     }
 
     pub fn wants_frames(&self) -> bool {
-        self.shell.is_animating(self.clock.now_ms())
+        self.shell.is_animating(self.clock.now_ms()) || self.eyes_moving
     }
 
     // -------------------------------------------------------------- drawing
@@ -780,6 +796,7 @@ impl App {
         let fade = if reduced { self.shell.fade_in(now) } else { 1.0 };
 
         self.canvas.clear();
+        self.eyes_moving = false;
         // The body: black, turning into the panel surface as it opens.
         let body = lerp_rgb(pill.bg, panel_theme.bg, openness);
         let hot = self.shell.mode() == Mode::Rest && self.shell.rest_style() == RestStyle::Hot;
@@ -791,12 +808,16 @@ impl App {
             Mode::Rest => {
                 let rest_alpha = (1.0 - openness * 3.0).clamp(0.0, 1.0) * if reduced { 1.0 - fade * 0.0 } else { 1.0 };
                 if self.shell.rest_style() == RestStyle::Full && rest_alpha > 0.0 {
-                    match self.eyes_at(now, &env) {
-                        Some(eyes) => self.draw_eyes(eyes, &pill, rest_alpha),
-                        None => {
-                            let rv = self.slots[self.rest_owner].module.rest(&env);
-                            self.draw_rest(&rv, &pill, rest_alpha, &env);
-                        }
+                    let step = self.eyes_step(now, &env);
+                    self.eyes_moving = step.is_some_and(|s| s.animating);
+                    // The clock gives way to the eyes with a quick cross-fade.
+                    let clock_alpha = step.map_or(1.0, |s| (1.0 - s.frame.appear * 2.2).clamp(0.0, 1.0));
+                    if clock_alpha > 0.01 {
+                        let rv = self.slots[self.rest_owner].module.rest(&env);
+                        self.draw_rest(&rv, &pill, rest_alpha * clock_alpha, &env);
+                    }
+                    if let Some(step) = step {
+                        self.draw_eyes(&step.frame, &pill, rest_alpha);
                     }
                 }
             }
@@ -829,6 +850,12 @@ impl App {
                 width: OPEN_W,
                 keyboard: self.shell.keyboard(),
             };
+            if self.slots[self.active].module.id() == "clock" {
+                let marks: Vec<(i64, &'static str)> = self.slots.iter_mut().filter(|s| s.enabled).flat_map(|s| s.module.due_dates(&env)).collect();
+                if let Some(clock) = self.module_mut::<crate::modules::clock::ClockModule>() {
+                    clock.set_marks(marks);
+                }
+            }
             let mut kit = Kit { canvas: &mut self.canvas, fonts: &mut self.fonts };
             self.slots[self.active].module.draw_panel(&env, &mut kit, &frame);
             self.draw_header(&panel_theme, open_alpha, &env);
@@ -873,11 +900,16 @@ impl App {
         self.canvas.text(&mut self.fonts, Face::Sans, 13.0, x + 22.0, tb, &date, theme.dim, alpha, 0.0);
         self.canvas.text(&mut self.fonts, Face::SansBold, 13.0, x + 22.0 + dw + 7.0, tb, &time, theme.fg, alpha, 0.0);
 
-        // The right: activity bars (flat while nothing plays).
-        for (i, h) in [4.0_f32, 4.0, 4.0, 4.0].iter().enumerate() {
-            let bx = right - 14.0 + i as f32 * 4.0;
-            self.canvas.rrect(bx, cy - h / 2.0, 2.0, *h, 1.0, theme.fg, alpha * 0.7);
+        // The right: the button for Blink's own settings, three dots.
+        let (mx, my, mw, mh) = Self::menu_rect();
+        let over = self.pointer.is_some_and(|(px, py)| px >= mx && px < mx + mw && py >= my && py < my + mh);
+        if over {
+            self.canvas.circle(mx + mw / 2.0, my + mh / 2.0, 13.0, theme.fg, alpha * 0.18);
         }
+        for i in 0..3 {
+            self.canvas.circle(mx + mw / 2.0 + (i as f32 - 1.0) * 5.5, my + mh / 2.0, 1.7, theme.fg, alpha * if over { 1.0 } else { 0.75 });
+        }
+        let _ = right;
     }
 
     /// The dots along the bottom and the round buttons that turn the page (only with more than one page).
@@ -922,21 +954,13 @@ impl App {
 
     // ------------------------------------------------------------ eyes
 
-    /// Whether the eyes are showing instead of the clock, and how: after a while of quiet
-    /// (when the clock owns the pill) they open, blink now and then, and finally doze.
-    fn eyes_at(&mut self, now: u64, env: &Env) -> Option<Eyes> {
+    /// What the eyes look like now, if they are showing (see `eyes`): after a while of quiet, over a
+    /// calm pill.
+    fn eyes_step(&mut self, now: u64, env: &Env) -> Option<crate::eyes::Step> {
         if !self.eyes_possible(env) {
             return None;
         }
-        let idle = now.saturating_sub(self.last_activity);
-        if idle < EYES_AFTER_MS {
-            return None;
-        }
-        if idle >= DOZE_AFTER_MS {
-            return Some(Eyes::Doze);
-        }
-        let t = (idle - EYES_AFTER_MS) % BLINK_EVERY_MS;
-        Some(if t >= BLINK_EVERY_MS - BLINK_MS { Eyes::Blink } else { Eyes::Open })
+        crate::eyes::at(now.saturating_sub(self.last_activity))
     }
 
     /// Eyes need a quiet pill: the clock, or a deadline that is not close yet (never one that is
@@ -949,48 +973,35 @@ impl App {
         calm && self.module_mut::<crate::modules::clock::ClockModule>().is_none_or(|c| c.eyes)
     }
 
-    /// The next moment the eyes change: opening, a blink starting or ending, dozing off.
+    /// The next moment the eyes change by themselves (they are drawn frame by frame while they move).
     fn eyes_wake(&mut self, now: u64, env: &Env) -> Option<u64> {
         if !self.eyes_possible(env) {
             return None;
         }
         let idle = now.saturating_sub(self.last_activity);
-        if idle < EYES_AFTER_MS {
-            return Some(self.last_activity + EYES_AFTER_MS);
+        if idle < crate::eyes::EYES_AFTER_MS {
+            return Some(self.last_activity + crate::eyes::EYES_AFTER_MS);
         }
-        if idle >= DOZE_AFTER_MS {
-            return None;
-        }
-        let t = (idle - EYES_AFTER_MS) % BLINK_EVERY_MS;
-        let base = now - t;
-        let next_change = if t < BLINK_EVERY_MS - BLINK_MS { base + BLINK_EVERY_MS - BLINK_MS } else { base + BLINK_EVERY_MS };
-        Some(next_change.min(self.last_activity + DOZE_AFTER_MS))
+        crate::eyes::at(idle)?.next_change_ms.map(|at| self.last_activity + at)
     }
 
-    fn draw_eyes(&mut self, eyes: Eyes, theme: &Theme, alpha: f32) {
+    fn draw_eyes(&mut self, f: &crate::eyes::EyeFrame, theme: &Theme, alpha: f32) {
         let cx = WINDOW_W / 2.0;
         let cy = REST_FULL.h / 2.0 - 1.0;
         let glow = Rgb(0x9a, 0xe0, 0xff);
+        let a = alpha * f.appear;
+        // They grow into place, and look a few pixels to the side.
+        let (w, full_h) = (9.0 * (0.7 + 0.3 * f.appear), 15.0 * (0.55 + 0.45 * f.appear));
+        let h = (full_h * f.open).max(2.4);
         for dx in [-15.0_f32, 15.0] {
-            let x = cx + dx;
-            match eyes {
-                Eyes::Open => {
-                    self.canvas.glow(x, cy, 13.0, glow, alpha * 0.35);
-                    self.canvas.rrect(x - 4.5, cy - 7.5, 9.0, 15.0, 4.5, theme.fg, alpha);
-                }
-                Eyes::Blink => {
-                    self.canvas.rrect(x - 4.5, cy - 1.2, 9.0, 2.4, 1.2, theme.fg, alpha);
-                }
-                Eyes::Doze => {
-                    // Eyes nearly shut: a thin dim line, a little lower.
-                    self.canvas.rrect(x - 4.5, cy + 1.0, 9.0, 2.2, 1.1, theme.dim, alpha * 0.8);
-                }
-            }
+            let x = cx + dx + f.look * 3.4;
+            self.canvas.glow(x, cy, 13.0, glow, a * 0.35 * f.open);
+            self.canvas.rrect(x - w / 2.0, cy - h / 2.0, w, h, (w / 2.0).min(h / 2.0), theme.fg, a);
         }
-        // A soft light under the notch, like a screen glowing in the dark.
-        let line_w = if eyes == Eyes::Doze { 40.0 } else { 90.0 };
+        // A soft light under the notch, like a screen glowing in the dark; dimmer when drowsy.
+        let line_w = 40.0 + 50.0 * f.open;
         let (c0, c1) = (Rgb(0x38, 0xd6, 0xe8), Rgb(0xa7, 0x8b, 0xfa));
-        self.canvas.gradient_rrect(cx - line_w / 2.0, REST_FULL.h - 2.5, line_w, 2.0, 1.0, c0, c1, false, alpha * if eyes == Eyes::Doze { 0.4 } else { 0.85 });
+        self.canvas.gradient_rrect(cx - line_w / 2.0, REST_FULL.h - 2.5, line_w, 2.0, 1.0, c0, c1, false, a * (0.4 + 0.45 * f.open));
     }
 
     // --------------------------------------------------------- pill and peek

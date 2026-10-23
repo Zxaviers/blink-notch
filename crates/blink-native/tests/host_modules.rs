@@ -256,3 +256,39 @@ fn the_system_options_come_from_host_json() {
     app.system_event(SystemEvent::CapsLock(true));
     assert_eq!(app.current_peek().unwrap().title, "Caps Lock on");
 }
+
+#[test]
+fn the_dots_at_the_top_right_open_blinks_own_settings() {
+    let mut app = two_modules(json!({}));
+    app.tick();
+    open_by_hover(&mut app);
+    app.render();
+    // The settings button sits at the right end of the header.
+    let node = app.accessibility().nodes.into_iter().find(|n| n.action == Some(NodeAction::AppSettings)).expect("a Blink settings button");
+    assert_eq!(node.name, "Blink settings");
+    let (x, y) = (node.rect.0 + node.rect.2 / 2.0, node.rect.1 + node.rect.3 / 2.0);
+    app.take_effects();
+    app.pointer(PointerKind::Move, x, y);
+    app.pointer(PointerKind::Down, x, y);
+    assert_eq!(app.take_effects(), vec![blink_native::app::AppEffect::OpenAppSettings]);
+}
+
+#[test]
+fn the_calendar_page_browses_months_and_marks_nothing_it_was_not_told_about() {
+    let mut app = two_modules(json!({}));
+    app.tick();
+    open_by_hover(&mut app);
+    app.switch_to(1);
+    settle(&mut app);
+    app.render();
+    assert_eq!(app.active_module(), "clock");
+    let month = |app: &mut App| app.accessibility().nodes.iter().map(|n| n.name.clone()).find(|n| n.contains("20")).unwrap_or_default();
+    assert_eq!(month(&mut app), "October 2026");
+    app.key(Key::Down);
+    app.render();
+    assert_eq!(month(&mut app), "November 2026");
+    assert_eq!(app.module_mut::<ClockModule>().unwrap().month_offset(), 1);
+    app.key(Key::Home);
+    app.render();
+    assert_eq!(app.module_mut::<ClockModule>().unwrap().month_offset(), 0);
+}

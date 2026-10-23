@@ -7,6 +7,14 @@
 
 use std::collections::HashMap;
 use std::fs::File;
+use std::mem::ManuallyDrop;
+
+use windows::core::PCWSTR;
+use windows::Win32::Graphics::DirectWrite::{
+    DWriteCreateFactory, IDWriteFactory, IDWriteFontFace, DWRITE_FACTORY_TYPE_SHARED, DWRITE_FONT_FACE_TYPE_TRUETYPE, DWRITE_FONT_SIMULATIONS_NONE, DWRITE_GLYPH_RUN,
+    DWRITE_MEASURING_MODE, DWRITE_MEASURING_MODE_GDI_CLASSIC, DWRITE_MEASURING_MODE_NATURAL, DWRITE_RENDERING_MODE, DWRITE_RENDERING_MODE_GDI_CLASSIC,
+    DWRITE_RENDERING_MODE_NATURAL, DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC, DWRITE_TEXTURE_CLEARTYPE_3x1,
+};
 
 use memmap2::Mmap;
 use tiny_skia::{FillRule, Paint, PathBuilder, Pixmap, Transform};
@@ -52,6 +60,75 @@ struct Loaded {
 pub struct Fonts {
     loaded: HashMap<Face, Loaded>,
     cache: HashMap<(Face, char, u32), Glyph>,
+    /// Windows' own glyph rasterizer, which hints (snaps outlines to the pixel grid) so small text is
+    /// crisp; None when it could not be set up, and the plain outline rasterizer is used.
+    dw: Option<DirectWrite>,
+}
+
+/// DirectWrite, used only to turn one glyph into a coverage bitmap.
+struct DirectWrite {
+    factory: IDWriteFactory,
+    faces: HashMap<Face, IDWriteFontFace>,
+    rendering: DWRITE_RENDERING_MODE,
+    measuring: DWRITE_MEASURING_MODE,
+}
+
+impl DirectWrite {
+    fn new(dir: &std::path::Path, faces: &[Face]) -> Option<DirectWrite> {
+        // GDI-classic hinting snaps stems to whole pixels both ways: the crispest at small sizes
+        // (compared side by side with the outline rasterizer, natural, and symmetric).
+        // BLINK_TEXT can pick another for comparing looks: off, natural, sym or gdi.
+        let (rendering, measuring) = match std::env::var("BLINK_TEXT").as_deref() {
+            Ok("off") => return None,
+            Ok("natural") => (DWRITE_RENDERING_MODE_NATURAL, DWRITE_MEASURING_MODE_NATURAL),
+            Ok("sym") => (DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC, DWRITE_MEASURING_MODE_NATURAL),
+            _ => (DWRITE_RENDERING_MODE_GDI_CLASSIC, DWRITE_MEASURING_MODE_GDI_CLASSIC),
+        };
+        unsafe {
+            let factory: IDWriteFactory = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED).ok()?;
+            let mut map = HashMap::new();
+            for face in faces {
+                let wide: Vec<u16> = dir.join(face.file()).to_string_lossy().encode_utf16().chain(Some(0)).collect();
+                let file = factory.CreateFontFileReference(PCWSTR(wide.as_ptr()), None).ok()?;
+                let font_face = factory.CreateFontFace(DWRITE_FONT_FACE_TYPE_TRUETYPE, &[Some(file)], 0, DWRITE_FONT_SIMULATIONS_NONE).ok()?;
+                map.insert(*face, font_face);
+            }
+            Some(DirectWrite { factory, faces: map, rendering, measuring })
+        }
+    }
+
+    /// (left, top, width, height, coverage): left is from the pen, top from the baseline up.
+    fn glyph(&self, face: Face, gid: u16, px: f32) -> Option<(i32, i32, usize, usize, Vec<u8>)> {
+        let font_face = self.faces.get(&face)?;
+        let gids = [gid];
+        let mut run = DWRITE_GLYPH_RUN {
+            fontFace: ManuallyDrop::new(Some(font_face.clone())),
+            fontEmSize: px,
+            glyphCount: 1,
+            glyphIndices: gids.as_ptr(),
+            glyphAdvances: std::ptr::null(),
+            glyphOffsets: std::ptr::null(),
+            isSideways: false.into(),
+            bidiLevel: 0,
+        };
+        let result = unsafe {
+            (|| {
+                let analysis = self.factory.CreateGlyphRunAnalysis(&run, 1.0, None, self.rendering, self.measuring, 0.0, 0.0).ok()?;
+                let b = analysis.GetAlphaTextureBounds(DWRITE_TEXTURE_CLEARTYPE_3x1).ok()?;
+                let (w, h) = ((b.right - b.left).max(0) as usize, (b.bottom - b.top).max(0) as usize);
+                if w == 0 || h == 0 {
+                    return Some((0, 0, 0, 0, Vec::new()));
+                }
+                let mut rgb = vec![0u8; w * h * 3];
+                analysis.CreateAlphaTexture(DWRITE_TEXTURE_CLEARTYPE_3x1, &b, &mut rgb).ok()?;
+                // The window has one alpha per pixel (no colour fringes): average the three sub-pixels.
+                let coverage = rgb.chunks_exact(3).map(|t| ((u16::from(t[0]) + u16::from(t[1]) + u16::from(t[2])) / 3) as u8).collect();
+                Some((b.left, -b.top, w, h, coverage))
+            })()
+        };
+        unsafe { ManuallyDrop::drop(&mut run.fontFace) };
+        result
+    }
 }
 
 /// Feeds a glyph outline (font units, y up) into a tiny-skia path (pixels, y down).
@@ -114,7 +191,8 @@ impl Fonts {
             let face_parsed = parsed.unwrap_or_else(|| loaded[&fallback].face.clone());
             loaded.insert(face, Loaded { face: face_parsed });
         }
-        Ok(Fonts { loaded, cache: HashMap::new() })
+        let dw = DirectWrite::new(&dir, &[Face::Sans, Face::SansSemibold, Face::SansLight, Face::SansBold, Face::Mono]);
+        Ok(Fonts { loaded, cache: HashMap::new(), dw })
     }
 
     fn rasterize(&self, face: Face, ch: char, px: f32) -> Glyph {
@@ -123,6 +201,9 @@ impl Fonts {
         // Unknown characters take the replacement look of '?'.
         let gid = font.glyph_index(ch).or_else(|| font.glyph_index('?')).unwrap_or_default();
         let advance = font.glyph_hor_advance(gid).unwrap_or(0) as f32 * u;
+        if let Some((left, top, width, height, coverage)) = self.dw.as_ref().and_then(|dw| dw.glyph(face, gid.0, px)) {
+            return Glyph { left, top, width, height, advance, coverage };
+        }
         let Some(bb) = font.glyph_bounding_box(gid) else {
             return Glyph { left: 0, top: 0, width: 0, height: 0, advance, coverage: Vec::new() };
         };

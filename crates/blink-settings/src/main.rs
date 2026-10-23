@@ -197,11 +197,20 @@ fn build_report(monitors: &[(u32, u32, f64)]) -> String {
 
 // ------------------------------------------------------------------- window
 
-fn show_settings(app: &tauri::AppHandle) {
+/// The section asked for on the command line (`--section feeds`), if it is a plain word.
+fn section_from(args: &[String]) -> Option<String> {
+    let at = args.iter().position(|a| a == "--section")?;
+    args.get(at + 1).filter(|s| s.chars().all(|c| c.is_ascii_alphanumeric())).cloned()
+}
+
+fn show_settings(app: &tauri::AppHandle, section: Option<String>) {
     if let Some(w) = app.get_webview_window("settings") {
         let _ = w.unminimize();
         let _ = w.show();
         let _ = w.set_focus();
+        if let Some(section) = section {
+            let _ = w.eval(format!("window.__openSection && window.__openSection('{section}')"));
+        }
         return;
     }
     // The page asks this flag which bridge it has (autostart goes through app commands here).
@@ -214,7 +223,7 @@ fn show_settings(app: &tauri::AppHandle) {
         .inner_size(900.0, 660.0)
         .min_inner_size(700.0, 520.0)
         .center()
-        .initialization_script("window.__BLINK_SETTINGS__ = true;")
+        .initialization_script(format!("window.__BLINK_SETTINGS__ = true; window.__SECTION__ = {:?};", section.unwrap_or_default()))
         .additional_browser_args(WEBVIEW_ARGS)
         .build();
 }
@@ -229,7 +238,7 @@ fn tell_notch(cmd: &'static str) {
 fn main() {
     tauri::Builder::default()
         // Must be first: a second launch brings the open window to the front.
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_settings(app)))
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| show_settings(app, section_from(&args))))
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             store_get,
@@ -256,7 +265,7 @@ fn main() {
             // The page announces its changes as events; they become messages to the notch.
             app.listen("settings-changed", |_| tell_notch("reload_settings"));
             app.listen("data-changed", |_| tell_notch("reload_local"));
-            show_settings(app.handle());
+            show_settings(app.handle(), section_from(&std::env::args().collect::<Vec<_>>()));
             Ok(())
         })
         .run(tauri::generate_context!())

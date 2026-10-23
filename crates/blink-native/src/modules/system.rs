@@ -262,6 +262,8 @@ impl Module for SystemModule {
                 // The Bluetooth event for this device already said it, with its battery.
                 None
             }
+            // A mixer or a virtual cable is software, not something plugged in: no peek.
+            SystemEvent::AudioDevice { name, .. } if crate::events::is_software_audio(name) => None,
             SystemEvent::AudioDevice { name, kind, connected } if self.kinds.audio => {
                 let what = match kind {
                     AudioKind::Headphones => w("headphones"),
@@ -464,6 +466,17 @@ mod tests {
         let audio = SystemEvent::AudioDevice { name: "Headphones (AirBuds Pro Stereo)".into(), kind: AudioKind::Headphones, connected: true };
         assert!(run_at(&mut m, 1500, audio.clone()).is_none(), "the Bluetooth peek already said it, with the battery");
         assert!(run_at(&mut m, 30_000, audio).is_some(), "an unrelated headphones event much later still speaks");
+    }
+
+    #[test]
+    fn software_audio_devices_are_not_news() {
+        let mut m = SystemModule::new();
+        let sonar = SystemEvent::AudioDevice { name: "SteelSeries Sonar - Gaming (SteelSeries Sonar Virtual Audio Device)".into(), kind: AudioKind::Headphones, connected: true };
+        assert!(run(&mut m, Lang::En, sonar).is_none(), "a mixer is software, not something plugged in");
+        let cable = SystemEvent::AudioDevice { name: "CABLE Input (VB-Audio Virtual Cable)".into(), kind: AudioKind::Other, connected: true };
+        assert!(run(&mut m, Lang::En, cable).is_none());
+        let real = SystemEvent::AudioDevice { name: "Headphones (AirBuds Pro Stereo)".into(), kind: AudioKind::Headphones, connected: true };
+        assert!(run(&mut m, Lang::En, real).is_some(), "real headphones still are");
     }
 
     #[test]

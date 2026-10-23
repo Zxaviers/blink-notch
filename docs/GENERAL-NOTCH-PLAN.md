@@ -117,3 +117,10 @@ Feedback: "not flat". References: Nusa's pages (screenshots from the user), mock
 - **Canvas:** gradients, glow, rings (arcs), orbs; light and bold Segoe UI weights for numbers and titles (regular and semibold stand in if a computer lacks them).
 - **Checks:** all unit and panel tests, and gates g2 (47), g3 (26), a11y (27), draw (8), host (28), system (27), controls (22). The idle-wake test now allows the eyes' wakes and requires silence once they doze.
 - **Next:** music + synced lyrics (page with album colours), projects (tasks, files, folders; the shelf), plugin interface.
+
+### Look v2, round two: feedback (2026-10-24)
+1. **Text no longer blurry:** glyphs are rasterized by Windows' DirectWrite with GDI-classic hinting (stems snapped to whole pixels), averaged to one alpha per pixel. Compared side by side with the old outline rasterizer and with natural/symmetric hinting; GDI-classic was the crispest. `BLINK_TEXT=off|natural|sym|gdi` picks another for comparing. Memory unchanged (3.9 MB private), idle CPU 0%.
+2. **Software audio devices (SteelSeries Sonar, virtual cables, mixers) give no "connected" peek** (`events::is_software_audio`); in the Output page they are listed after the real devices.
+3. **Page order:** Clock, Deadlines, Controls. The Clock page is the time, the date and a month calendar (Monday first): today is a filled circle, days with deadlines are coloured by how pressing (blue, amber, red) with a dot; arrows, the wheel, Up/Down browse months, Home or a click on the name returns.
+4. **Top-right dots:** now a button for Blink's own settings (opens the settings program on General). The gear on the Deadlines page opens it on the feeds (deadline settings). `blink-settings --section <name>` and a running window switch section. A "Modules" section (turn pages on/off and reorder) is the next settings work.
+5. **Eyes:** a timeline (`eyes.rs`) drawn frame by frame while it moves: the clock cross-fades into the eyes, they look aside now and then, blink with a fast close and slower open at uneven intervals, grow drowsy over two seconds and then the notch stops waking for them.

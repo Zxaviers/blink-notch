@@ -28,6 +28,17 @@ pub enum SystemEvent {
     Bluetooth { name: String, connected: bool, battery: Option<u8>, audio: bool },
 }
 
+/// Whether an audio output is software (a mixer, a virtual cable, a game or streaming helper) rather
+/// than something you plug in or pair. Those come and go with their programs and are not news.
+pub fn is_software_audio(name: &str) -> bool {
+    const SOFTWARE: [&str; 18] = [
+        "virtual", "sonar", "steelseries", "voicemeeter", "vb-audio", "cable input", "cable output", "nvidia broadcast", "steam streaming", "oculus", "meta quest",
+        "wave link", "elgato", "nahimic", "loopback", "stereo mix", "remote audio", "obs",
+    ];
+    let n = name.to_lowercase();
+    SOFTWARE.iter().any(|w| n.contains(w))
+}
+
 fn kind_from(s: &str) -> AudioKind {
     match s {
         "headphones" => AudioKind::Headphones,

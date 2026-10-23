@@ -17,7 +17,7 @@ try {
 
   'modules and the pill'
   $m = Ctl @{cmd='modules'}
-  Check 'deadlines, controls, the clock and the system peeks are on, in that order' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'deadlines:True,controls:True,clock:True,system:True') (($m.modules | ConvertTo-Json -Compress))
+  Check 'the clock, deadlines, controls and the system peeks are on, in that order' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'clock:True,deadlines:True,controls:True,system:True') (($m.modules | ConvertTo-Json -Compress))
   Check 'the nearest deadline owns the pill' ($m.restOwner -eq 'deadlines')
   Ctl @{cmd='settings'; patch=@{restingStyle='when-due'; dueHorizonHours=1}} | Out-Null
   Ctl @{cmd='advance'; ms=600} | Out-Null
