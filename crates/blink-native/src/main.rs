@@ -4,6 +4,8 @@
 //!   blink --pin-open      start with the panel open (screenshots, tests)
 //!   blink --demo          show sample deadlines instead of your feeds (or BLINK_DEMO=1)
 //!   blink --seconds N     quit after N seconds
+//!   blink --quit          ask a running notch to exit (the installer uses this)
+//!   blink --purge-data    delete settings, caches and saved feed links (the uninstaller, on request)
 //!   blink --dump FILE     write a PNG of the last frame on exit
 //!
 //! Environment (for tests): BLINK_CONTROL=<name> opens the control pipe,
@@ -25,6 +27,18 @@ fn main() {
         ..Options::default()
     };
     let mut args = std::env::args().skip(1);
+    // One-shot commands that do not start a notch.
+    match std::env::args().nth(1).as_deref() {
+        Some("--quit") => {
+            let _ = blink_core::ipc::request(&serde_json::json!({ "cmd": "quit" }));
+            return;
+        }
+        Some("--purge-data") => {
+            purge_data();
+            return;
+        }
+        _ => {}
+    }
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--pin-open" => opts.pin_open = true,
@@ -37,6 +51,30 @@ fn main() {
     if let Err(e) = run(opts) {
         eprintln!("blink: {e}");
         std::process::exit(1);
+    }
+}
+
+/// Everything Blink keeps for a user: the data folder, the settings program's web profile and
+/// the feed links in Credential Manager (their ids come from the settings file).
+#[cfg(windows)]
+fn purge_data() {
+    use blink_core::secret::{CredentialManager, Secrets};
+    use blink_core::store::{default_dir, Store};
+
+    let Some(dir) = default_dir() else { return };
+    if let Ok(Some(settings)) = Store::new(&dir).get_json("settings") {
+        for feed in settings.get("feeds").and_then(|f| f.as_array()).into_iter().flatten() {
+            if let Some(id) = feed.get("id").and_then(|i| i.as_str()) {
+                CredentialManager.delete(id);
+            }
+        }
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+    // A scripted run points the data folder somewhere scratch; then the real web profile is not ours to delete.
+    if std::env::var_os("BLINK_DATA_DIR").is_none() {
+        if let Some(local) = std::env::var_os("LOCALAPPDATA") {
+            let _ = std::fs::remove_dir_all(std::path::Path::new(&local).join("dev.riski.blink"));
+        }
     }
 }
 

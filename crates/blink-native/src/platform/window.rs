@@ -653,6 +653,13 @@ impl Runtime {
                     Ok(json!({}))
                 }
                 "diagnostics" => Ok(json!({ "text": self.diagnostics() })),
+                // The installer and `blink --quit` ask the running notch to leave cleanly.
+                "quit" => {
+                    unsafe {
+                        let _ = PostMessageW(Some(self.hwnd), windows::Win32::UI::WindowsAndMessaging::WM_CLOSE, WPARAM(0), LPARAM(0));
+                    }
+                    Ok(json!({}))
+                }
                 other => Err(format!("UNKNOWN_COMMAND {other}")),
             },
             Err(_) => Err("BAD_JSON".to_string()),

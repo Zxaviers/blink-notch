@@ -4,6 +4,8 @@ A Windows overlay that turns the top-center edge of the screen into a small notc
 
 Requirements and plan live in the PRD ("PRD Deadline Notch (working title)") and `HANDOFF.md`. This repo is a clean start; the Reminder Widget v1.2 repo is only a reference for the feed parser and tests.
 
+> **Blink (native rebuild).** This project is being rebuilt as a native Windows program called Blink (no web engine in the always-running part, about 3.5 MB at rest). The plan and progress are in `docs/NATIVE-PLAN.md`, the beta notes (install, upgrade, accessibility, what is verified) in `docs/RELEASE.md`, the code in `crates/` and the checks in `scripts/native/`. The text below describes the WebView2 version (`src-tauri/`, tag `webview2-v0.1`), which keeps working until the native build replaces it.
+
 ## Status: v0.1 in progress
 
 Built: notch shell (click-through, hover/peek/open, fullscreen hiding, multi-monitor placement), deadlines module, feed fetching with conditional requests, notifications at configurable thresholds, mark done, personal events, snooze, global hotkey with keyboard navigation, tray, settings window, first-run wizard, English and Indonesian.
