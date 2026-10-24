@@ -56,7 +56,7 @@ try {
   Ctl @{cmd='mouse'; kind='leave'} | Out-Null; Ctl @{cmd='advance'; ms=9000} | Out-Null   # long enough for the peek of the last song change to end
   $st0 = (Ctl @{cmd='state'}).state
   Check 'with a window in front and the pointer away the notch is at rest' ($st0.mode -eq 'rest') "mode=$($st0.mode) keepOpen=$($st0.module.keepOpen) hovering=$($st0.hovering)"
-  Ctl @{cmd='desktop'; on=$true} | Out-Null; Ctl @{cmd='advance'; ms=900} | Out-Null
+  Ctl @{cmd='desktop'; on=$true} | Out-Null; Ctl @{cmd='advance'; ms=1500} | Out-Null
   $st = (Ctl @{cmd='state'}).state
   Check 'on the empty desktop a playing song opens it with no hover, on the music' ($st.mode -eq 'open' -and ($st.modules | Where-Object { $_.active }).id -eq 'music') "$($st.mode)"
   Check 'with the lyrics showing' ($st.module.showLyrics -eq $true)

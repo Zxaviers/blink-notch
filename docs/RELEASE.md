@@ -68,13 +68,16 @@ Scripted, with no mouse or keyboard (all in `scripts/native/`):
 | Logic | Differential tests against the JavaScript it replaced (about 1,800 calls in 4 time zones, 102 calendars) and unit tests | passing |
 | Window behavior | `gate-g2.ps1`: click-through by Windows' own hit testing, no focus theft, fullscreen and pause hiding, DPI 1.25/1.5/2.0, reduced motion, hotkey errors, single instance | 47 checks |
 | Real data | `gate-g3.ps1`: feed fetch, offline and recovery, done, snooze, reminders once, personal events, Credential Manager | 26 checks |
-| Settings | `settings-e2e.mjs`: the real page and the real pipe: wizard, test link, save, hotkey in-use error, language, events, export/import, diagnostics, autostart, remove, no web engine left | 37 checks |
+| Settings | `settings-e2e.mjs`: the real page and the real pipe: wizard, test link, save, hotkey in-use error, language, events, the two scopes, pages, weather, music and fullscreen options reaching the notch, paste-and-add, export/import, diagnostics, autostart, remove, no web engine left | 48 checks |
+| Pages | `gate-host.ps1` (30), `gate-system.ps1` (27), `gate-controls.ps1` (22), `gate-music.ps1` (19, including the empty desktop), `gate-projects.ps1` (15), `gate-draw.ps1` (8): the host, the system peeks, the controls, music and lyrics with a stand-in player, projects, drawing | passing |
 | Accessibility | `gate-a11y.ps1`: a real UI Automation client walks the tree, invokes buttons, receives focus events | 27 checks |
 | Installer | `installer-test.ps1`: silent install, installed notch runs, upgrade over a running copy, uninstall keeps data, `/PURGE`, WebView2-build removal | 20 checks |
 | Real input (with the cursor and keys, supervised) | `real-input.ps1`: real click opens and keeps focus elsewhere, click-through reaches the app below, real hotkey takes and returns focus | 13 checks |
 | Long run | `soak.ps1`: 35 minutes with a feed, panel use every 30 s, screen reader walks, pause and fullscreen rounds, two feed refreshes | see the progress notes in `NATIVE-PLAN.md` |
 
 ## What has not been checked (please try)
+
+0. **Newer than the list below:** the weather from the real service on a normal network (this machine's HTTPS is inspected, and what comes back for a test song is not real lyrics); real lyrics for a song playing in Brave or YouTube Music (a pretend player was used); a real BRONE link with Paste and add; the empty-desktop detection and the fullscreen rule on every kind of game (the checks pretend the state); typing into a Projects field with the real keyboard and dragging files from Explorer (stand-ins were used); the installer with the latest build (not re-run: it installs over the running copy).
 
 1. **A notification actually appearing**, and clicking it opening the page (the capture was taken while a fullscreen app was in front).
 2. **A real fullscreen game or video** hiding the notch and showing it again.

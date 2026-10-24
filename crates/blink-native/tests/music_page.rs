@@ -269,7 +269,7 @@ fn on_the_empty_desktop_a_playing_song_opens_the_notch_with_its_lyrics_until_a_w
     let mut r = resting_rig();
     assert_eq!(mode(&mut r), "rest", "a window is in front: nothing opens by itself");
     r.app.set_desktop(true);
-    advance(&mut r.app, 700);
+    advance(&mut r.app, 1_300);
     settle(&mut r.app);
     r.app.render();
     assert_eq!(mode(&mut r), "open", "no hover needed");
@@ -296,7 +296,7 @@ fn nothing_playing_or_paused_or_turned_off_the_desktop_leaves_the_notch_alone() 
     let mut r = resting_rig();
     r.media.set(|s| s.playing = false);
     r.app.set_desktop(true);
-    advance(&mut r.app, 1_000);
+    advance(&mut r.app, 1_500);
     assert_eq!(mode(&mut r), "rest", "a paused song is not live");
     r.media.set(|s| s.playing = true);
     r.app.data_changed();
@@ -319,7 +319,7 @@ fn nothing_playing_or_paused_or_turned_off_the_desktop_leaves_the_notch_alone() 
 fn closing_it_by_hand_keeps_it_closed_until_the_desktop_has_been_left() {
     let mut r = resting_rig();
     r.app.set_desktop(true);
-    advance(&mut r.app, 700);
+    advance(&mut r.app, 1_300);
     settle(&mut r.app);
     assert_eq!(mode(&mut r), "open");
     r.app.key(Key::Escape);
@@ -331,7 +331,7 @@ fn closing_it_by_hand_keeps_it_closed_until_the_desktop_has_been_left() {
     r.app.set_desktop(false);
     advance(&mut r.app, 500);
     r.app.set_desktop(true);
-    advance(&mut r.app, 700);
+    advance(&mut r.app, 1_300);
     settle(&mut r.app);
     assert_eq!(mode(&mut r), "open", "a new visit to the empty desktop opens it again");
 }
@@ -358,4 +358,16 @@ fn click_pin_off(r: &mut Rig) {
     r.app.pointer(PointerKind::Move, 320.0, 40.0);
     click(&mut r.app, "Keep open");
     r.app.pointer(PointerKind::Leave, 0.0, 0.0);
+}
+
+#[test]
+fn a_passing_visit_to_the_desktop_does_not_flash_the_notch_open() {
+    // A click on the taskbar to start an app has the desktop in front for a moment.
+    let mut r = resting_rig();
+    r.app.set_desktop(true);
+    advance(&mut r.app, 500);
+    r.app.set_desktop(false);
+    advance(&mut r.app, 2_000);
+    settle(&mut r.app);
+    assert_eq!(mode(&mut r), "rest");
 }

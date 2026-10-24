@@ -81,11 +81,16 @@ pub struct App {
     last_panel_h: f32,
     /// No window is in front: the desktop (or the taskbar) is.
     desktop: bool,
+    /// When the desktop came to the front (the notch waits a moment before opening for it).
+    desktop_since: u64,
     /// The notch is being held open for a song (see `update_live`).
     live_on: bool,
     /// The person closed it while it was held open: leave it closed until the reason ends.
     live_dismissed: bool,
 }
+
+/// How long the empty desktop has to be in front before a song opens the notch.
+const DESKTOP_SETTLE_MS: u64 = 1_000;
 
 fn lerp_rgb(a: Rgb, b: Rgb, t: f32) -> Rgb {
     let m = |x: u8, y: u8| (f32::from(x) + (f32::from(y) - f32::from(x)) * t).round() as u8;
@@ -128,6 +133,7 @@ impl App {
             effects: Vec::new(),
             last_panel_h: 0.0,
             desktop: false,
+            desktop_since: 0,
             live_on: false,
             live_dismissed: false,
         })
@@ -764,6 +770,7 @@ impl App {
     pub fn set_desktop(&mut self, showing: bool) {
         if self.desktop != showing {
             self.desktop = showing;
+            self.desktop_since = self.clock.now_ms();
             self.update_live();
         }
     }
@@ -778,7 +785,9 @@ impl App {
         let now = self.clock.now_ms();
         let song = self.slots.iter().position(|s| s.enabled && s.module.has_panel() && s.module.playing());
         let pinned = song.is_some_and(|i| self.slots[i].module.holds_open());
-        let want = pinned || song.is_some_and(|i| self.desktop && self.slots[i].module.live_on_desktop());
+        // A click on the taskbar to start something also passes through "desktop in front": wait a moment.
+        let settled = self.desktop && now >= self.desktop_since + DESKTOP_SETTLE_MS;
+        let want = pinned || song.is_some_and(|i| settled && self.slots[i].module.live_on_desktop());
         if !want {
             self.live_dismissed = false;
             if self.live_on {
@@ -896,6 +905,10 @@ impl App {
         let mut wake = self.shell.next_wake();
         let now = self.clock.now_ms();
         wake = [wake, self.eyes_wake(now, &env)].into_iter().flatten().min();
+        // The empty desktop has just come to the front with a song playing: look again once it has settled.
+        if self.desktop && now < self.desktop_since + DESKTOP_SETTLE_MS && self.music_playing() {
+            wake = [wake, Some(self.desktop_since + DESKTOP_SETTLE_MS)].into_iter().flatten().min();
+        }
         // The bars move with the music: redraw a few times a second, but only while it plays and the notch shows them.
         if self.music_playing() && (self.shell.mode() == Mode::Open || (self.shell.mode() == Mode::Rest && self.shell.rest_style() == RestStyle::Full)) {
             wake = [wake, Some(now + 120)].into_iter().flatten().min();
