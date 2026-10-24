@@ -336,7 +336,7 @@ ${keepClip}
   section('settings on its own, with no notch running')
   await pipeA.send({ cmd: 'quit' }).catch(() => {})
   pipeA.close(); await sleep(800)
-  run(SETTINGS, [], baseEnv)
+  run(SETTINGS, [], { ...baseEnv, BLINK_IPC: 'g4-nobody' }) // no notch answers on this name, even if one is in use on this PC
   page = await new Page().connect()
   await until(() => page.eval("document.getElementById('main').children.length > 0"))
   const invalid = await page.eval("window.__TAURI__.core.invoke('set_hotkey', { accelerator: 'Banana+Z' }).then(() => 'ok', (e) => String(e))")
@@ -351,7 +351,7 @@ ${keepClip}
 
   section('first run opens settings by itself')
   fs.rmSync(dataDir, { recursive: true, force: true }); fs.mkdirSync(dataDir, { recursive: true })
-  const first = run(BLINK, [], { ...baseEnv, BLINK_IPC: 'g4c' }) // not a scripted run: no control pipe
+  const first = run(BLINK, [], { ...baseEnv, BLINK_IPC: 'g4c', BLINK_INSTANCE: 'g4-first-run' }) // not a scripted run: no control pipe
   const opened = await until(() => countProcs('blink-settings') === 1, 15000)
   check('a notch with no feeds and no setup starts the settings program', Boolean(opened))
   closeSettingsWindows()

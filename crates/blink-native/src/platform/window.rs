@@ -1587,7 +1587,9 @@ fn create_window(width: i32, height: i32, x: i32, y: i32) -> Result<HWND, String
 
 pub fn run(opts: Options) -> Result<(), String> {
     // One notch per user (and per control-pipe name, so tests can run side by side).
-    let Some(_instance) = system::single_instance(opts.control.as_deref().unwrap_or("main")) else {
+    // Scripted runs each have their own name, so they never meet the notch someone is using; BLINK_INSTANCE names one by hand.
+    let instance_tag = std::env::var("BLINK_INSTANCE").ok().filter(|t| !t.is_empty()).unwrap_or_else(|| opts.control.clone().unwrap_or_else(|| "main".to_string()));
+    let Some(_instance) = system::single_instance(&instance_tag) else {
         return Ok(());
     };
     unsafe {

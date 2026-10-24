@@ -146,6 +146,7 @@ try {
 $exe = if ($env:BLINK_EXE) { $env:BLINK_EXE } else { Join-Path $PSScriptRoot '..\..\target\debug\blink.exe' }
 $env:BLINK_DATA_DIR = $data
 $env:BLINK_SETTINGS_EXE = 'none'   # a notch with no feeds would otherwise open the settings program
+$env:BLINK_INSTANCE = 'g2-single-instance'   # its own name: a notch someone is using must not take part in this check
 $a = Start-Process -FilePath $exe -ArgumentList '--seconds', '6' -PassThru
 Start-Sleep -Milliseconds 800
 $b = Start-Process -FilePath $exe -ArgumentList '--seconds', '6' -PassThru
@@ -154,6 +155,7 @@ Check 'a second launch exits at once' $b.HasExited
 Check 'the first keeps running' (-not $a.HasExited)
 if (-not $a.HasExited) { $a.Kill() }
 if (-not $b.HasExited) { $b.Kill() }
+Remove-Item Env:BLINK_INSTANCE -ErrorAction SilentlyContinue
 
 "`n$script:pass passed, $script:fail failed"
 if ($script:fail -gt 0) { exit 1 }
