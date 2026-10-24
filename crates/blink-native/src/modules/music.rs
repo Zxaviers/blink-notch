@@ -145,10 +145,9 @@ pub enum MusicAction {
     Next,
     Previous,
     ToggleLyrics,
+    /// The small pin: keep the notch open while the song plays.
+    TogglePin,
 }
-
-/// The notch opens by itself for this long when a song starts (the `autoOpen` option, in seconds; 0 turns it off).
-const DEFAULT_AUTO_OPEN_MS: u64 = 10_000;
 
 /// Lyrics that need no network: a made-up song, a line every four seconds. For tests and scripted runs.
 pub struct FakeLyrics;
@@ -189,6 +188,7 @@ fn word(lang: Lang, key: &str) -> &'static str {
         "next" => if id { "Berikutnya" } else { "Next" },
         "previous" => if id { "Sebelumnya" } else { "Previous" },
         "lyrics" => if id { "Lirik" } else { "Lyrics" },
+        "keep_open" => if id { "Tetap terbuka" } else { "Keep open" },
         "loading" => if id { "Mencari lirik…" } else { "Looking for lyrics…" },
         "none" => if id { "Lirik tidak ditemukan" } else { "No lyrics found" },
         "unavailable" => if id { "Layanan lirik tidak terjangkau. Klik untuk coba lagi." } else { "Couldn't reach the lyrics service. Click to try again." },
@@ -222,6 +222,7 @@ enum Target {
     Next,
     Previous,
     ToggleLyrics,
+    TogglePin,
     /// The progress bar: the track runs between the two x values.
     Seek,
     /// A line of the lyrics (click to jump there).
@@ -258,8 +259,10 @@ pub struct MusicModule {
     lookup_allowed: bool,
     /// `peek` option: a peek when the song changes.
     peek_on_change: bool,
-    /// How long the notch opens by itself when a song starts, in ms (0: it does not).
-    auto_open_ms: u64,
+    /// Show the song with its lyrics on the empty desktop (`desktopLive`, on by default).
+    desktop_live: bool,
+    /// Keep the notch open while a song plays (the pin; `keepOpen` sets it at the start).
+    keep_open: bool,
     /// The first look at the player is not news.
     started: bool,
     seen_track: Option<u64>,
@@ -290,7 +293,8 @@ impl MusicModule {
             show_lyrics: false,
             lookup_allowed: true,
             peek_on_change: true,
-            auto_open_ms: DEFAULT_AUTO_OPEN_MS,
+            desktop_live: true,
+            keep_open: false,
             started: false,
             seen_track: None,
             hits: Vec::new(),
@@ -360,6 +364,7 @@ impl MusicModule {
                 let st = self.backend.state();
                 self.ensure_lyrics(&st);
             }
+            MusicAction::TogglePin => self.keep_open = !self.keep_open,
         }
         vec![Effect::Redraw]
     }
@@ -474,6 +479,19 @@ impl MusicModule {
             kit.canvas.icon(Icon::Message, lx, y, 14.0, theme.dim, frame.alpha);
         }
         self.hits.push(Hit { x: lx - 14.0, y: y - 14.0, w: 28.0, h: 28.0, target: Target::ToggleLyrics, track: (0.0, 0.0) });
+        // The small pin at the other end: keep the notch open while the song plays, even without the pointer on it.
+        let px = right - 12.0;
+        let over = self.over(px - 12.0, y - 12.0, 24.0, 24.0);
+        if self.keep_open {
+            kit.canvas.circle(px, y, 11.0, self.accent, frame.alpha * 0.9);
+            kit.canvas.icon(Icon::Pin, px, y, 12.0, Rgb(0x10, 0x0a, 0x20), frame.alpha);
+        } else {
+            if over {
+                kit.canvas.circle(px, y, 11.0, theme.fg, frame.alpha * 0.14);
+            }
+            kit.canvas.icon(Icon::Pin, px, y, 12.0, theme.dim, frame.alpha * 0.9);
+        }
+        self.hits.push(Hit { x: px - 12.0, y: y - 12.0, w: 24.0, h: 24.0, target: Target::TogglePin, track: (0.0, 0.0) });
     }
 
     /// The synced lyrics: the line being sung in the middle, bright, the others fading away from it.
@@ -589,12 +607,33 @@ impl Module for MusicModule {
     fn set_options(&mut self, options: &Value) {
         self.lookup_allowed = options.get("lyrics").and_then(Value::as_bool).unwrap_or(true);
         self.peek_on_change = options.get("peek").and_then(Value::as_bool).unwrap_or(true);
-        self.auto_open_ms = options.get("autoOpen").and_then(Value::as_f64).filter(|s| (0.0..=86_400.0).contains(s)).map_or(DEFAULT_AUTO_OPEN_MS, |s| (s * 1000.0) as u64);
+        self.desktop_live = options.get("desktopLive").and_then(Value::as_bool).unwrap_or(true);
+        // The pin keeps what the person pressed until Blink restarts; the option only decides the start.
+        if let Some(keep) = options.get("keepOpen").and_then(Value::as_bool) {
+            self.keep_open = keep;
+        }
     }
 
     fn playing(&self) -> bool {
         let st = self.backend.state();
         st.active && st.playing
+    }
+
+    fn live_on_desktop(&self) -> bool {
+        self.desktop_live
+    }
+
+    fn holds_open(&self) -> bool {
+        self.keep_open
+    }
+
+    fn live_view(&mut self) {
+        // The lyrics are the point of it (unless lyrics are forbidden).
+        if self.lookup_allowed && !self.show_lyrics {
+            self.show_lyrics = true;
+            let st = self.backend.state();
+            self.ensure_lyrics(&st);
+        }
     }
 
     fn wants_frames(&self) -> bool {
@@ -696,6 +735,7 @@ impl Module for MusicModule {
                     Target::Next => return self.do_action(&MusicAction::Next, env),
                     Target::Previous => return self.do_action(&MusicAction::Previous, env),
                     Target::ToggleLyrics => return self.do_action(&MusicAction::ToggleLyrics, env),
+                    Target::TogglePin => return self.do_action(&MusicAction::TogglePin, env),
                     Target::Seek => self.drag_ms = Some(Self::seek_value(&hit, x, st.duration_ms)),
                     Target::RetryLyrics => {
                         self.lyrics.remove(&Self::query(&st).key());
@@ -759,14 +799,7 @@ impl Module for MusicModule {
             self.ensure_lyrics(&st);
             if self.seen_track != Some(st.track) {
                 // A new song: say so (not for the one already playing when the notch started).
-                if self.started && self.auto_open_ms > 0 && st.playing {
-                    // The notch opens by itself on the page, with the lyrics if they are allowed.
-                    if self.lookup_allowed {
-                        self.show_lyrics = true;
-                        self.ensure_lyrics(&st);
-                    }
-                    effects.push(Effect::AutoOpen(self.auto_open_ms));
-                } else if self.started && self.peek_on_change && st.playing {
+                if self.started && self.peek_on_change && st.playing {
                     effects.push(Effect::ShowPeek(PeekView {
                         code: st.artist.clone(),
                         title: st.title.clone(),
@@ -831,6 +864,7 @@ impl Module for MusicModule {
         let st = self.backend.state();
         serde_json::json!({
             "showLyrics": self.show_lyrics,
+            "keepOpen": self.keep_open,
             "track": st.track,
             "active": st.active,
             "title": st.title,
@@ -868,6 +902,7 @@ impl Module for MusicModule {
         button(&mut out, 302, word(lang, if st.playing { "pause" } else { "play" }).to_string(), Target::PlayPause, MusicAction::PlayPause);
         button(&mut out, 303, word(lang, "next").to_string(), Target::Next, MusicAction::Next);
         button(&mut out, 304, format!("{}: {}", word(lang, "lyrics"), if self.show_lyrics { "on" } else { "off" }), Target::ToggleLyrics, MusicAction::ToggleLyrics);
+        button(&mut out, 305, format!("{}: {}", word(lang, "keep_open"), if self.keep_open { "on" } else { "off" }), Target::TogglePin, MusicAction::TogglePin);
         out
     }
 }

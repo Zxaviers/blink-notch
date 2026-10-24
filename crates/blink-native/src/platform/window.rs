@@ -266,6 +266,8 @@ struct Runtime {
     paused: bool,
     fullscreen: bool,
     fullscreen_sim: Option<system::FullscreenKind>,
+    /// Scripted runs pretend the desktop is (or is not) in front; None asks Windows.
+    desktop_sim: Option<bool>,
     fullscreen_mode: crate::host::FullscreenMode,
     hidden: bool,
     tray: Option<Tray>,
@@ -540,6 +542,11 @@ impl Runtime {
                 self.fullscreen_override = false;
             }
             self.update_hidden();
+        }
+        let desktop = self.desktop_sim.unwrap_or_else(system::desktop_in_front);
+        if desktop != self.app.desktop() {
+            self.app.set_desktop(desktop);
+            self.dirty = true;
         }
         self.keep_on_top();
     }
@@ -1402,6 +1409,11 @@ impl Runtime {
                 };
                 self.refresh_fullscreen();
             }
+            "desktop" => {
+                // Pretend the empty desktop is (or is not) in front; null goes back to asking Windows.
+                self.desktop_sim = v["on"].as_bool();
+                self.refresh_fullscreen();
+            }
             "frames" => {
                 let times = std::mem::take(&mut self.frame_times);
                 let n = times.len();
@@ -1664,7 +1676,8 @@ pub fn run(opts: Options) -> Result<(), String> {
             fullscreen: false,
             // Scripted runs must not depend on what the machine is doing; they ask for fullscreen explicitly.
             fullscreen_sim: control.then_some(system::FullscreenKind::None),
-            fullscreen_mode: crate::host::FullscreenMode::Games,
+            desktop_sim: control.then_some(false),
+            fullscreen_mode: crate::host::FullscreenMode::All,
             hidden: false,
             tray: None,
             toast_url: None,

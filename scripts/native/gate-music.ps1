@@ -18,8 +18,6 @@ try {
 
   $m = Ctl @{cmd='modules'}
   Check 'music is one of the pages, after the controls' (($m.modules | ForEach-Object { $_.id }) -join ',' -eq 'clock,deadlines,controls,music,projects,system') (($m.modules | ForEach-Object { $_.id }) -join ',')
-  # The notch opening by itself when a song starts is checked at the end; the page checks below want it still.
-  Ctl @{cmd='host'; config=@{modules=@(@{id='music'; enabled=$true; options=@{autoOpen=0}})}} | Out-Null
   Ctl @{cmd='mouse'; kind='move'; x=320; y=10} | Out-Null; Ctl @{cmd='advance'; ms=900} | Out-Null
   Ctl @{cmd='switch'; to='music'} | Out-Null; Ctl @{cmd='advance'; ms=400} | Out-Null
   Check 'with nothing playing the page says so' ((Mod).active -eq $false)
@@ -53,17 +51,19 @@ try {
   $line = (Mod).hits | Where-Object { $_.target -like 'Line(*' } | Select-Object -First 1
   Check 'lines can be clicked to jump there' ($null -ne $line)
 
-  'a song that starts opens the notch by itself'
-  Ctl @{cmd='host'; config=@{modules=@(@{id='music'; enabled=$true; options=@{autoOpen=10}})}} | Out-Null
-  Ctl @{cmd='mouse'; kind='leave'} | Out-Null; Ctl @{cmd='advance'; ms=3000} | Out-Null
-  Check 'with the pointer away the notch is at rest' ((Ctl @{cmd='state'}).state.mode -eq 'rest')
-  Ctl @{cmd='media'; active=$true; title='Harbour Lights'; artist='Someone Else'; playing=$true; position=0; duration=200000} | Out-Null
-  Ctl @{cmd='advance'; ms=700} | Out-Null
+  'the empty desktop shows the song with its lyrics'
+  Ctl @{cmd='media'; active=$true; playing=$true} | Out-Null
+  Ctl @{cmd='mouse'; kind='leave'} | Out-Null; Ctl @{cmd='advance'; ms=9000} | Out-Null   # long enough for the peek of the last song change to end
+  $st0 = (Ctl @{cmd='state'}).state
+  Check 'with a window in front and the pointer away the notch is at rest' ($st0.mode -eq 'rest') "mode=$($st0.mode) keepOpen=$($st0.module.keepOpen) hovering=$($st0.hovering)"
+  Ctl @{cmd='desktop'; on=$true} | Out-Null; Ctl @{cmd='advance'; ms=900} | Out-Null
   $st = (Ctl @{cmd='state'}).state
-  Check 'a new song opens it with no hover, on the music' ($st.mode -eq 'open' -and ($st.modules | Where-Object { $_.active }).id -eq 'music') "$($st.mode)"
+  Check 'on the empty desktop a playing song opens it with no hover, on the music' ($st.mode -eq 'open' -and ($st.modules | Where-Object { $_.active }).id -eq 'music') "$($st.mode)"
   Check 'with the lyrics showing' ($st.module.showLyrics -eq $true)
-  Ctl @{cmd='advance'; ms=11500} | Out-Null
-  Check 'and it closes by itself after ten seconds' ((Ctl @{cmd='state'}).state.mode -eq 'rest')
+  Ctl @{cmd='advance'; ms=60000} | Out-Null
+  Check 'and it stays open for as long as the desktop is empty' ((Ctl @{cmd='state'}).state.mode -eq 'open')
+  Ctl @{cmd='desktop'; on=$false} | Out-Null; Ctl @{cmd='advance'; ms=3000} | Out-Null
+  Check 'a window coming up closes it' ((Ctl @{cmd='state'}).state.mode -eq 'rest')
 
   'looks'
   $dib = Ctl @{cmd='dibcheck'}

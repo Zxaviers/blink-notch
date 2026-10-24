@@ -39,6 +39,7 @@ pub enum Icon {
     ArrowUp,
     Battery,
     Music,
+    Pin,
     Cloud,
     CloudSun,
     Rain,
@@ -656,6 +657,11 @@ impl Canvas {
                 line(&mut pb, (-3.0, -5.4), (-3.0, -2.4));
                 line(&mut pb, (3.0, -5.4), (3.0, -2.4));
             }
+            Icon::Pin => {
+                // A pushpin: a flat head, a body and a needle.
+                polygon(&mut pb, &[(-3.2, -5.4), (3.2, -5.4), (2.4, -0.6), (4.6, 1.4), (-4.6, 1.4), (-2.4, -0.6)]);
+                line(&mut pb, (0.0, 1.4), (0.0, 6.0));
+            }
             Icon::Play => {
                 polygon(&mut pb, &[(-3.2, -5.2), (5.2, 0.0), (-3.2, 5.2)]);
             }
@@ -847,7 +853,7 @@ mod tests {
             Icon::Bluetooth, Icon::Mic, Icon::MicMuted, Icon::Cast, Icon::Monitor, Icon::Lock, Icon::Crop, Icon::ChevronRight, Icon::ChevronLeft,
             Icon::Bolt, Icon::Headphones, Icon::Plus, Icon::Close, Icon::Folder, Icon::File, Icon::Download, Icon::ArrowUp, Icon::Battery, Icon::Music,
             Icon::Play, Icon::Pause, Icon::SkipBack, Icon::SkipForward, Icon::Message, Icon::Cloud, Icon::CloudSun, Icon::Rain, Icon::Snow, Icon::Fog,
-            Icon::Moon, Icon::Storm, Icon::Calendar,
+            Icon::Moon, Icon::Storm, Icon::Calendar, Icon::Pin,
         ] {
             let mut c = Canvas::new(40, 40, 2.0);
             c.icon(icon, 10.0, 10.0, 14.0, Rgb(255, 255, 255), 1.0);

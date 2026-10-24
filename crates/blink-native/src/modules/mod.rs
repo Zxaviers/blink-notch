@@ -101,8 +101,6 @@ pub enum Effect {
     Announce(String),
     /// Offer this peek now (the module built it from an event).
     ShowPeek(PeekView),
-    /// Open this module's page by itself and close it again after this many ms (a pointer on it keeps it open).
-    AutoOpen(u64),
     /// A reminder: a system notification (when the user wants them).
     Toast { title: String, body: String, url: Option<String> },
     /// The module has something to peek about (see `Module::peek`).
@@ -222,6 +220,19 @@ pub trait Module {
     fn playing(&self) -> bool {
         false
     }
+
+    /// The page wants the notch open while the desktop is empty and something is playing (a song with its lyrics).
+    fn live_on_desktop(&self) -> bool {
+        false
+    }
+
+    /// The person asked for the notch to stay open while this page plays (a small pin on the page).
+    fn holds_open(&self) -> bool {
+        false
+    }
+
+    /// The host is opening the notch on this page by itself: show the most useful view (the lyrics).
+    fn live_view(&mut self) {}
 
     /// The page is in the middle of an animation and wants a frame as soon as the last one is done.
     fn wants_frames(&self) -> bool {

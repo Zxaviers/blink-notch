@@ -80,14 +80,18 @@ try {
   Ctl @{cmd='fullscreen'; on=$false} | Out-Null
   Check 'and leaving fullscreen shows it' ((Ctl @{cmd='state'}).window.hidden -eq $false)
 
-  'fullscreen: only games hide it by default'
+  'fullscreen: any fullscreen app hides it by default, and it comes back by itself'
   Ctl @{cmd='fullscreen'; on=$true; kind='app'} | Out-Null
-  Check 'an ordinary app that covers the screen (a browser, a chat app) does not hide it' ((Ctl @{cmd='state'}).window.hidden -eq $false)
+  Check 'an app that is really fullscreen (a video, a browser on F11, a borderless game) hides it' ((Ctl @{cmd='state'}).window.hiddenBy -eq 'fullscreen')
+  Ctl @{cmd='fullscreen'; on=$false} | Out-Null
+  Check 'and when it ends or you switch to a windowed app the notch is back' ((Ctl @{cmd='state'}).window.hidden -eq $false)
   $mods = @(@{id='deadlines'; enabled=$true}, @{id='controls'; enabled=$true}, @{id='clock'; enabled=$true}, @{id='system'; enabled=$true})
-  Ctl @{cmd='host'; config=@{ hideInFullscreen='all'; modules=$mods }} | Out-Null
-  Check 'unless the user asks for it to hide for any fullscreen app' ((Ctl @{cmd='state'}).window.hiddenBy -eq 'fullscreen')
-  Ctl @{cmd='host'; config=@{ hideInFullscreen='never'; modules=$mods }} | Out-Null
+  Ctl @{cmd='host'; config=@{ hideInFullscreen='games'; modules=$mods }} | Out-Null
+  Ctl @{cmd='fullscreen'; on=$true; kind='app'} | Out-Null
+  Check 'unless the user asks for games and presentations only' ((Ctl @{cmd='state'}).window.hidden -eq $false)
   Ctl @{cmd='fullscreen'; on=$true} | Out-Null
+  Check 'a game still hides it then' ((Ctl @{cmd='state'}).window.hiddenBy -eq 'fullscreen')
+  Ctl @{cmd='host'; config=@{ hideInFullscreen='never'; modules=$mods }} | Out-Null
   Check 'or never to hide, even for a game' ((Ctl @{cmd='state'}).window.hidden -eq $false)
   Ctl @{cmd='host'; config=@{ modules=$mods }} | Out-Null
   Check 'back to the default, a game hides it' ((Ctl @{cmd='state'}).window.hiddenBy -eq 'fullscreen')

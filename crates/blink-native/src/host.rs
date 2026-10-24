@@ -26,10 +26,11 @@ pub fn parse_visibility_hotkey(value: Option<&Value>) -> String {
 /// When the notch steps aside for a fullscreen app (`hideInFullscreen` in `host.json`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FullscreenMode {
-    /// Only for games and presentations (the default): a browser, a chat app or a maximized
-    /// window that covers the screen does not hide it.
+    /// Only for games and presentations: a browser, a chat app or a borderless window that covers the
+    /// screen does not hide it.
     Games,
-    /// For anything fullscreen, videos and browsers included.
+    /// For anything that is really fullscreen (the default): a game, a video, a browser on F11. A window that is
+    /// only maximized (the taskbar still showing) is not fullscreen. The notch comes back by itself when it ends.
     All,
     /// Never.
     Never,
@@ -37,9 +38,9 @@ pub enum FullscreenMode {
 
 pub fn parse_fullscreen_mode(value: Option<&Value>) -> FullscreenMode {
     match value.and_then(|v| v.get("hideInFullscreen")).and_then(Value::as_str) {
-        Some("all") => FullscreenMode::All,
+        Some("games") => FullscreenMode::Games,
         Some("never") => FullscreenMode::Never,
-        _ => FullscreenMode::Games,
+        _ => FullscreenMode::All,
     }
 }
 
@@ -116,10 +117,11 @@ mod tests {
 
     #[test]
     fn fullscreen_hiding_defaults_to_games_only() {
-        assert_eq!(parse_fullscreen_mode(None), FullscreenMode::Games);
+        assert_eq!(parse_fullscreen_mode(None), FullscreenMode::All);
+        assert_eq!(parse_fullscreen_mode(Some(&json!({ "hideInFullscreen": "games" }))), FullscreenMode::Games);
         assert_eq!(parse_fullscreen_mode(Some(&json!({ "hideInFullscreen": "all" }))), FullscreenMode::All);
         assert_eq!(parse_fullscreen_mode(Some(&json!({ "hideInFullscreen": "never" }))), FullscreenMode::Never);
-        assert_eq!(parse_fullscreen_mode(Some(&json!({ "hideInFullscreen": "banana" }))), FullscreenMode::Games);
+        assert_eq!(parse_fullscreen_mode(Some(&json!({ "hideInFullscreen": "banana" }))), FullscreenMode::All);
     }
 
     #[test]

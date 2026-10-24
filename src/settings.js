@@ -64,8 +64,8 @@ function hostModules () {
   return list
 }
 
-async function saveHost (modules) {
-  host = { ...host, modules }
+async function saveHost (modules, extra = {}) {
+  host = { ...host, ...extra, modules }
   try {
     await api.storeSet('host', host)
   } catch {
@@ -399,6 +399,10 @@ function displaySection () {
     field(t('display.language'), select(
       [['auto', t('display.language.auto')], ['en', 'English'], ['id', 'Bahasa Indonesia']],
       settings.language, (v) => save({ language: v }))),
+    field(t('display.fullscreen'), select(
+      [['all', t('display.fullscreen.all')], ['games', t('display.fullscreen.games')], ['never', t('display.fullscreen.never')]],
+      ['games', 'never'].includes(host.hideInFullscreen) ? host.hideInFullscreen : 'all',
+      (v) => saveHost(hostModules(), { hideInFullscreen: v })), t('display.fullscreen.hint')),
     field(t('display.hoverDelay'), numberInput(settings.hoverDelayMs, { min: 0, max: 1000, step: 10 }, (v) => save({ hoverDelayMs: v }))),
     monitorField,
     field(t('display.offset'), numberInput(settings.offsetX, { min: -2000, max: 2000, step: 10 }, (v) => save({ offsetX: v }))),
@@ -510,13 +514,17 @@ function weatherSection () {
 
 function musicSection () {
   const options = optionsOf('music')
-  const seconds = Number.isFinite(Number(options.autoOpen)) && options.autoOpen !== undefined ? Number(options.autoOpen) : 10
   return h('section', {},
     h('h1', {}, t('music.title')),
     h('p', {}, t('music.intro')),
-    field(t('music.autoOpen'), select(
-      [[0, t('music.autoOpen.off')], [10, t('music.autoOpen.10')], [30, t('music.autoOpen.30')], [86400, t('music.autoOpen.hover')]],
-      seconds, (v) => setOptions('music', { autoOpen: Number(v) })), t('music.autoOpen.hint')),
+    h('label', { class: 'check' },
+      h('input', { type: 'checkbox', checked: options.desktopLive !== false, onchange: (e) => setOptions('music', { desktopLive: e.target.checked }) }),
+      t('music.desktopLive')),
+    h('p', { class: 'hint' }, t('music.desktopLive.hint')),
+    h('label', { class: 'check' },
+      h('input', { type: 'checkbox', checked: options.keepOpen === true, onchange: (e) => setOptions('music', { keepOpen: e.target.checked }) }),
+      t('music.keepOpen')),
+    h('p', { class: 'hint' }, t('music.keepOpen.hint')),
     h('label', { class: 'check' },
       h('input', { type: 'checkbox', checked: options.lyrics !== false, onchange: (e) => setOptions('music', { lyrics: e.target.checked }) }),
       t('music.lyrics')),

@@ -79,6 +79,12 @@ pub struct App {
     effects: Vec<AppEffect>,
     /// The last frame's panel height, to retarget the shell when content changes.
     last_panel_h: f32,
+    /// No window is in front: the desktop (or the taskbar) is.
+    desktop: bool,
+    /// The notch is being held open for a song (see `update_live`).
+    live_on: bool,
+    /// The person closed it while it was held open: leave it closed until the reason ends.
+    live_dismissed: bool,
 }
 
 fn lerp_rgb(a: Rgb, b: Rgb, t: f32) -> Rgb {
@@ -121,6 +127,9 @@ impl App {
             pointer: None,
             effects: Vec::new(),
             last_panel_h: 0.0,
+            desktop: false,
+            live_on: false,
+            live_dismissed: false,
         })
     }
 
@@ -366,7 +375,6 @@ impl App {
 
     fn apply_module_effects(&mut self, from: usize, effects: Vec<Effect>) {
         let mut want_peek = false;
-        let mut auto_open: Option<u64> = None;
         let mut peeks: Vec<PeekView> = Vec::new();
         for e in effects {
             match e {
@@ -388,16 +396,6 @@ impl App {
                 Effect::OpenPath(p) => self.effects.push(AppEffect::OpenPath(p)),
                 Effect::RevealPath(p) => self.effects.push(AppEffect::RevealPath(p)),
                 Effect::ShowPeek(view) => peeks.push(view),
-                Effect::AutoOpen(ms) => auto_open = Some(ms),
-            }
-        }
-        if let Some(ms) = auto_open {
-            // Something worth seeing (a song started): the notch opens by itself, unless it is open or being typed into.
-            if self.shell.mode() != Mode::Open && !self.shell.keyboard() && self.slots[from].enabled && self.slots[from].module.has_panel() {
-                let now = self.clock.now_ms();
-                self.shell.open_for(now, ms);
-                self.active = from;
-                self.peek_queue.clear();
             }
         }
         if self.shell.mode() == Mode::Open {
@@ -411,6 +409,7 @@ impl App {
         for view in peeks {
             self.offer_peek(view, Some(from));
         }
+        self.update_live();
     }
 
     // ---------------------------------------------------------------- input
@@ -734,6 +733,7 @@ impl App {
             self.refresh_panel_height();
         }
         self.next_queued_peek();
+        self.update_live();
         changed
     }
 
@@ -753,9 +753,61 @@ impl App {
     pub fn data_changed(&mut self) {
         self.run_module_tick();
         self.update_rest_style();
+        self.update_live();
         if self.shell.mode() == Mode::Open {
             self.refresh_panel_height();
         }
+    }
+
+    /// Whether no window is in front (the desktop with its icons, or the taskbar): a song playing then shows
+    /// on the notch with its lyrics until a window comes up.
+    pub fn set_desktop(&mut self, showing: bool) {
+        if self.desktop != showing {
+            self.desktop = showing;
+            self.update_live();
+        }
+    }
+
+    pub fn desktop(&self) -> bool {
+        self.desktop
+    }
+
+    /// Hold the notch open on the page of a song that is playing, when the desktop is empty (and the page
+    /// likes that) or when the person pinned it open. Let go when the reason ends or the song stops.
+    fn update_live(&mut self) {
+        let now = self.clock.now_ms();
+        let song = self.slots.iter().position(|s| s.enabled && s.module.has_panel() && s.module.playing());
+        let pinned = song.is_some_and(|i| self.slots[i].module.holds_open());
+        let want = pinned || song.is_some_and(|i| self.desktop && self.slots[i].module.live_on_desktop());
+        if !want {
+            self.live_dismissed = false;
+            if self.live_on {
+                self.live_on = false;
+                self.shell.set_hold(false, now);
+            }
+            return;
+        }
+        let Some(i) = song else { return };
+        if self.live_on {
+            if self.shell.mode() != Mode::Open {
+                // Closed by the person (Escape, a click on the menu): respect that until the reason ends.
+                self.live_on = false;
+                self.live_dismissed = true;
+                self.shell.set_hold(false, now);
+            }
+            return;
+        }
+        // Pressing the pin is a fresh request, so it overrides an earlier close.
+        if (self.live_dismissed && !pinned) || self.shell.keyboard() {
+            return;
+        }
+        self.live_dismissed = false;
+        self.live_on = true;
+        self.shell.set_hold(true, now);
+        self.active = i;
+        self.slots[i].module.live_view();
+        self.peek_queue.clear();
+        self.refresh_panel_height();
     }
 
     /// The tree a screen reader sees right now: the notch, and what the active module shows in it.

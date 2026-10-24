@@ -89,6 +89,8 @@ pub struct Shell {
     peek_until: Option<u64>,
     keyboard: bool,
     pinned: bool,
+    /// Held open by the host (a song with its lyrics on the empty desktop, or the pin): the pointer leaving does not close it.
+    hold: bool,
     mode_changed_at: u64,
 }
 
@@ -107,6 +109,7 @@ impl Shell {
             peek_until: None,
             keyboard: false,
             pinned: false,
+            hold: false,
             mode_changed_at: 0,
         }
     }
@@ -251,9 +254,30 @@ impl Shell {
     pub fn pointer_leave(&mut self, now: u64) {
         self.hovering = false;
         self.intent_at = None;
-        if self.mode == Mode::Open && self.grace_at.is_none() && !self.keyboard && !self.pinned {
+        if self.mode == Mode::Open && self.grace_at.is_none() && !self.keyboard && !self.pinned && !self.hold {
             self.grace_at = Some(now + self.cfg.grace_ms);
         }
+    }
+
+    /// The host holds the notch open (opening it if it is not), or lets go: it then closes after the grace time
+    /// unless the pointer is on it.
+    pub fn set_hold(&mut self, on: bool, now: u64) {
+        if on {
+            self.hold = true;
+            self.grace_at = None;
+            if self.mode != Mode::Open {
+                self.open(now);
+            }
+        } else if self.hold {
+            self.hold = false;
+            if self.mode == Mode::Open && !self.hovering && !self.keyboard && !self.pinned {
+                self.grace_at = Some(now + self.cfg.grace_ms);
+            }
+        }
+    }
+
+    pub fn held(&self) -> bool {
+        self.hold
     }
 
     /// A click on the pill opens it straight away.
@@ -269,18 +293,10 @@ impl Shell {
         self.set_mode(Mode::Open, now);
     }
 
-    /// Open by itself, and close again after `ms` unless the pointer is on it (it then closes when the pointer leaves).
-    pub fn open_for(&mut self, now: u64, ms: u64) {
-        if self.mode == Mode::Open {
-            return;
-        }
-        self.open(now);
-        self.grace_at = Some(now.saturating_add(ms));
-    }
-
     /// Back to the resting pill and out of keyboard mode.
     pub fn close(&mut self, now: u64) {
         self.keyboard = false;
+        self.hold = false;
         self.intent_at = None;
         self.grace_at = None;
         self.peek_until = None;
@@ -313,7 +329,7 @@ impl Shell {
     pub fn release_keyboard(&mut self, now: u64) {
         if self.keyboard {
             self.keyboard = false;
-            if self.mode == Mode::Open && !self.hovering && !self.pinned {
+            if self.mode == Mode::Open && !self.hovering && !self.pinned && !self.hold {
                 self.grace_at = Some(now + self.cfg.grace_ms);
             }
         }

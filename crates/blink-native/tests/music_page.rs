@@ -184,7 +184,6 @@ fn the_lyrics_option_can_forbid_the_lookup_altogether() {
 #[test]
 fn a_new_song_peeks_but_the_first_one_does_not() {
     let mut r = rig(None);
-    r.app.configure_modules(&[blink_native::host::ModuleConfig { id: "music".into(), enabled: true, options: serde_json::json!({ "autoOpen": 0 }) }]);
     r.app.pointer(PointerKind::Leave, 0.0, 0.0);
     advance(&mut r.app, 600);
     settle(&mut r.app);
@@ -247,7 +246,7 @@ fn when_the_lyrics_service_cannot_be_reached_a_click_asks_again() {
     assert_eq!(source.0.load(Ordering::SeqCst), 2);
 }
 
-/// A resting notch (no hover, nothing open) with a player: music is the second page.
+/// A resting notch (no hover, nothing open) with a player that is playing: music is the second page.
 fn resting_rig() -> Rig {
     let media = FakeMedia::new(WALL_BASE);
     let lyrics = Arc::new(CountingLyrics { asked: AtomicUsize::new(0), lyrics: synced() });
@@ -261,54 +260,102 @@ fn resting_rig() -> Rig {
     Rig { app, media, lyrics }
 }
 
+fn mode(r: &mut Rig) -> String {
+    r.app.state_json()["mode"].as_str().unwrap_or("").to_string()
+}
+
 #[test]
-fn a_song_that_starts_opens_the_notch_by_itself_on_the_music_and_its_lyrics() {
+fn on_the_empty_desktop_a_playing_song_opens_the_notch_with_its_lyrics_until_a_window_comes_up() {
     let mut r = resting_rig();
-    assert_eq!(r.app.state_json()["mode"], "rest");
-    r.media.set(|s| {
-        s.title = "Harbour Lights".into();
-        s.track += 1;
-    });
-    r.app.data_changed();
+    assert_eq!(mode(&mut r), "rest", "a window is in front: nothing opens by itself");
+    r.app.set_desktop(true);
+    advance(&mut r.app, 700);
     settle(&mut r.app);
     r.app.render();
-    let state = r.app.state_json();
-    assert_eq!(state["mode"], "open", "no hover needed");
+    assert_eq!(mode(&mut r), "open", "no hover needed");
     assert_eq!(r.app.active_module(), "music");
-    assert_eq!(state["module"]["showLyrics"], true, "with the lyrics");
-    assert_eq!(r.lyrics.asked.load(Ordering::SeqCst), 1, "the lyrics were asked for at once");
-    // It goes away by itself after a while.
-    advance(&mut r.app, 11_000);
-    settle(&mut r.app);
-    assert_eq!(r.app.state_json()["mode"], "rest");
-}
-
-#[test]
-fn the_notch_stays_open_while_the_pointer_is_on_it_and_a_song_that_was_already_playing_does_not_open_it() {
-    let mut r = resting_rig();
-    // The song playing since the start did not open anything (the rig started with it playing).
-    assert_eq!(r.app.state_json()["mode"], "rest");
-    r.media.set(|s| s.track += 1);
-    r.app.data_changed();
-    settle(&mut r.app);
-    r.app.render();
-    assert_eq!(r.app.state_json()["mode"], "open");
-    let (cx, cy) = (320.0, 40.0);
-    r.app.pointer(PointerKind::Move, cx, cy);
-    advance(&mut r.app, 15_000);
-    assert_eq!(r.app.state_json()["mode"], "open", "the pointer on it keeps it open");
+    assert_eq!(r.app.state_json()["module"]["showLyrics"], true, "with the lyrics");
+    assert_eq!(r.lyrics.asked.load(Ordering::SeqCst), 1);
+    // It stays open as long as nothing is in front, however long.
+    advance(&mut r.app, 120_000);
+    assert_eq!(mode(&mut r), "open");
+    // A moving pointer in and out does not close it either.
+    r.app.pointer(PointerKind::Move, 320.0, 40.0);
     r.app.pointer(PointerKind::Leave, 0.0, 0.0);
-    advance(&mut r.app, 2_000);
+    advance(&mut r.app, 3_000);
+    assert_eq!(mode(&mut r), "open");
+    // A window comes up: it goes away.
+    r.app.set_desktop(false);
+    advance(&mut r.app, 3_000);
     settle(&mut r.app);
-    assert_eq!(r.app.state_json()["mode"], "rest", "and it closes once the pointer is gone");
+    assert_eq!(mode(&mut r), "rest");
 }
 
 #[test]
-fn the_auto_open_can_be_turned_off_or_made_longer() {
+fn nothing_playing_or_paused_or_turned_off_the_desktop_leaves_the_notch_alone() {
     let mut r = resting_rig();
-    r.app.configure_modules(&[blink_native::host::ModuleConfig { id: "music".into(), enabled: true, options: serde_json::json!({ "autoOpen": 0, "peek": false }) }]);
-    r.media.set(|s| s.track += 1);
+    r.media.set(|s| s.playing = false);
+    r.app.set_desktop(true);
+    advance(&mut r.app, 1_000);
+    assert_eq!(mode(&mut r), "rest", "a paused song is not live");
+    r.media.set(|s| s.playing = true);
     r.app.data_changed();
     settle(&mut r.app);
-    assert_eq!(r.app.state_json()["mode"], "rest", "autoOpen 0 keeps the notch where it was");
+    assert_eq!(mode(&mut r), "open", "playing it again opens it");
+    r.media.set(|s| s.active = false);
+    r.app.data_changed();
+    advance(&mut r.app, 3_000);
+    settle(&mut r.app);
+    assert_eq!(mode(&mut r), "rest", "and when the song is gone it closes");
+
+    let mut r = resting_rig();
+    r.app.configure_modules(&[blink_native::host::ModuleConfig { id: "music".into(), enabled: true, options: serde_json::json!({ "desktopLive": false }) }]);
+    r.app.set_desktop(true);
+    advance(&mut r.app, 1_000);
+    assert_eq!(mode(&mut r), "rest", "the option turns it off");
+}
+
+#[test]
+fn closing_it_by_hand_keeps_it_closed_until_the_desktop_has_been_left() {
+    let mut r = resting_rig();
+    r.app.set_desktop(true);
+    advance(&mut r.app, 700);
+    settle(&mut r.app);
+    assert_eq!(mode(&mut r), "open");
+    r.app.key(Key::Escape);
+    advance(&mut r.app, 700);
+    settle(&mut r.app);
+    assert_eq!(mode(&mut r), "rest", "Escape closes it");
+    advance(&mut r.app, 5_000);
+    assert_eq!(mode(&mut r), "rest", "and it does not pop up again by itself");
+    r.app.set_desktop(false);
+    advance(&mut r.app, 500);
+    r.app.set_desktop(true);
+    advance(&mut r.app, 700);
+    settle(&mut r.app);
+    assert_eq!(mode(&mut r), "open", "a new visit to the empty desktop opens it again");
+}
+
+#[test]
+fn the_pin_keeps_the_notch_open_over_windows_while_the_song_plays() {
+    let mut r = resting_rig();
+    open_by_hover(&mut r.app);
+    r.app.switch_to(1);
+    settle(&mut r.app);
+    click(&mut r.app, "Keep open");
+    assert!(names(&mut r.app).iter().any(|n| n == "Keep open: on"));
+    r.app.pointer(PointerKind::Leave, 0.0, 0.0);
+    advance(&mut r.app, 5_000);
+    settle(&mut r.app);
+    assert_eq!(mode(&mut r), "open", "the pointer is away and a window is in front, and it stays");
+    click_pin_off(&mut r);
+    advance(&mut r.app, 3_000);
+    settle(&mut r.app);
+    assert_eq!(mode(&mut r), "rest", "unpinned, it closes as usual");
+}
+
+fn click_pin_off(r: &mut Rig) {
+    r.app.pointer(PointerKind::Move, 320.0, 40.0);
+    click(&mut r.app, "Keep open");
+    r.app.pointer(PointerKind::Leave, 0.0, 0.0);
 }

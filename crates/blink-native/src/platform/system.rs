@@ -30,6 +30,22 @@ pub fn fullscreen_kind() -> FullscreenKind {
     }
 }
 
+/// Whether no window is in front: the desktop itself (its icons) or the taskbar has the foreground, as after
+/// "show desktop" or a click on the wallpaper. A window, the Start menu or a lock screen in front is not the desktop.
+pub fn desktop_in_front() -> bool {
+    use windows::Win32::UI::WindowsAndMessaging::{GetClassNameW, GetForegroundWindow};
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        if hwnd.0.is_null() {
+            return false;
+        }
+        let mut buf = [0u16; 64];
+        let n = GetClassNameW(hwnd, &mut buf) as usize;
+        let class = String::from_utf16_lossy(&buf[..n.min(buf.len())]);
+        matches!(class.as_str(), "Progman" | "WorkerW" | "Shell_TrayWnd" | "Shell_SecondaryTrayWnd")
+    }
+}
+
 // ---------------------------------------------------------- single instance
 
 /// Holds the named mutex for the life of the process.
