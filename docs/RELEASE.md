@@ -68,8 +68,8 @@ Scripted, with no mouse or keyboard (all in `scripts/native/`):
 | Logic | Differential tests against the JavaScript it replaced (about 1,800 calls in 4 time zones, 102 calendars) and unit tests | passing |
 | Window behavior | `gate-g2.ps1`: click-through by Windows' own hit testing, no focus theft, fullscreen and pause hiding, DPI 1.25/1.5/2.0, reduced motion, hotkey errors, single instance | 47 checks |
 | Real data | `gate-g3.ps1`: feed fetch, offline and recovery, done, snooze, reminders once, personal events, Credential Manager | 26 checks |
-| Settings | `settings-e2e.mjs`: the real page and the real pipe: wizard, test link, save, hotkey in-use error, language, events, the two scopes, pages, weather, music and fullscreen options reaching the notch, paste-and-add, export/import, diagnostics, autostart, remove, no web engine left | 48 checks |
-| Pages | `gate-host.ps1` (30), `gate-system.ps1` (27), `gate-controls.ps1` (22), `gate-music.ps1` (19, including the empty desktop), `gate-projects.ps1` (15), `gate-draw.ps1` (8): the host, the system peeks, the controls, music and lyrics with a stand-in player, projects, drawing | passing |
+| Settings | `settings-e2e.mjs`: the real page and the real pipe: wizard, test link, save, hotkey in-use error, language, events, the two scopes, pages, weather, music and fullscreen options reaching the notch, paste-and-add, export/import, diagnostics, autostart, remove, no web engine left | 50 checks |
+| Pages | `gate-host.ps1` (34, including the tour), `gate-system.ps1` (27), `gate-controls.ps1` (22), `gate-music.ps1` (19, including the empty desktop), `gate-projects.ps1` (15), `gate-agents.ps1` (16: the real `blinkctl.exe` and the real pipe), `gate-draw.ps1` (8) | passing |
 | Accessibility | `gate-a11y.ps1`: a real UI Automation client walks the tree, invokes buttons, receives focus events | 27 checks |
 | Installer | `installer-test.ps1`: silent install, installed notch runs, upgrade over a running copy, uninstall keeps data, `/PURGE`, WebView2-build removal | 20 checks |
 | Real input (with the cursor and keys, supervised) | `real-input.ps1`: real click opens and keeps focus elsewhere, click-through reaches the app below, real hotkey takes and returns focus | 13 checks |
@@ -108,6 +108,10 @@ The Music page shows what Windows says is playing (the same list the volume flyo
 ## Weather
 
 The Clock page shows the weather. Blink asks [open-meteo.com](https://open-meteo.com) (a free service, no account or key) and sends only the **coordinates of the city you chose** (or, until you choose one, the name of the city in your Windows time zone, to find its coordinates). Nothing else is sent, and nothing is saved on disk. Swap the pane to the calendar with the switch at the top right of the page and Blink stops asking while you have the calendar as the default (`"pane": "calendar"` in the clock module's options).
+
+## AI agents
+
+Programs (an AI agent, a build, a script) can report what they are doing with `blinkctl.exe`, which sits next to `blink.exe`: running, waiting for you, finished or failed. The reports travel only over the notch's private pipe on this PC (only programs running as you can use it), live in memory, and are never written to disk or sent anywhere. Blink settings, Agents turns them off. See `docs/AGENTS.md`.
 
 ## Projects
 
