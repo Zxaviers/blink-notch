@@ -420,3 +420,33 @@ fn the_place_under_the_weather_opens_the_settings_on_the_weather() {
     app.pointer(PointerKind::Down, x, y);
     assert_eq!(app.take_effects(), vec![blink_native::app::AppEffect::OpenSettingsAt("weather".into())]);
 }
+
+#[test]
+fn the_calendar_button_opens_the_chosen_calendar_in_the_browser() {
+    let mut app = two_modules(json!({}));
+    app.tick();
+    open_by_hover(&mut app);
+    settle(&mut app);
+    app.render();
+    assert_eq!(app.active_module(), "deadlines");
+    let button = |app: &mut App| app.accessibility().nodes.into_iter().find(|n| n.name == "Open the calendar to set deadlines").expect("a calendar button");
+    let click = |app: &mut App| {
+        let node = button(app);
+        let (x, y) = (node.rect.0 + node.rect.2 / 2.0, node.rect.1 + node.rect.3 / 2.0);
+        app.take_effects();
+        app.pointer(PointerKind::Move, x, y);
+        app.pointer(PointerKind::Down, x, y);
+        app.pointer(PointerKind::Up, x, y);
+        app.take_effects()
+    };
+    assert_eq!(click(&mut app), vec![blink_native::app::AppEffect::OpenUrl("https://calendar.google.com/calendar/".into())]);
+    app.configure_modules(&[
+        ModuleConfig { id: "deadlines".into(), enabled: true, options: json!({ "calendarUrl": "https://moodle.example.edu/calendar/view.php" }) },
+        ModuleConfig { id: "clock".into(), enabled: true, options: serde_json::Value::Null },
+    ]);
+    app.render();
+    assert_eq!(click(&mut app), vec![blink_native::app::AppEffect::OpenUrl("https://moodle.example.edu/calendar/view.php".into())]);
+    app.configure_modules(&[ModuleConfig { id: "deadlines".into(), enabled: true, options: json!({ "calendarUrl": "http://insecure" }) }]);
+    app.render();
+    assert_eq!(click(&mut app), vec![blink_native::app::AppEffect::OpenUrl("https://calendar.google.com/calendar/".into())], "only https is taken");
+}

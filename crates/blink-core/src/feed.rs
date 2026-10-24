@@ -107,7 +107,7 @@ impl<S: Secrets> FeedService<S> {
             .max_redirects(5)
             .http_status_as_error(false)
             .user_agent(USER_AGENT)
-            .tls_config(ureq::tls::TlsConfig::builder().provider(ureq::tls::TlsProvider::NativeTls).build())
+            .tls_config(ureq::tls::TlsConfig::builder().provider(ureq::tls::TlsProvider::NativeTls).root_certs(ureq::tls::RootCerts::PlatformVerifier).build())
             .build();
         FeedService { store, secrets, agent: config.into(), now_ms: Box::new(real_now_ms) }
     }

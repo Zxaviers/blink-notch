@@ -78,6 +78,9 @@ const en = {
   'pill.intro': 'The small bar at the top shows the clock. A deadline takes it over only when it is close.',
   'pill.urgent': 'A deadline takes the pill when it is due within (hours)',
   'pill.urgent.hint': 'Further away than this, the pill keeps showing the time.',
+  'pill.calendar': 'Calendar page for the calendar button',
+  'pill.calendar.hint': 'The button on the Deadlines page opens this address in your browser, to add or change a deadline. Leave empty for Google Calendar. https only.',
+  'pill.calendar.invalid': 'That is not an https address.',
 
   'pages.title': 'Pages',
   'pages.intro': 'Choose which pages the notch has and the order they turn in.',
@@ -311,6 +314,9 @@ const id = {
   'pill.intro': 'Bar kecil di atas menampilkan jam. Deadline mengambil alih hanya saat sudah dekat.',
   'pill.urgent': 'Deadline mengambil pil bila jatuh tempo dalam (jam)',
   'pill.urgent.hint': 'Kalau lebih jauh dari ini, pil tetap menampilkan jam.',
+  'pill.calendar': 'Halaman kalender untuk tombol kalender',
+  'pill.calendar.hint': 'Tombol di halaman Deadline membuka alamat ini di browsermu, untuk menambah atau mengubah deadline. Kosongkan untuk Google Calendar. Hanya https.',
+  'pill.calendar.invalid': 'Itu bukan alamat https.',
 
   'pages.title': 'Halaman',
   'pages.intro': 'Pilih halaman apa saja yang ada di notch dan urutannya.',

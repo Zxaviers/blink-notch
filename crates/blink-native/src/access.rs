@@ -124,6 +124,7 @@ pub fn word(lang: blink_core::i18n::Lang, key: &str) -> &'static str {
         "upcoming" => if id { "Tenggat mendatang" } else { "Upcoming deadlines" },
         "overdue" => if id { "Terlewat" } else { "Overdue" },
         "done" => if id { "Selesai" } else { "Done" },
+        "calendar" => if id { "Buka kalender untuk mengatur deadline" } else { "Open the calendar to set deadlines" },
         "show_done" => if id { "Tampilkan yang selesai" } else { "Show done" },
         "mark_done" => if id { "Tandai selesai" } else { "Mark done" },
         "restore" => if id { "Pulihkan" } else { "Restore" },

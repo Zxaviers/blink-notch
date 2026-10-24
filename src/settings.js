@@ -378,6 +378,17 @@ function displaySection () {
 /** The pill: what it shows at rest, and when a deadline takes it from the clock. */
 function pillSection () {
   const urgent = Number(optionsOf('deadlines').urgentHours)
+  const calendarOut = status()
+  const calendar = h('input', {
+    type: 'text', class: 'wide', autocomplete: 'off', spellcheck: 'false', placeholder: 'https://calendar.google.com/calendar/',
+    value: optionsOf('deadlines').calendarUrl ?? '',
+    onchange: (e) => {
+      const url = e.target.value.trim()
+      if (url && !/^https:\/\//i.test(url)) return calendarOut.set('error', t('pill.calendar.invalid'))
+      calendarOut.set('', '')
+      setOptions('deadlines', { calendarUrl: url || undefined })
+    }
+  })
   return h('section', {},
     h('h1', {}, t('pill.title')),
     h('p', {}, t('pill.intro')),
@@ -388,7 +399,9 @@ function pillSection () {
     field(t('display.resting'), select(
       [['always', t('display.resting.always')], ['when-due', t('display.resting.when-due')], ['hover', t('display.resting.hover')]],
       settings.restingStyle, (v) => save({ restingStyle: v }))),
-    field(t('display.dueHorizon'), numberInput(settings.dueHorizonHours, { min: 1, max: 336 }, (v) => save({ dueHorizonHours: v }))))
+    field(t('display.dueHorizon'), numberInput(settings.dueHorizonHours, { min: 1, max: 336 }, (v) => save({ dueHorizonHours: v }))),
+    field(t('pill.calendar'), calendar, t('pill.calendar.hint')),
+    calendarOut)
 }
 
 function pagesSection () {

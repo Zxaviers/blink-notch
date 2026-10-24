@@ -298,7 +298,7 @@ impl LrcLib {
             .max_redirects(3)
             .http_status_as_error(false)
             .user_agent("Blink (a personal notch for Windows)")
-            .tls_config(ureq::tls::TlsConfig::builder().provider(ureq::tls::TlsProvider::NativeTls).build())
+            .tls_config(ureq::tls::TlsConfig::builder().provider(ureq::tls::TlsProvider::NativeTls).root_certs(ureq::tls::RootCerts::PlatformVerifier).build())
             .build();
         LrcLib { agent: config.into() }
     }
