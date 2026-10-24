@@ -268,3 +268,36 @@ fn changing_the_resting_style_takes_effect_without_waiting_for_a_timer() {
     assert_eq!(app.shell().rest_style(), blink_native::shell::RestStyle::Hot);
     assert!(app.wants_frames(), "the shrink animation must be asked for right away");
 }
+
+#[test]
+fn restoring_the_last_done_deadline_brings_the_list_back_instead_of_an_empty_done_view() {
+    let mut app = app();
+    open_by_hover(&mut app);
+    let id = {
+        let m = app.module_mut::<DeadlinesModule>().unwrap();
+        m.source_mut().feeds()[0].tasks.iter().find(|t| t.uid == "t1").unwrap().id.clone()
+    };
+    let upcoming = |app: &mut blink_native::app::App| app.state_json()["module"]["upcoming"].as_array().map_or(0, Vec::len);
+    app.render();
+    let before = upcoming(&mut app);
+    // Mark one done, open the done list, restore it.
+    let (rx, ry) = app.module_mut::<DeadlinesModule>().unwrap().row_center(&id).expect("row");
+    app.pointer(PointerKind::Move, rx, ry);
+    app.render();
+    let (bx, by) = app.module_mut::<DeadlinesModule>().unwrap().hit_center(&Action::MarkDone(id.clone())).expect("done button");
+    app.pointer(PointerKind::Move, bx, by);
+    app.pointer(PointerKind::Down, bx, by);
+    app.render();
+    let (tx, ty) = app.module_mut::<DeadlinesModule>().unwrap().hit_center(&Action::ToggleDone).expect("done list button");
+    app.pointer(PointerKind::Move, tx, ty);
+    app.pointer(PointerKind::Down, tx, ty);
+    app.render();
+    assert_eq!(app.state_json()["module"]["doneOpen"], true);
+    let (ux, uy) = app.module_mut::<DeadlinesModule>().unwrap().hit_center(&Action::Restore(id.clone())).expect("restore button");
+    app.pointer(PointerKind::Move, ux, uy);
+    app.pointer(PointerKind::Down, ux, uy);
+    app.render();
+    assert_eq!(app.state_json()["module"]["doneOpen"], false, "nothing is done any more: the list of done ones closes");
+    assert_eq!(upcoming(&mut app), before, "and every deadline is back on the list");
+    assert!(app.module_mut::<DeadlinesModule>().unwrap().hit_center(&Action::OpenSettings).is_some(), "with the usual buttons");
+}

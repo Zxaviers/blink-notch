@@ -21,12 +21,39 @@ pub enum FullscreenKind {
 }
 
 pub fn fullscreen_kind() -> FullscreenKind {
+    // The empty desktop (or the taskbar) in front is never a fullscreen app, whatever Windows' own check says of it.
+    if desktop_in_front() {
+        return FullscreenKind::None;
+    }
     match unsafe { SHQueryUserNotificationState() } {
         // QUNS_RUNNING_D3D_FULL_SCREEN = 3, QUNS_PRESENTATION_MODE = 4
         Ok(state) if matches!(state.0, 3 | 4) => FullscreenKind::Game,
-        // QUNS_BUSY = 2
-        Ok(state) if state.0 == 2 => FullscreenKind::App,
+        // QUNS_BUSY = 2: only when the window in front really covers its whole screen.
+        Ok(state) if state.0 == 2 && foreground_covers_its_screen() => FullscreenKind::App,
         _ => FullscreenKind::None,
+    }
+}
+
+/// Whether the window in front covers the whole of the screen it is on, taskbar included (not just maximized).
+fn foreground_covers_its_screen() -> bool {
+    use windows::Win32::Foundation::RECT;
+    use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST};
+    use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowRect};
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        if hwnd.0.is_null() {
+            return false;
+        }
+        let mut window = RECT::default();
+        if GetWindowRect(hwnd, &mut window).is_err() {
+            return false;
+        }
+        let mut info = MONITORINFO { cbSize: std::mem::size_of::<MONITORINFO>() as u32, ..Default::default() };
+        if !GetMonitorInfoW(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &mut info).as_bool() {
+            return false;
+        }
+        let m = info.rcMonitor;
+        window.left <= m.left && window.top <= m.top && window.right >= m.right && window.bottom >= m.bottom
     }
 }
 

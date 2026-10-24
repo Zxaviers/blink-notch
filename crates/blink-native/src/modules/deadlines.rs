@@ -813,7 +813,13 @@ impl Module for DeadlinesModule {
     }
 
     fn draw_panel(&mut self, env: &Env, kit: &mut Kit, frame: &PanelFrame) {
-        let model = self.model(env);
+        let mut model = self.model(env);
+        // With nothing done there is no list of done ones to show (and no button to leave it): back to the deadlines.
+        if self.state.done_open && model.view.done_list.is_empty() {
+            self.state.done_open = false;
+            self.state.scroll = 0.0;
+            model = self.model(env);
+        }
         self.content_h = Self::list_height(self.entries(&model).len());
         self.clamp_scroll();
         self.hits.clear();
