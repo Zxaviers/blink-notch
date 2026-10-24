@@ -509,6 +509,13 @@ impl Runtime {
                         let _ = self.toast(&title, &body, url);
                     }
                 }
+                AppEffect::TourDone => {
+                    // Remembered, so the tour comes once (the settings can show it again).
+                    let _ = self.store.write_atomic("tour.json", b"{\"done\":true}");
+                    if self.control {
+                        self.effects_log.push("tour_done".to_string());
+                    }
+                }
                 AppEffect::Announce(text) => {
                     if self.control {
                         self.effects_log.push(format!("announce:{text}"));
@@ -893,6 +900,11 @@ impl Runtime {
                 }
                 "diagnostics" => Ok(json!({ "text": self.diagnostics() })),
                 "agent_update" | "agent_remove" | "agent_list" => self.agent_command(&v),
+                "show_tour" => {
+                    self.app.start_tour();
+                    self.dirty = true;
+                    Ok(json!({}))
+                }
                 // The installer and `blink --quit` ask the running notch to leave cleanly.
                 "quit" => {
                     unsafe {
@@ -1436,6 +1448,10 @@ impl Runtime {
                 self.refresh_fullscreen();
             }
             "agent_update" | "agent_remove" | "agent_list" => return self.agent_command(&v),
+            "tour" => {
+                // The first-run tour, on demand (it starts by itself only the first time, and not in scripted runs).
+                self.app.start_tour();
+            }
             "desktop" => {
                 // Pretend the empty desktop is (or is not) in front; null goes back to asking Windows.
                 self.desktop_sim = v["on"].as_bool();
@@ -1776,6 +1792,12 @@ pub fn run(opts: Options) -> Result<(), String> {
         if first_run {
             with_rt(|rt| rt.open_settings("feeds"));
         }
+        // The very first start also gets the short tour in the notch itself (once; not in scripted runs).
+        with_rt(|rt| {
+            if !rt.control && !rt.app.settings().onboarded && rt.store.read("tour.json").is_none() {
+                rt.app.start_tour();
+            }
+        });
     }
     if let Some(seconds) = opts.seconds {
         unsafe { SetTimer(Some(hwnd), TIMER_QUIT, (seconds * 1000).min(u64::from(u32::MAX)) as u32, None) };

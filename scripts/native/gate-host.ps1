@@ -97,6 +97,18 @@ try {
   Check 'back to the default, a game hides it' ((Ctl @{cmd='state'}).window.hiddenBy -eq 'fullscreen')
   Ctl @{cmd='fullscreen'; on=$false} | Out-Null
 
+  'the welcome tour'
+  Ctl @{cmd='mouse'; kind='leave'} | Out-Null; Ctl @{cmd='advance'; ms=3000} | Out-Null
+  Ctl @{cmd='tour'} | Out-Null; Ctl @{cmd='advance'; ms=900} | Out-Null
+  $s = St
+  Check 'the tour opens the notch by itself on its first card' ($s.mode -eq 'open' -and $s.tour -eq 0) "mode=$($s.mode) tour=$($s.tour)"
+  Ctl @{cmd='key'; key='right'} | Out-Null
+  Check 'the keys move through it' ((St).tour -eq 1)
+  $esc = Ctl @{cmd='key'; key='escape'}; Ctl @{cmd='advance'; ms=3000} | Out-Null
+  $s = St
+  Check 'Escape ends it and the notch closes again' ($null -eq $s.tour -and $s.mode -eq 'rest') "mode=$($s.mode) tour=$($s.tour)"
+  Check 'the end was remembered' (@($esc.effects) -contains 'tour_done') ($esc | ConvertTo-Json -Compress)
+
   'drawing'
   Ctl @{cmd='mouse'; kind='move'; x=320; y=10} | Out-Null; Ctl @{cmd='advance'; ms=800} | Out-Null
   $dib = Ctl @{cmd='dibcheck'}

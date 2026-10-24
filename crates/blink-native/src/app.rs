@@ -34,6 +34,8 @@ pub enum AppEffect {
     KeyboardFocus(bool),
     /// Something for a screen reader to say (only matters while one is running).
     Announce(String),
+    /// The first-run tour was finished or skipped: remember it.
+    TourDone,
     /// A system notification; `url` is what clicking it opens.
     Toast { title: String, body: String, url: Option<String> },
 }
@@ -79,6 +81,10 @@ pub struct App {
     effects: Vec<AppEffect>,
     /// The last frame's panel height, to retarget the shell when content changes.
     last_panel_h: f32,
+    /// The first-run tour, when it is showing: which card.
+    tour: Option<usize>,
+    /// Where the tour's buttons are (window coordinates), from the last frame.
+    tour_hits: Vec<(f32, f32, f32, f32, crate::tour::TourButton)>,
     /// No window is in front: the desktop (or the taskbar) is.
     desktop: bool,
     /// When the desktop came to the front (the notch waits a moment before opening for it).
@@ -132,6 +138,8 @@ impl App {
             pointer: None,
             effects: Vec::new(),
             last_panel_h: 0.0,
+            tour: None,
+            tour_hits: Vec::new(),
             desktop: false,
             desktop_since: 0,
             live_on: false,
@@ -205,7 +213,7 @@ impl App {
     }
 
     fn tabs_height(&self) -> f32 {
-        if self.panel_indices().len() > 1 { PAGER_H } else { 0.0 }
+        if self.tour.is_none() && self.panel_indices().len() > 1 { PAGER_H } else { 0.0 }
     }
 
     /// Apply the user's choice of modules: order and on/off. Ids the app does not know are
@@ -352,7 +360,8 @@ impl App {
         let env = self.env(&tz);
         let tabs = self.tabs_height();
         let mut kit = Kit { canvas: &mut self.canvas, fonts: &mut self.fonts };
-        let h = HEADER_H + self.slots[self.active].module.panel_height(&env, &mut kit) + tabs;
+        let content = if self.tour.is_some() { crate::modules::CONTENT_H } else { self.slots[self.active].module.panel_height(&env, &mut kit) };
+        let h = HEADER_H + content + tabs;
         self.last_panel_h = h;
         let now = self.clock.now_ms();
         self.shell.set_open_height(h, now);
@@ -480,6 +489,13 @@ impl App {
                     return;
                 }
                 if self.shell.mode() == Mode::Open {
+                    if self.tour.is_some() {
+                        // The tour takes every click on the panel: its buttons, or nothing.
+                        if let Some(button) = self.tour_hits.iter().find(|(hx, hy, hw, hh, _)| x >= *hx && x < hx + hw && y >= *hy && y < hy + hh).map(|h| h.4) {
+                            self.tour_press(button);
+                        }
+                        return;
+                    }
                     if self.in_menu(x, y) {
                         self.effects.push(AppEffect::OpenAppSettings);
                         return;
@@ -538,6 +554,16 @@ impl App {
         let now = self.clock.now_ms();
         self.last_activity = now;
         if self.shell.mode() != Mode::Open {
+            return;
+        }
+        if self.tour.is_some() {
+            use crate::tour::TourButton;
+            match key {
+                Key::Right | Key::Enter | Key::Space | Key::Tab => self.tour_press(TourButton::Next),
+                Key::Left => self.tour_press(TourButton::Back),
+                Key::Escape => self.tour_press(TourButton::Skip),
+                _ => {}
+            }
             return;
         }
         if matches!(key, Key::Left | Key::Right | Key::Tab) && self.panel_indices().len() > 1 && !self.slots[self.active].module.captures_keys() {
@@ -765,6 +791,58 @@ impl App {
         }
     }
 
+    /// Show the welcome tour: the notch opens by itself on the first card and stays until the tour is finished or skipped.
+    pub fn start_tour(&mut self) {
+        let now = self.clock.now_ms();
+        self.tour = Some(0);
+        self.live_dismissed = false;
+        self.shell.set_hold(true, now);
+        self.refresh_panel_height();
+    }
+
+    pub fn tour_step(&self) -> Option<usize> {
+        self.tour
+    }
+
+    /// Where the tour's buttons were drawn last frame, with their words (for tests and scripted runs).
+    pub fn tour_buttons(&self) -> (Option<usize>, Vec<((f32, f32), String)>) {
+        let lang = self.lang;
+        let words = if lang == Lang::Id { ("Lewati", "Kembali", "Lanjut", "Selesai") } else { ("Skip", "Back", "Next", "Done") };
+        let last = self.tour.is_some_and(|s| s + 1 >= crate::tour::STEPS);
+        let hits = self
+            .tour_hits
+            .iter()
+            .map(|(x, y, w, h, b)| {
+                let label = match b {
+                    crate::tour::TourButton::Skip => words.0,
+                    crate::tour::TourButton::Back => words.1,
+                    crate::tour::TourButton::Next => if last { words.3 } else { words.2 },
+                };
+                ((x + w / 2.0, y + h / 2.0), label.to_string())
+            })
+            .collect();
+        (self.tour, hits)
+    }
+
+    fn tour_press(&mut self, button: crate::tour::TourButton) {
+        use crate::tour::{TourButton, STEPS};
+        let Some(step) = self.tour else { return };
+        match button {
+            TourButton::Next if step + 1 < STEPS => self.tour = Some(step + 1),
+            TourButton::Back => self.tour = Some(step.saturating_sub(1)),
+            TourButton::Next | TourButton::Skip => self.finish_tour(),
+        }
+    }
+
+    fn finish_tour(&mut self) {
+        let now = self.clock.now_ms();
+        self.tour = None;
+        self.tour_hits.clear();
+        self.shell.set_hold(false, now);
+        self.effects.push(AppEffect::TourDone);
+        self.refresh_panel_height();
+    }
+
     /// An agent (or any program) reports its state: the Agents page takes it and may ask for a peek.
     pub fn agent_update(&mut self, v: &Value) -> Result<Value, String> {
         let wall = self.clock.wall_ms();
@@ -806,6 +884,10 @@ impl App {
     /// Hold the notch open on the page of a song that is playing, when the desktop is empty (and the page
     /// likes that) or when the person pinned it open. Let go when the reason ends or the song stops.
     fn update_live(&mut self) {
+        // The tour has the notch while it shows.
+        if self.tour.is_some() {
+            return;
+        }
         let now = self.clock.now_ms();
         let song = self.slots.iter().position(|s| s.enabled && s.module.has_panel() && s.module.playing());
         let pinned = song.is_some_and(|i| self.slots[i].module.holds_open());
@@ -1040,10 +1122,16 @@ impl App {
                     clock.set_marks(marks);
                 }
             }
-            let mut kit = Kit { canvas: &mut self.canvas, fonts: &mut self.fonts };
-            self.slots[self.active].module.draw_panel(&env, &mut kit, &frame);
-            self.draw_header(&panel_theme, open_alpha, &env);
-            self.draw_pager(&panel_theme, open_alpha, &env, frame.viewport_h);
+            if let Some(step) = self.tour {
+                self.tour_hits = crate::tour::draw(&mut self.canvas, &mut self.fonts, &panel_theme, open_alpha, step, self.lang, self.pointer, frame.origin_x, frame.origin_y, frame.width);
+                self.tab_rects.clear();
+                self.draw_header(&panel_theme, open_alpha, &env);
+            } else {
+                let mut kit = Kit { canvas: &mut self.canvas, fonts: &mut self.fonts };
+                self.slots[self.active].module.draw_panel(&env, &mut kit, &frame);
+                self.draw_header(&panel_theme, open_alpha, &env);
+                self.draw_pager(&panel_theme, open_alpha, &env, frame.viewport_h);
+            }
         } else {
             self.tab_rects.clear();
         }
@@ -1057,8 +1145,13 @@ impl App {
         let right = (WINDOW_W + OPEN_W) / 2.0 - 24.0;
         let cy = 23.0;
         let lang = env.t.lang();
-        let (first, second) = self.slots[self.active].module.title_parts(lang);
-        let accent = self.slots[self.active].module.accent();
+        let (first, second) = if self.tour.is_some() {
+            let (a, b) = crate::tour::title_parts(lang);
+            (a.to_string(), b.to_string())
+        } else {
+            self.slots[self.active].module.title_parts(lang)
+        };
+        let accent = if self.tour.is_some() { Rgb(0x4e, 0xa8, 0xff) } else { self.slots[self.active].module.accent() };
         let size = 15.0;
         let base = cy - 10.0 + self.fonts.baseline(Face::SansBold, size, 20.0);
         let adv = self.canvas.text(&mut self.fonts, Face::SansBold, size, left, base, &first, theme.fg, alpha, 0.0);
@@ -1331,6 +1424,7 @@ impl App {
             "canvas": { "w": self.canvas.width(), "h": self.canvas.height() },
             "rest": { "label": rest.label, "count": rest.count, "urgency": rest.urgency },
             "panelHeight": self.last_panel_h,
+            "tour": self.tour,
             "nextWake": self.next_wake(),
             "cachedGlyphs": self.fonts.cached_glyphs(),
             "module": module_debug,

@@ -647,6 +647,7 @@ function generalSection () {
   }
 
   const diagOut = status()
+  const tourOut = status()
   const exportOut = status()
   const importOut = status()
   const importBox = h('textarea', {
@@ -656,6 +657,21 @@ function generalSection () {
   return h('section', {},
     h('h1', {}, t('general.title')),
     h('label', { class: 'check' }, autostart, t('general.autostart')),
+
+    h('h2', {}, t('general.tour')),
+    h('p', {}, t('general.tour.hint')),
+    h('button', {
+      class: 'btn', type: 'button',
+      onclick: async () => {
+        try {
+          await api.showTour()
+          tourOut.set('ok', t('general.tour.shown'))
+        } catch {
+          tourOut.set('error', t('general.tour.failed'))
+        }
+      }
+    }, t('general.tour')),
+    tourOut,
 
     h('h2', {}, t('general.export')),
     h('p', {}, t('general.export.hint')),

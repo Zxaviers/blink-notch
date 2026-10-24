@@ -239,6 +239,10 @@ const en = {
 
   'general.title': 'General',
   'general.autostart': 'Start with Windows',
+  'general.tour': 'Show the welcome tour',
+  'general.tour.hint': 'Four short cards in the notch about pages, settings, music and files, and AI agents.',
+  'general.tour.shown': 'It is showing at the top of the screen.',
+  'general.tour.failed': 'Blink is not running, so there is nothing to show it in.',
   'general.version': 'Version {v}',
   'general.privacy': 'No account, no analytics. Blink only goes online for your calendar links, the weather of your city (open-meteo.com) and song lyrics (lrclib.net, can be turned off).',
   'general.diagnostics': 'Copy diagnostics',
@@ -494,6 +498,10 @@ const id = {
 
   'general.title': 'Umum',
   'general.autostart': 'Jalankan saat Windows mulai',
+  'general.tour': 'Tampilkan tur selamat datang',
+  'general.tour.hint': 'Empat kartu singkat di notch tentang halaman, pengaturan, musik dan file, serta agen AI.',
+  'general.tour.shown': 'Sedang tampil di atas layar.',
+  'general.tour.failed': 'Blink tidak berjalan, jadi tidak ada tempat untuk menampilkannya.',
   'general.version': 'Versi {v}',
   'general.privacy': 'Tanpa akun, tanpa analitik. Blink hanya online untuk tautan kalendermu, cuaca kotamu (open-meteo.com), dan lirik lagu (lrclib.net, bisa dimatikan).',
   'general.diagnostics': 'Salin diagnostik',

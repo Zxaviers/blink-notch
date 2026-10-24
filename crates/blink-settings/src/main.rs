@@ -151,6 +151,18 @@ fn open_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
     app.opener().open_url(url, None::<&str>).map_err(|_| "OPEN".to_string())
 }
 
+/// Ask the running notch to show its welcome tour again.
+#[tauri::command]
+async fn show_tour() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(|| match ipc::request(&json!({ "cmd": "show_tour" })) {
+        Ok(_) => Ok(()),
+        Err(IpcError::NotRunning) => Err("NOT_RUNNING".to_string()),
+        Err(IpcError::Failed(code)) => Err(code),
+    })
+    .await
+    .map_err(|_| "NOT_RUNNING".to_string())?
+}
+
 /// Cities matching a name, for the weather section. Blocking network: off the UI thread.
 #[tauri::command]
 async fn weather_find(name: String, language: String) -> Result<Vec<Value>, String> {
@@ -297,6 +309,7 @@ fn main() {
             autostart_disable,
             diagnostics,
             weather_find,
+            show_tour,
             clipboard_text,
         ])
         // Closing the window ends the program, so no web engine stays behind.

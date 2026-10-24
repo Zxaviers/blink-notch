@@ -19,6 +19,7 @@ export const api = {
   openUrl: (url) => invoke('open_url', { url }),
   openSettings: () => invoke('open_settings'),
   diagnostics: () => invoke('diagnostics'),
+  showTour: () => invoke('show_tour'),
   clipboardText: () => invoke('clipboard_text'),
   weatherFind: (name, language) => invoke('weather_find', { name, language }),
 

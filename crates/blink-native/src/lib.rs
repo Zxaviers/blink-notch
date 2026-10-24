@@ -15,4 +15,5 @@ pub mod modules;
 #[cfg(windows)]
 pub mod platform;
 pub mod shell;
+pub mod tour;
 pub mod ui;
