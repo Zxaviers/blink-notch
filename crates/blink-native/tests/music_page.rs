@@ -371,3 +371,29 @@ fn a_passing_visit_to_the_desktop_does_not_flash_the_notch_open() {
     settle(&mut r.app);
     assert_eq!(mode(&mut r), "rest");
 }
+
+#[test]
+fn the_peek_for_a_new_song_shows_its_cover_and_not_a_music_note() {
+    let mut r = rig(None);
+    r.app.configure_modules(&[]);
+    r.app.pointer(PointerKind::Leave, 0.0, 0.0);
+    advance(&mut r.app, 600);
+    settle(&mut r.app);
+    let mut pixmap = tiny_skia::Pixmap::new(48, 48).unwrap();
+    pixmap.fill(tiny_skia::Color::from_rgba8(230, 40, 90, 255));
+    r.media.set(|s| {
+        s.title = "Cobalah Mengerti".into();
+        s.artist = "NOAH".into();
+        s.track += 1;
+        s.art = Some(Arc::new(blink_native::modules::music::Art { pixmap: pixmap.clone(), accent: blink_native::ui::theme::Rgb(230, 40, 90) }));
+    });
+    r.app.data_changed();
+    let peek = r.app.current_peek().expect("a new song peeks").clone();
+    assert!(peek.cover.is_some(), "with the cover in it");
+    advance(&mut r.app, 700);
+    r.app.render();
+    // The picture sits at the left of the peek: its middle is the cover's colour, not black.
+    let px = r.app.canvas().pm.pixel(((640.0 - 420.0) / 2.0 + 22.0 + 19.0) as u32, 36).unwrap();
+    assert!(px.red() > 150 && px.green() < 90, "the cover is drawn: {px:?}");
+    dump(&mut r.app, "peek-cover");
+}

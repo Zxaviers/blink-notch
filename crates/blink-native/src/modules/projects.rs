@@ -910,6 +910,7 @@ impl Module for ProjectsModule {
                 progress: None,
                 icon: Some(Icon::Folder),
                 accent: Some(VIOLET),
+                cover: None,
             }),
         ]
     }

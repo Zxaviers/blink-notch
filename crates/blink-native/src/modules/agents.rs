@@ -187,6 +187,7 @@ impl AgentsModule {
             progress: None,
             icon: Some(state_icon(a.state)),
             accent: Some(state_color(a.state, TEAL)),
+            cover: None,
         }
     }
 

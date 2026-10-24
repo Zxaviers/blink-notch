@@ -1352,12 +1352,17 @@ impl App {
             _ => Rgb(0x4e, 0xa8, 0xff),
         });
 
-        // The ring.
+        // The picture at the left: a song's cover, or a ring with a symbol in it.
         let (rx, rr) = (left + 19.0, 16.5);
         self.canvas.glow(rx, cy, 36.0, accent, alpha * 0.30);
-        self.canvas.arc(rx, cy, rr, 3.0, -90.0, 359.0, theme.fg, alpha * 0.16);
-        self.canvas.arc(rx, cy, rr, 3.0, -90.0, 360.0 * p.progress.unwrap_or(1.0).clamp(0.02, 1.0), accent, alpha);
-        self.canvas.icon(p.icon.unwrap_or(Icon::Alarm), rx, cy, 16.0, accent, alpha);
+        if let Some(cover) = &p.cover {
+            let size = 40.0;
+            self.canvas.image_rrect(rx - size / 2.0, cy - size / 2.0, size, size, 10.0, &cover.0.pixmap, alpha);
+        } else {
+            self.canvas.arc(rx, cy, rr, 3.0, -90.0, 359.0, theme.fg, alpha * 0.16);
+            self.canvas.arc(rx, cy, rr, 3.0, -90.0, 360.0 * p.progress.unwrap_or(1.0).clamp(0.02, 1.0), accent, alpha);
+            self.canvas.icon(p.icon.unwrap_or(Icon::Alarm), rx, cy, 16.0, accent, alpha);
+        }
 
         // The big number.
         let count_w = if p.count.is_empty() { 0.0 } else { self.canvas.measure(&mut self.fonts, Face::SansLight, 28.0, &p.count, 0.0) };

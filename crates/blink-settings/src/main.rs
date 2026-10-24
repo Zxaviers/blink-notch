@@ -151,6 +151,25 @@ fn open_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
     app.opener().open_url(url, None::<&str>).map_err(|_| "OPEN".to_string())
 }
 
+/// Send the notch a pretend agent, so the Agents page can be tried without any real agent (`remove` takes it away again).
+#[tauri::command]
+async fn agent_demo(state: String, title: String, remove: bool) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let request = if remove {
+            json!({ "cmd": "agent_remove", "id": "demo-agent" })
+        } else {
+            json!({ "cmd": "agent_update", "id": "demo-agent", "name": "Demo agent", "state": state, "title": title })
+        };
+        match ipc::request(&request) {
+            Ok(_) => Ok(()),
+            Err(IpcError::NotRunning) => Err("NOT_RUNNING".to_string()),
+            Err(IpcError::Failed(code)) => Err(code),
+        }
+    })
+    .await
+    .map_err(|_| "NOT_RUNNING".to_string())?
+}
+
 /// Ask the running notch to show its welcome tour again.
 #[tauri::command]
 async fn show_tour() -> Result<(), String> {
@@ -310,6 +329,7 @@ fn main() {
             diagnostics,
             weather_find,
             show_tour,
+            agent_demo,
             clipboard_text,
         ])
         // Closing the window ends the program, so no web engine stays behind.

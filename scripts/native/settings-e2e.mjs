@@ -234,6 +234,12 @@ try {
   await page.eval("(() => { const c = document.querySelectorAll('#main input[type=checkbox]')[1]; c.checked = false; c.dispatchEvent(new Event('change', { bubbles: true })) })()")
   const agentPeekSaved = await until(() => readJson('host.json')?.modules?.find((m) => m.id === 'agents')?.options?.peek === false ? true : null)
   check('the Agents options are saved with the page options', Boolean(agentPeekSaved))
+  await page.eval("document.querySelector('#main .btn.primary').click()") // Try it now
+  const demoThere = await until(async () => (((await pipeA.send({ cmd: 'agent_list' })).agents ?? []).some((x) => x.id === 'demo-agent') ? true : null))
+  check('"Try it now" sends a pretend agent to the running notch', Boolean(demoThere))
+  await page.eval("[...document.querySelectorAll('#main .btn')].find((b) => b.textContent === 'Remove the demo agent' || b.textContent === 'Hapus agen contoh').click()")
+  const demoGone = await until(async () => (((await pipeA.send({ cmd: 'agent_list' })).agents ?? []).length === 0 ? true : null))
+  check('and "Remove the demo agent" takes it away', Boolean(demoGone))
   check('and the page shows the commands to copy', await page.eval("document.querySelector('#main pre.code')?.textContent.includes('blinkctl agent') === true"))
   await page.eval("window.__openSection('weather')")
   await sleep(300)

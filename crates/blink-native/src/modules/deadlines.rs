@@ -804,6 +804,7 @@ impl Module for DeadlinesModule {
             progress: None,
             icon: Some(Icon::Alarm),
             accent: None,
+            cover: None,
         })
     }
 

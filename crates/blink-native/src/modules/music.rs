@@ -811,6 +811,7 @@ impl Module for MusicModule {
                         progress: None,
                         icon: Some(Icon::Music),
                         accent: Some(st.art.as_ref().map_or(VIOLET, |a| a.accent)),
+                        cover: st.art.clone().map(super::Cover),
                     }));
                 }
                 self.seen_track = Some(st.track);

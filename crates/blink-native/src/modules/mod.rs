@@ -70,6 +70,24 @@ pub struct PeekView {
     pub icon: Option<Icon>,
     /// The colour of the ring; None takes it from `urgency`.
     pub accent: Option<Rgb>,
+    /// A picture to show instead of `icon` (a song's cover).
+    pub cover: Option<Cover>,
+}
+
+/// A small picture, shared with whatever drew it first (compared by identity, not by pixels).
+#[derive(Clone)]
+pub struct Cover(pub std::sync::Arc<music::Art>);
+
+impl std::fmt::Debug for Cover {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Cover({}x{})", self.0.pixmap.width(), self.0.pixmap.height())
+    }
+}
+
+impl PartialEq for Cover {
+    fn eq(&self, other: &Cover) -> bool {
+        std::sync::Arc::ptr_eq(&self.0, &other.0)
+    }
 }
 
 /// Something a click or a key asks for.

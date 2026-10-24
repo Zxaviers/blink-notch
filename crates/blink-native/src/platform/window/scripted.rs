@@ -191,6 +191,7 @@ impl Runtime {
                     progress: v["progress"].as_f64().map(|p| p as f32),
                     icon: None,
                     accent: None,
+                    cover: None,
                 };
                 self.app.offer_peek(view, None);
             }

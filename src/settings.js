@@ -554,6 +554,23 @@ function agentsSection () {
     h('label', { class: 'check' },
       h('input', { type: 'checkbox', checked: options.peek !== false, onchange: (e) => setOptions('agents', { peek: e.target.checked }) }),
       t('agents.peek')),
+    h('h2', {}, t('agents.try')),
+    h('p', {}, t('agents.try.hint')),
+    h('div', { class: 'inline' },
+      h('button', {
+        class: 'btn primary', type: 'button',
+        onclick: async () => {
+          try {
+            await api.agentDemo('running', t('agents.try.running'))
+            setTimeout(() => api.agentDemo('input', t('agents.try.input')).catch(() => {}), 4000)
+            setTimeout(() => api.agentDemo('done', t('agents.try.done')).catch(() => {}), 11000)
+            out.set('ok', t('agents.try.started'))
+          } catch {
+            out.set('error', t('general.tour.failed'))
+          }
+        }
+      }, t('agents.try')),
+      h('button', { class: 'btn', type: 'button', onclick: () => api.agentDemo('', '', true).catch(() => {}) }, t('agents.try.remove'))),
     h('h2', {}, t('agents.example')),
     h('pre', { class: 'code' }, example),
     h('button', {

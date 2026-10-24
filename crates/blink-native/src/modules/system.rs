@@ -121,7 +121,7 @@ fn look(key: &str, urgency: &str) -> (Option<Icon>, Option<Rgb>) {
 
 fn view(code: &str, title: String, count: String, urgency: &'static str, priority: u8, key: &str, ttl_ms: Option<u64>, progress: Option<f32>) -> PeekView {
     let (icon, accent) = look(key, urgency);
-    PeekView { code: code.to_string(), title, count, urgency, priority, ttl_ms, key: Some(format!("system:{key}")), progress, icon, accent }
+    PeekView { code: code.to_string(), title, count, urgency, priority, ttl_ms, key: Some(format!("system:{key}")), progress, icon, accent, cover: None }
 }
 
 impl SystemModule {

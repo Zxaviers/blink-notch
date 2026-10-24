@@ -34,7 +34,7 @@ fn cfg(list: &[(&str, bool)]) -> Vec<ModuleConfig> {
 }
 
 fn peek(text: &str, priority: u8, key: Option<&str>, ttl: Option<u64>) -> PeekView {
-    PeekView { code: "X".into(), title: text.into(), count: "1".into(), urgency: "later", priority, ttl_ms: ttl, key: key.map(String::from), progress: None, icon: None, accent: None }
+    PeekView { code: "X".into(), title: text.into(), count: "1".into(), urgency: "later", priority, ttl_ms: ttl, key: key.map(String::from), progress: None, icon: None, accent: None, cover: None }
 }
 
 fn shown(app: &App) -> Option<String> {
