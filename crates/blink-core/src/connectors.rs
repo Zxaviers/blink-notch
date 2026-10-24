@@ -42,6 +42,8 @@ pub struct Connector {
     /// Checked against the agent's own documentation (false: written from what is known, say so).
     pub verified: bool,
     pub docs: Option<String>,
+    /// What to tell the person once it is connected, in plain words (restart the app, what to expect).
+    pub after: Option<String>,
     pub detect: Vec<String>,
     pub install: Install,
     /// From the user's own folder rather than shipped.
@@ -168,7 +170,7 @@ impl Connector {
             other => return Err(format!("unknown kind {other}")),
         };
         let docs = get("docs").filter(|d| d.to_ascii_lowercase().starts_with("https://"));
-        Ok(Connector { id, name, description: get("description").unwrap_or_default(), verified: v.get("verified").and_then(Value::as_bool).unwrap_or(false), docs, detect: strings(v.get("detect").unwrap_or(&Value::Null)), install, user })
+        Ok(Connector { id, name, description: get("description").unwrap_or_default(), verified: v.get("verified").and_then(Value::as_bool).unwrap_or(false), docs, after: get("after").filter(|a| !a.is_empty()), detect: strings(v.get("detect").unwrap_or(&Value::Null)), install, user })
     }
 
     /// What can be copied instead of connected (the snippet itself, or the MCP entry for a file Blink does not know).

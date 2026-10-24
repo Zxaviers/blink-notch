@@ -2,9 +2,13 @@
   "id": "opencode",
   "name": "OpenCode",
   "description": "A plugin in ~/.config/opencode/plugins: running, needs your permission, finished, error. Written from OpenCode's documented plugin events; tell us if one does not fire.",
+  "after": "Done. Restart OpenCode: its sessions will show up on the notch.",
   "verified": false,
   "docs": "https://opencode.ai/docs/plugins/",
-  "detect": ["%USERPROFILE%\\.config\\opencode", "%APPDATA%\\opencode"],
+  "detect": [
+    "%USERPROFILE%\\.config\\opencode",
+    "%APPDATA%\\opencode"
+  ],
   "install": {
     "kind": "file",
     "path": "%USERPROFILE%\\.config\\opencode\\plugins\\blink-agent.js",

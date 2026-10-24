@@ -2,12 +2,17 @@
   "id": "claude-code",
   "name": "Claude Code",
   "description": "Hooks in ~/.claude/settings.json: shows each session (by project), peeks when it needs a permission or an answer, and when it finishes.",
+  "after": "Done. Start a new Claude Code session (or restart the one that is open) and it will show up on the notch: you will see when it is working, and get a heads-up when it needs you or finishes.",
   "verified": true,
   "docs": "https://code.claude.com/docs/en/hooks",
-  "detect": ["%USERPROFILE%\\.claude"],
+  "detect": [
+    "%USERPROFILE%\\.claude"
+  ],
   "install": {
     "kind": "json-hooks",
-    "files": ["%USERPROFILE%\\.claude\\settings.json"],
+    "files": [
+      "%USERPROFILE%\\.claude\\settings.json"
+    ],
     "create_if_missing": true,
     "command": "{{blinkctl}} hook claude",
     "events": {

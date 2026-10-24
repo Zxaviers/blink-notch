@@ -396,3 +396,56 @@ textarea {
   word-break: break-all;
   user-select: all;
 }
+
+.connector.connected {
+  border-color: #34d399;
+}
+.connector .next {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--line);
+}
+.live {
+  margin: 0 0 14px;
+}
+.live-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.live-row .meta {
+  color: var(--dim);
+}
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--dim);
+}
+.dot.running {
+  background: #4ea8ff;
+}
+.dot.input {
+  background: #fbbf24;
+}
+.dot.done {
+  background: #34d399;
+}
+.dot.error {
+  background: #f87171;
+}
+details.more {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+details.more summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+details.more[open] summary {
+  margin-bottom: 8px;
+}

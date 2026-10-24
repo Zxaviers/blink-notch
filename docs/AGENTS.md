@@ -6,7 +6,9 @@ Nothing is stored on disk and nothing leaves the PC: reports travel over the not
 
 ## Connecting an agent
 
-Open **Blink settings, Agents, Connect your agents**. Blink lists the agents it knows how to connect, says which it found on this PC, and connects or disconnects each with one button. Connect changes that agent's own settings only when you press it, keeps a backup of the file the first time (`settings.json.blink-backup`), leaves everything else in the file alone, and Disconnect removes only what Blink added.
+Open **Blink settings, Agents**. The apps Blink finds on this PC are listed first, each with one **Connect** button (or **Connect all**); once connected, the card says in plain words what to do next (restart the app, what to expect), and the "Reporting right now" list at the top shows an agent the moment it says something, which is the proof that the connection works. Apps it did not find, and the manual ways, are under "Other apps and manual ways". Blink copies `blinkctl.exe` to its own `bin` folder in the data folder and points the agents at that copy, so a connection survives Blink being updated or moved.
+
+In more detail: Blink lists the agents it knows how to connect to. Blink lists the agents it knows how to connect, says which it found on this PC, and connects or disconnects each with one button. Connect changes that agent's own settings only when you press it, keeps a backup of the file the first time (`settings.json.blink-backup`), leaves everything else in the file alone, and Disconnect removes only what Blink added.
 
 There is no single way to make every agent report, so Blink has four, from exact to universal:
 

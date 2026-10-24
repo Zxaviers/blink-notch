@@ -57,11 +57,11 @@ pub fn card(step: usize, lang: Lang) -> Card {
             icon: Icon::Music,
         },
         _ => Card {
-            title: if id { "Agen AI" } else { "AI agents" },
+            title: if id { "Asisten AI" } else { "AI assistants" },
             body: if id {
-                "Beri tahu aku apa yang dikerjakan agen AI lewat perintah blinkctl, dan aku mengintip saat ia butuh kamu atau selesai. Contohnya ada di docs/AGENTS.md."
+                "Pakai Claude Code, Gemini, Cursor atau asisten AI lain? Buka Pengaturan Blink (tiga titik), lalu Agen, dan tekan Hubungkan. Setelah itu aku memberi tahu saat ia bekerja, butuh kamu, atau selesai."
             } else {
-                "Tell me what an AI agent is doing with the blinkctl command and I will peek when it needs you or finishes. Examples are in docs/AGENTS.md."
+                "Using Claude Code, Gemini, Cursor or another AI assistant? Open Blink settings (the three dots), then Agents, and press Connect. After that I tell you when it is working, needs you, or has finished."
             },
             icon: Icon::Message,
         },

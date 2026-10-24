@@ -155,11 +155,26 @@ fn open_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
 
 /// Where `blinkctl.exe` is: next to this program.
 fn connector_ctx() -> Result<blink_core::connectors::Ctx, String> {
-    let ctl = std::env::current_exe().map_err(|_| "BLINKCTL_MISSING")?.with_file_name("blinkctl.exe");
-    if !ctl.exists() {
+    let ctl = stable_blinkctl()?;
+    Ok(blink_core::connectors::Ctx::new(ctl.clone(), short_path(&ctl)))
+}
+
+/// `blinkctl.exe` is copied to a folder of its own in Blink's data (kept up to date), and agents are pointed at that copy: a
+/// connected agent keeps working when Blink is updated, moved or rebuilt, which a path into the program's own folder would not.
+fn stable_blinkctl() -> Result<std::path::PathBuf, String> {
+    let source = std::env::current_exe().map_err(|_| "BLINKCTL_MISSING")?.with_file_name("blinkctl.exe");
+    if !source.exists() {
         return Err("BLINKCTL_MISSING".to_string());
     }
-    Ok(blink_core::connectors::Ctx::new(ctl.clone(), short_path(&ctl)))
+    let dir = store()?.dir().join("bin");
+    let _ = std::fs::create_dir_all(&dir);
+    let copy = dir.join("blinkctl.exe");
+    let current = std::fs::metadata(&copy).ok().zip(std::fs::metadata(&source).ok()).is_some_and(|(c, s)| c.len() == s.len() && c.modified().ok() >= s.modified().ok());
+    if !current {
+        // A copy an agent is running right now cannot be replaced: then the one there is used.
+        let _ = std::fs::copy(&source, &copy);
+    }
+    Ok(if copy.exists() { copy } else { source })
 }
 
 /// The 8.3 form of a path, when Windows has one (a hook command without a space in it runs the same in any shell).
@@ -196,11 +211,22 @@ fn connectors_list() -> Result<Vec<Value>, String> {
             json!({
                 "id": c.id, "name": c.name, "description": c.description, "verified": c.verified, "docs": c.docs, "kind": kind,
                 "user": c.user, "installable": c.installable(), "found": st.found, "connected": st.connected,
-                "target": st.target.map(|t| t.to_string_lossy().to_string()),
+                "after": c.after, "target": st.target.map(|t| t.to_string_lossy().to_string()),
                 "snippet": ctx.as_ref().and_then(|x| c.snippet(x)),
             })
         })
         .collect())
+}
+
+/// Which agents are reporting to the notch right now (for the page to show that a connection works).
+#[tauri::command]
+async fn agents_now() -> Value {
+    tauri::async_runtime::spawn_blocking(|| match ipc::request(&json!({ "cmd": "agent_list" })) {
+        Ok(answer) => json!({ "running": true, "agents": answer["agents"] }),
+        Err(_) => json!({ "running": false, "agents": [] }),
+    })
+    .await
+    .unwrap_or_else(|_| json!({ "running": false, "agents": [] }))
 }
 
 /// Connect (write what the connector says) or disconnect one agent; the answer says what was changed.
@@ -396,6 +422,7 @@ fn main() {
             agent_demo,
             connectors_list,
             connector_set,
+            agents_now,
             clipboard_text,
         ])
         // Closing the window ends the program, so no web engine stays behind.

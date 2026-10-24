@@ -582,13 +582,76 @@ function musicSection () {
       t('music.peek')))
 }
 
-/** The list of agents Blink can connect to: one card each, filled in when the answer comes. */
-function connectorList (out) {
-  const box = h('div', { class: 'connectors' }, h('p', { class: 'hint' }, t('connectors.loading')))
-  const errorOf = (e) => (typeof e === 'string' && e === 'BLINKCTL_MISSING' ? t('connectors.missing') : String(e))
-  const reload = () => api.connectorsList().then((list) => {
+/** Agents reporting to the notch right now, refreshed while the page is open: the proof, in plain sight, that a connection works. */
+let agentsTimer = null
+
+function stopAgentsTimer () {
+  if (agentsTimer) {
+    clearInterval(agentsTimer)
+    agentsTimer = null
+  }
+}
+
+function liveAgents () {
+  const box = h('div', { class: 'live' })
+  const paint = (answer) => {
     clear(box)
-    for (const c of list) {
+    if (!answer.running) {
+      box.append(h('p', { class: 'hint' }, t('agents.live.off')))
+      return
+    }
+    if (!answer.agents.length) {
+      box.append(h('p', { class: 'hint' }, t('agents.live.none')))
+      return
+    }
+    box.append(h('p', { class: 'label' }, t('agents.live.title')), ...answer.agents.map((a) => h('div', { class: 'live-row' },
+      h('span', { class: `dot ${a.state}` }),
+      h('span', { class: 'name' }, a.name),
+      h('span', { class: 'meta' }, `${t(`agents.state.${a.state}`)}${a.title ? ` \u00b7 ${a.title}` : ''}`))))
+  }
+  const tick = () => api.agentsNow().then(paint).catch(() => {})
+  tick()
+  stopAgentsTimer()
+  agentsTimer = setInterval(tick, 3000)
+  return box
+}
+
+/**
+ * The agents Blink can connect to, in plain words: the ones found on this PC come first, each with one button; the rest wait under
+ * "other apps". Filled in when the answer comes.
+ */
+function connectorsUi (out) {
+  const found = h('div', { class: 'connectors' }, h('p', { class: 'hint' }, t('connectors.loading')))
+  const other = h('div', { class: 'connectors' })
+  const allButton = h('button', { class: 'btn primary', type: 'button', hidden: true }, t('connectors.all'))
+  const errorOf = (e) => (typeof e === 'string' && e === 'BLINKCTL_MISSING' ? t('connectors.missing') : String(e))
+  const copy = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      out.set('ok', t('general.diagnostics.done'))
+    } catch {
+      out.set('error', t('general.diagnostics.failed'))
+    }
+  }
+  const reload = () => api.connectorsList().then((list) => {
+    clear(found)
+    clear(other)
+    const here = list.filter((c) => c.installable && (c.found || c.connected))
+    const rest = list.filter((c) => !here.includes(c))
+    const todo = here.filter((c) => !c.connected)
+    allButton.hidden = todo.length < 2
+    allButton.onclick = async () => {
+      for (const c of todo) {
+        try {
+          await api.connectorSet(c.id, true)
+        } catch (e) {
+          out.set('error', `${c.name}: ${errorOf(e)}`)
+        }
+      }
+      reload()
+    }
+    if (!here.length) found.append(h('p', { class: 'hint' }, t('connectors.none')))
+    const card = (c, big) => {
       const state = c.connected ? 'connected' : c.found ? 'found' : c.installable ? 'absent' : 'copy'
       const buttons = []
       if (c.installable && (c.found || c.connected)) {
@@ -596,7 +659,9 @@ function connectorList (out) {
           class: c.connected ? 'btn' : 'btn primary', type: 'button',
           onclick: async () => {
             try {
-              out.set('ok', await api.connectorSet(c.id, !c.connected))
+              out.set('ok', '')
+              await api.connectorSet(c.id, !c.connected)
+              out.set('ok', t(c.connected ? 'connectors.disconnected' : 'connectors.connected', { name: c.name }))
             } catch (e) {
               out.set('error', errorOf(e))
             }
@@ -604,39 +669,30 @@ function connectorList (out) {
           }
         }, t(c.connected ? 'connectors.disconnect' : 'connectors.connect')))
       }
-      if (c.snippet) {
-        buttons.push(h('button', {
-          class: 'btn', type: 'button',
-          onclick: async () => {
-            try {
-              await navigator.clipboard.writeText(c.snippet)
-              out.set('ok', t('general.diagnostics.done'))
-            } catch {
-              out.set('error', t('general.diagnostics.failed'))
-            }
-          }
-        }, t('connectors.copy')))
-      }
-      if (c.docs) buttons.push(h('button', { class: 'btn', type: 'button', onclick: () => api.openUrl(c.docs).catch(() => {}) }, t('connectors.docs')))
-      box.append(h('div', { class: `connector ${state}` },
+      // Copying is for what Blink cannot write for the person: an app that is not here, or a way with nothing to connect.
+      if (c.snippet && !(c.installable && (c.found || c.connected))) buttons.push(h('button', { class: 'btn', type: 'button', onclick: () => copy(c.snippet) }, t('connectors.copy')))
+      if (c.docs && !big) buttons.push(h('button', { class: 'btn', type: 'button', onclick: () => api.openUrl(c.docs).catch(() => {}) }, t('connectors.docs')))
+      return h('div', { class: `connector ${state}` },
         h('div', { class: 'connector-head' },
           h('span', { class: 'name' }, c.name),
           h('span', { class: `badge ${state}` }, t(`connectors.state.${state}`)),
+          !c.verified && c.installable && h('span', { class: 'badge', title: t('connectors.unverified') }, t('connectors.experimental')),
           c.user && h('span', { class: 'badge' }, t('connectors.yours'))),
-        h('p', { class: 'meta' }, c.description),
-        !c.verified && c.installable && h('p', { class: 'hint' }, t('connectors.unverified')),
-        c.connected && c.target && h('p', { class: 'hint' }, c.target),
-        h('div', { class: 'inline' }, buttons)))
+        c.connected && c.after ? h('p', { class: 'next' }, c.after) : h('p', { class: 'meta' }, c.description),
+        h('div', { class: 'inline' }, buttons))
     }
-  }).catch((e) => { clear(box).append(h('p', { class: 'status error' }, errorOf(e))) })
+    here.forEach((c) => found.append(card(c, true)))
+    rest.forEach((c) => other.append(card(c, false)))
+  }).catch((e) => { clear(found).append(h('p', { class: 'status error' }, errorOf(e))) })
   reload()
-  return box
+  return { found, other, allButton }
 }
 
-/** AI agents report to the notch with `blinkctl`; here: the two options and the commands to copy. */
+/** AI agents: see what they are doing from the notch. Connect the apps with one button each; the rest is for those who want it. */
 function agentsSection () {
   const options = optionsOf('agents')
   const out = status()
+  const ui = connectorsUi(out)
   const example = [
     'blinkctl agent --id claude-1 --name "Claude Code" --state running --title "Refactor the parser"',
     'blinkctl agent --id claude-1 --state input --title "Run the tests?"',
@@ -646,48 +702,47 @@ function agentsSection () {
   return h('section', {},
     h('h1', {}, t('agents.title')),
     h('p', {}, t('agents.intro')),
-    h('label', { class: 'check' },
-      h('input', { type: 'checkbox', checked: options.accept !== false, onchange: (e) => setOptions('agents', { accept: e.target.checked }) }),
-      t('agents.accept')),
-    h('p', { class: 'hint' }, t('agents.accept.hint')),
-    h('label', { class: 'check' },
-      h('input', { type: 'checkbox', checked: options.peek !== false, onchange: (e) => setOptions('agents', { peek: e.target.checked }) }),
-      t('agents.peek')),
+    liveAgents(),
     h('h2', {}, t('connectors.title')),
-    h('p', {}, t('connectors.intro')),
-    connectorList(out),
-    h('h2', {}, t('agents.try')),
-    h('p', {}, t('agents.try.hint')),
-    h('div', { class: 'inline' },
-      h('button', {
-        class: 'btn primary', type: 'button',
-        onclick: async () => {
-          try {
-            await api.agentDemo('running', t('agents.try.running'))
-            setTimeout(() => api.agentDemo('input', t('agents.try.input')).catch(() => {}), 4000)
-            setTimeout(() => api.agentDemo('done', t('agents.try.done')).catch(() => {}), 11000)
-            out.set('ok', t('agents.try.started'))
-          } catch {
-            out.set('error', t('general.tour.failed'))
-          }
-        }
-      }, t('agents.try')),
-      h('button', { class: 'btn', type: 'button', onclick: () => api.agentDemo('', '', true).catch(() => {}) }, t('agents.try.remove'))),
-    h('h2', {}, t('agents.example')),
-    h('pre', { class: 'code' }, example),
-    h('button', {
-      class: 'btn', type: 'button',
-      onclick: async () => {
-        try {
-          await navigator.clipboard.writeText(example)
-          out.set('ok', t('general.diagnostics.done'))
-        } catch {
-          out.set('error', t('general.diagnostics.failed'))
-        }
-      }
-    }, t('agents.copy')),
+    ui.allButton,
+    ui.found,
     out,
-    h('p', { class: 'hint' }, t('agents.docs')))
+    h('details', { class: 'more' },
+      h('summary', {}, t('connectors.more')),
+      h('p', { class: 'hint' }, t('connectors.more.hint')),
+      ui.other),
+    h('details', { class: 'more' },
+      h('summary', {}, t('agents.try')),
+      h('p', {}, t('agents.try.hint')),
+      h('div', { class: 'inline' },
+        h('button', {
+          class: 'btn primary', type: 'button',
+          onclick: async () => {
+            try {
+              await api.agentDemo('running', t('agents.try.running'))
+              setTimeout(() => api.agentDemo('input', t('agents.try.input')).catch(() => {}), 4000)
+              setTimeout(() => api.agentDemo('done', t('agents.try.done')).catch(() => {}), 11000)
+              out.set('ok', t('agents.try.started'))
+            } catch {
+              out.set('error', t('general.tour.failed'))
+            }
+          }
+        }, t('agents.try')),
+        h('button', { class: 'btn', type: 'button', onclick: () => api.agentDemo('', '', true).catch(() => {}) }, t('agents.try.remove')))),
+    h('details', { class: 'more' },
+      h('summary', {}, t('agents.options')),
+      h('label', { class: 'check' },
+        h('input', { type: 'checkbox', checked: options.accept !== false, onchange: (e) => setOptions('agents', { accept: e.target.checked }) }),
+        t('agents.accept')),
+      h('p', { class: 'hint' }, t('agents.accept.hint')),
+      h('label', { class: 'check' },
+        h('input', { type: 'checkbox', checked: options.peek !== false, onchange: (e) => setOptions('agents', { peek: e.target.checked }) }),
+        t('agents.peek'))),
+    h('details', { class: 'more' },
+      h('summary', {}, t('agents.example')),
+      h('pre', { class: 'code' }, example),
+      h('button', { class: 'btn', type: 'button', onclick: async () => { try { await navigator.clipboard.writeText(example); out.set('ok', t('general.diagnostics.done')) } catch { out.set('error', t('general.diagnostics.failed')) } } }, t('agents.copy')),
+      h('p', { class: 'hint' }, t('agents.docs'))))
 }
 
 function eventsSection () {
@@ -889,6 +944,7 @@ function openSection (name) {
 }
 
 function renderMain () {
+  stopAgentsTimer()
   clear(main).append(BUILDERS[section]())
 }
 
