@@ -92,6 +92,8 @@ pub enum Action {
 pub enum Effect {
     OpenUrl(String),
     OpenSettings,
+    /// Blink's own settings, on one of their sections ("weather").
+    OpenSettingsAt(String),
     RefreshFeeds,
     /// The panel's content changed size or data; redraw.
     Redraw,

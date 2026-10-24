@@ -23,6 +23,8 @@ pub enum Lyrics {
     Plain(Vec<String>),
     /// An instrumental, or nothing found.
     None,
+    /// The lyrics service could not be reached (offline, blocked): worth trying again.
+    Unavailable,
 }
 
 /// What to look for.
@@ -138,7 +140,7 @@ pub fn clean_title(title: &str) -> String {
     t.trim().to_string()
 }
 
-#[derive(serde::Deserialize, Default)]
+#[derive(serde::Deserialize, Default, Clone)]
 #[serde(default)]
 struct Entry {
     #[serde(rename = "syncedLyrics")]
@@ -146,6 +148,12 @@ struct Entry {
     #[serde(rename = "plainLyrics")]
     plain: Option<String>,
     instrumental: bool,
+    /// Length of the song in seconds.
+    duration: Option<f64>,
+    #[serde(rename = "artistName")]
+    artist: Option<String>,
+    #[serde(rename = "trackName")]
+    track: Option<String>,
 }
 
 fn lyrics_from(entry: &Entry) -> Lyrics {
@@ -177,6 +185,101 @@ pub fn parse_response(body: &str) -> Lyrics {
     Lyrics::None
 }
 
+/// An artist as a video site shows it, with what a lyrics search does not want taken off:
+/// "Someone - Topic", "SomeoneVEVO".
+pub fn clean_artist(artist: &str) -> String {
+    let mut a = artist.trim().to_string();
+    for suffix in [" - Topic", " \u{2013} Topic", "VEVO", "Vevo"] {
+        if let Some(stripped) = a.strip_suffix(suffix) {
+            a = stripped.trim_end().to_string();
+        }
+    }
+    a
+}
+
+/// The first of several artists: "A, B", "A & B", "A feat. B", "A x B".
+pub fn first_artist(artist: &str) -> String {
+    let lower = artist.to_lowercase();
+    let mut cut = artist.len();
+    for sep in [",", " & ", " feat.", " feat ", " ft.", " ft ", " x ", ";", " and ", " with "] {
+        if let Some(at) = lower.find(sep) {
+            cut = cut.min(at);
+        }
+    }
+    artist[..cut].trim().to_string()
+}
+
+fn squash(s: &str) -> String {
+    s.chars().filter(|c| c.is_alphanumeric()).flat_map(char::to_lowercase).collect()
+}
+
+fn similar(a: &str, b: &str) -> bool {
+    let (a, b) = (squash(a), squash(b));
+    !a.is_empty() && !b.is_empty() && (a.contains(&b) || b.contains(&a))
+}
+
+/// From a list of search results, the lyrics that most likely belong to this song: synced ones over plain,
+/// a length within a few seconds, the same artist. A result that matches neither the artist nor the length
+/// is somebody else's song and is not taken.
+fn choose(entries: &[Entry], q: &Query) -> Lyrics {
+    let mut best: Option<(i32, Lyrics)> = None;
+    for e in entries {
+        let found = lyrics_from(e);
+        if found == Lyrics::None {
+            continue;
+        }
+        let mut score = if matches!(found, Lyrics::Synced(_)) { 100 } else { 0 };
+        let artist_ok = e.artist.as_deref().is_some_and(|a| similar(a, &q.artist) || similar(a, &first_artist(&clean_artist(&q.artist))));
+        let near = match (e.duration, q.duration_s) {
+            (Some(d), Some(want)) => {
+                let off = (d - f64::from(want)).abs();
+                if off <= 3.0 {
+                    2
+                } else if off <= 8.0 {
+                    1
+                } else if off > 20.0 {
+                    -1
+                } else {
+                    0
+                }
+            }
+            _ => 0,
+        };
+        if artist_ok {
+            score += 40;
+        }
+        score += match near {
+            2 => 50,
+            1 => 20,
+            -1 => -60,
+            _ => 0,
+        };
+        if e.track.as_deref().is_some_and(|t| similar(t, &clean_title(&q.title))) {
+            score += 15;
+        }
+        // Nothing ties it to this song: leave it.
+        if !artist_ok && near < 1 {
+            continue;
+        }
+        if best.as_ref().is_none_or(|(s, _)| score > *s) {
+            best = Some((score, found));
+        }
+    }
+    best.map_or(Lyrics::None, |(_, l)| l)
+}
+
+/// The best lyrics in a `/api/search` answer for this song.
+pub fn parse_search(body: &str, q: &Query) -> Lyrics {
+    serde_json::from_str::<Vec<Entry>>(body).map(|list| choose(&list, q)).unwrap_or(Lyrics::None)
+}
+
+enum Got {
+    Body(String),
+    NotFound,
+    /// No answer at all (offline, blocked, a bad certificate).
+    Failed,
+}
+
 /// The real source: lrclib.net over HTTPS.
 pub struct LrcLib {
     agent: ureq::Agent,
@@ -200,7 +303,7 @@ impl LrcLib {
         LrcLib { agent: config.into() }
     }
 
-    fn get(&self, path: &str, params: &[(&str, String)]) -> Option<String> {
+    fn get(&self, path: &str, params: &[(&str, String)]) -> Got {
         let mut url = String::from("https://lrclib.net");
         url.push_str(path);
         let query = url::form_urlencoded::Serializer::new(String::new()).extend_pairs(params.iter().map(|(k, v)| (*k, v.as_str()))).finish();
@@ -212,38 +315,82 @@ impl LrcLib {
                 if std::env::var_os("BLINK_MEDIA_DEBUG").is_some() {
                     eprintln!("lrclib: {e}");
                 }
-                return None;
+                return Got::Failed;
             }
         };
         if resp.status().as_u16() != 200 {
             if std::env::var_os("BLINK_MEDIA_DEBUG").is_some() {
-                eprintln!("lrclib: status {}", resp.status());
+                eprintln!("lrclib: status {} for {path}", resp.status());
             }
-            return None;
+            return Got::NotFound;
         }
-        resp.into_body().with_config().limit(2_000_000).read_to_string().ok()
+        match resp.into_body().with_config().limit(2_000_000).read_to_string() {
+            Ok(body) => Got::Body(body),
+            Err(_) => Got::Failed,
+        }
     }
 }
 
 impl LyricsSource for LrcLib {
     fn fetch(&self, q: &Query) -> Lyrics {
-        let title = clean_title(&q.title);
-        let mut params = vec![("artist_name", q.artist.clone()), ("track_name", title.clone())];
-        if !q.album.is_empty() {
-            params.push(("album_name", q.album.clone()));
+        // Titles and artists as the player shows them are often not what the lyrics are filed under
+        // ("Song (Official Video)", "Artist - Topic", "A, B"): try the likely spellings.
+        let mut titles = vec![clean_title(&q.title)];
+        if let Some((before, _)) = titles[0].split_once(" - ") {
+            titles.push(before.trim().to_string());
         }
-        if let Some(d) = q.duration_s {
-            params.push(("duration", d.to_string()));
+        let artist = clean_artist(&q.artist);
+        let mut artists = vec![artist.clone()];
+        let first = first_artist(&artist);
+        if first != artist && !first.is_empty() {
+            artists.push(first);
         }
-        if let Some(body) = self.get("/api/get", &params) {
-            let found = parse_response(&body);
-            if found != Lyrics::None {
-                return found;
+        let mut reached = false;
+        let mut note = |got: &Got| {
+            if !matches!(got, Got::Failed) {
+                reached = true;
+            }
+        };
+
+        // 1. The exact lookup, with the album and the length, then without them.
+        let pairs: Vec<(String, String)> = titles.iter().flat_map(|t| artists.iter().map(move |a| (t.clone(), a.clone()))).take(3).collect();
+        for (t, a) in pairs {
+            let mut params = vec![("artist_name", a), ("track_name", t)];
+            if !q.album.is_empty() {
+                params.push(("album_name", q.album.clone()));
+            }
+            if let Some(d) = q.duration_s {
+                params.push(("duration", d.to_string()));
+            }
+            for attempt in [params.clone(), params[..2].to_vec()] {
+                let got = self.get("/api/get", &attempt);
+                note(&got);
+                if let Got::Body(body) = &got {
+                    let found = parse_response(body);
+                    if found != Lyrics::None {
+                        return found;
+                    }
+                }
             }
         }
-        // No exact match (the album or length differs): search by words.
-        let search = [("q", format!("{} {}", q.artist, title))];
-        self.get("/api/search", &search).map(|b| parse_response(&b)).unwrap_or(Lyrics::None)
+        // 2. A search, by the fields and then by words, taking only what fits this song.
+        let (t, a) = (titles[0].clone(), artists[0].clone());
+        let searches = [vec![("track_name", t.clone()), ("artist_name", a.clone())], vec![("q", format!("{a} {t}"))], vec![("q", t.clone())]];
+        for params in searches {
+            let got = self.get("/api/search", &params);
+            note(&got);
+            if let Got::Body(body) = &got {
+                let found = parse_search(body, q);
+                if found != Lyrics::None {
+                    return found;
+                }
+            }
+        }
+        if reached {
+            Lyrics::None
+        } else {
+            Lyrics::Unavailable
+        }
     }
 }
 
@@ -306,4 +453,39 @@ mod tests {
             other => panic!("expected synced lyrics, got {other:?}"),
         }
     }
+
+    fn entry(artist: &str, track: &str, duration: f64, synced: bool) -> String {
+        let synced = if synced { r#""[00:01.00]hello""# } else { "null" };
+        format!(r#"{{"artistName":"{artist}","trackName":"{track}","duration":{duration},"plainLyrics":"hello","syncedLyrics":{synced}}}"#)
+    }
+
+    fn query(artist: &str, title: &str, duration: Option<u32>) -> Query {
+        Query { artist: artist.into(), title: title.into(), album: String::new(), duration_s: duration }
+    }
+
+    #[test]
+    fn artists_lose_the_labels_video_sites_add_and_lists_shrink_to_the_first() {
+        assert_eq!(clean_artist("Someone - Topic"), "Someone");
+        assert_eq!(clean_artist("SomeoneVEVO"), "Someone");
+        assert_eq!(first_artist("A, B"), "A");
+        assert_eq!(first_artist("A & B"), "A");
+        assert_eq!(first_artist("A feat. B"), "A");
+        assert_eq!(first_artist("Tom Odell"), "Tom Odell");
+    }
+
+    #[test]
+    fn a_search_takes_the_result_that_fits_the_song_and_not_a_stranger() {
+        let q = query("Lumen Coast", "Paper Sky", Some(216));
+        // Wrong artist and wrong length: somebody else's song.
+        let stranger = format!("[{}]", entry("Other Band", "Paper Sky", 120.0, true));
+        assert_eq!(parse_search(&stranger, &q), Lyrics::None);
+        // The right artist wins even without a matching length; synced beats plain.
+        let list = format!("[{},{},{}]", entry("Other Band", "Paper Sky", 120.0, true), entry("Lumen Coast", "Paper Sky", 230.0, false), entry("Lumen Coast", "Paper Sky (live)", 217.0, true));
+        assert!(matches!(parse_search(&list, &q), Lyrics::Synced(_)));
+        // No artist match but the length is exact: taken (the player's artist name may be a channel).
+        let by_length = format!("[{}]", entry("Lumen Coast Official", "Paper Sky", 216.0, true));
+        assert!(matches!(parse_search(&by_length, &q), Lyrics::Synced(_)));
+        assert!(matches!(parse_search(&format!("[{}]", entry("Someone", "Paper Sky", 217.0, true)), &q), Lyrics::Synced(_)));
+    }
 }
+

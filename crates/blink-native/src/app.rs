@@ -23,6 +23,8 @@ pub enum AppEffect {
     OpenSettings,
     /// Blink's own settings (the button at the top right).
     OpenAppSettings,
+    /// Blink's own settings, on this section.
+    OpenSettingsAt(String),
     /// Open a file or folder.
     OpenPath(String),
     /// Show a file in its folder.
@@ -369,6 +371,7 @@ impl App {
             match e {
                 Effect::OpenUrl(u) => self.effects.push(AppEffect::OpenUrl(u)),
                 Effect::OpenSettings => self.effects.push(AppEffect::OpenSettings),
+                Effect::OpenSettingsAt(section) => self.effects.push(AppEffect::OpenSettingsAt(section)),
                 Effect::RefreshFeeds => self.effects.push(AppEffect::RefreshFeeds),
                 Effect::Redraw => {}
                 Effect::Announce(text) => self.effects.push(AppEffect::Announce(text)),
@@ -589,9 +592,12 @@ impl App {
         }
         if over {
             if self.shell.mode() != Mode::Open {
-                self.active = i;
+                // Open first, then point the open panel at the Projects page (while closed, the page follows what
+                // the pill shows, which is not what a dragged file is for).
                 self.refresh_panel_height();
                 self.shell.click(now);
+                self.active = i;
+                self.refresh_panel_height();
             } else {
                 self.switch_to(i);
             }

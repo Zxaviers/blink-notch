@@ -488,6 +488,7 @@ impl Runtime {
                 }
                 AppEffect::OpenSettings => self.open_settings("feeds"),
                 AppEffect::OpenAppSettings => self.open_settings("general"),
+                AppEffect::OpenSettingsAt(section) => self.open_settings(&section),
                 AppEffect::RefreshFeeds => self.effects_log.push("refresh_feeds".into()),
                 AppEffect::Toast { title, body, url } => {
                     if self.control {
@@ -845,6 +846,11 @@ impl Runtime {
                 },
                 "reload_local" => {
                     self.app.reload_local_events();
+                    Ok(json!({}))
+                }
+                "reload_host" => {
+                    self.reload_host();
+                    self.dirty = true;
                     Ok(json!({}))
                 }
                 "set_hotkey" => match self.register_hotkey(v["accelerator"].as_str().unwrap_or("")) {
@@ -1608,9 +1614,15 @@ pub fn run(opts: Options) -> Result<(), String> {
         Some(fake) => (fake.clone(), std::sync::Arc::new(FakeLyrics)),
         None => (super::media::WinMedia::start(media_wake.clone()), std::sync::Arc::new(blink_core::lyrics::LrcLib::new())),
     };
+    // The weather comes from the internet; scripted runs get a stand-in that always says the same.
+    let weather_source: std::sync::Arc<dyn blink_core::weather::WeatherSource> = if real_media {
+        std::sync::Arc::new(blink_core::weather::OpenMeteo::new())
+    } else {
+        crate::modules::clock::FakeWeather::new()
+    };
     let modules: Vec<Box<dyn Module>> = vec![
-        // The pages in the order they turn: time and calendar, then deadlines, then the controls, then music and projects.
-        Box::new(ClockModule::new()),
+        // The pages in the order they turn: time and weather/calendar, then deadlines, then the controls, then music and projects.
+        Box::new(ClockModule::new().with_weather(weather_source, media_wake.clone())),
         Box::new(DeadlinesModule::new(source)),
         Box::new(ControlsModule::new(controls_backend)),
         Box::new(MusicModule::new(media_backend, lyrics_source, media_wake)),

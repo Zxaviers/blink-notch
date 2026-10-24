@@ -206,3 +206,42 @@ fn with_nothing_playing_the_page_says_so() {
     assert!(n.iter().any(|n| n == "Nothing playing"), "{n:?}");
     assert!(!n.iter().any(|n| n == "Pause" || n == "Play"));
 }
+
+/// Fails the first time (the service cannot be reached), then answers.
+struct Flaky(AtomicUsize);
+
+impl LyricsSource for Flaky {
+    fn fetch(&self, _query: &Query) -> Lyrics {
+        if self.0.fetch_add(1, Ordering::SeqCst) == 0 { Lyrics::Unavailable } else { synced() }
+    }
+}
+
+#[test]
+fn when_the_lyrics_service_cannot_be_reached_a_click_asks_again() {
+    let media = FakeMedia::new(WALL_BASE);
+    let source = Arc::new(Flaky(AtomicUsize::new(0)));
+    let modules: Vec<Box<dyn Module>> = vec![Box::new(DeadlinesModule::new(Box::new(DemoSource::new(WALL_BASE)))), Box::new(MusicModule::new(media, source.clone(), Arc::new(|| {})))];
+    let mut app = App::new(Clock::manual(WALL_BASE), normalize_settings(None), tz(), 1.0, "en", modules).expect("app");
+    app.tick();
+    open_by_hover(&mut app);
+    app.switch_to(1);
+    settle(&mut app);
+    click(&mut app, "Lyrics");
+    for _ in 0..200 {
+        app.tick();
+        app.render();
+        if app.state_json()["module"]["lyrics"] == "unavailable" {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert_eq!(app.state_json()["module"]["lyrics"], "unavailable", "the service was down");
+    // A click anywhere on the message tries again.
+    let hit = app.state_json()["module"]["hits"].as_array().unwrap().iter().find(|h| h["target"] == "RetryLyrics").cloned().expect("a retry area");
+    let (x, y) = (hit["x"].as_f64().unwrap() as f32 + 30.0, hit["y"].as_f64().unwrap() as f32 + 30.0);
+    app.pointer(PointerKind::Move, x, y);
+    app.pointer(PointerKind::Down, x, y);
+    wait_for_lyrics(&mut app);
+    assert_eq!(app.state_json()["module"]["lyrics"], "synced");
+    assert_eq!(source.0.load(Ordering::SeqCst), 2);
+}

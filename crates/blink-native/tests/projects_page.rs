@@ -251,3 +251,31 @@ fn a_notch_opened_with_the_hotkey_keeps_the_keyboard_after_typing() {
     assert!(r.app.state_json()["keyboard"].as_bool().unwrap(), "the person opened it with the keyboard, so it stays that way");
     assert!(!r.app.take_effects().contains(&AppEffect::KeyboardFocus(false)));
 }
+
+#[test]
+fn files_dragged_onto_a_resting_notch_open_it_on_the_projects_page() {
+    // The clock owns the pill and is the first page; Projects is not where the notch would open by itself.
+    let dir = std::env::temp_dir().join(format!("blink-projects-page-drag-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let modules: Vec<Box<dyn Module>> = vec![
+        Box::new(blink_native::modules::clock::ClockModule::new()),
+        Box::new(DeadlinesModule::new(Box::new(DemoSource::new(WALL_BASE)))),
+        Box::new(ProjectsModule::new(Store::new(dir.join("data")), WALL_BASE)),
+    ];
+    let mut app = App::new(Clock::manual(WALL_BASE), normalize_settings(None), tz(), 1.0, "en", modules).expect("app");
+    app.configure_modules(&[blink_native::host::ModuleConfig { id: "deadlines".into(), enabled: true, options: serde_json::json!({ "urgentHours": 1 }) }]);
+    app.tick();
+    assert_eq!(app.rest_owner_module(), "clock");
+    app.drag_files(true);
+    settle(&mut app);
+    assert_eq!(app.state_json()["mode"], "open", "a drag over the pill opens the notch");
+    assert_eq!(app.active_module(), "projects", "straight onto the Projects page");
+    assert_eq!(app.state_json()["module"]["view"], "Files", "with the shelf showing");
+    // Letting go on it attaches the file.
+    let file = dir.join("notes.txt");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(&file, b"x").unwrap();
+    app.drop_files(&[file.to_string_lossy().to_string()]);
+    assert_eq!(app.state_json()["module"]["files"].as_array().unwrap().len(), 1);
+    let _ = std::fs::remove_dir_all(&dir);
+}

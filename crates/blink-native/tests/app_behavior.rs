@@ -218,12 +218,10 @@ fn rest_styles_follow_the_setting_and_the_data() {
     assert_eq!(alpha(&hover, 320, 2), 1, "the hot strip is invisible but not see-through");
     assert_eq!(alpha(&hover, 320, 20), 0);
 
+    // Only "hover" hides the pill; the others keep it (the clock, or a close deadline, rests there).
     let mut due = app_with_settings(json!({ "restingStyle": "when-due", "dueHorizonHours": 1 }));
     due.tick();
-    assert_eq!(due.state_json()["restStyle"], "mini", "the nearest deadline is 3 hours away");
-    let mut due2 = app_with_settings(json!({ "restingStyle": "when-due", "dueHorizonHours": 6 }));
-    due2.tick();
-    assert_eq!(due2.state_json()["restStyle"], "full");
+    assert_eq!(due.state_json()["restStyle"], "full");
 }
 
 #[test]

@@ -20,6 +20,8 @@ try {
   Check 'the clock, deadlines, controls, music and the system peeks are on, in that order' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'clock:True,deadlines:True,controls:True,music:True,projects:True,system:True') (($m.modules | ConvertTo-Json -Compress))
   Check 'the nearest deadline owns the pill' ($m.restOwner -eq 'deadlines')
   Ctl @{cmd='settings'; patch=@{restingStyle='when-due'; dueHorizonHours=1}} | Out-Null
+  # The 3 h 13 m deadline is not close once the pill's hours are 1.
+  Ctl @{cmd='host'; config=@{modules=@(@{id='clock'; enabled=$true}, @{id='deadlines'; enabled=$true; options=@{urgentHours=1}})}} | Out-Null
   Ctl @{cmd='advance'; ms=600} | Out-Null
   $s = St
   Check 'with nothing near, the clock takes the pill' ((Ctl @{cmd='modules'}).restOwner -eq 'clock' -and $s.rest.count -eq '19:00') "$($s.rest.count)"

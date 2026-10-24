@@ -20,6 +20,9 @@ function Cmd($c, $o) {
 }
 function Flush($c) { [void](Cmd $c @{cmd='effects'}) }
 function State($c) { (Send-Blink $c @{cmd='state'}) }
+# The clock owns the pill when nothing is close, and a closed notch shows the page of whatever owns the pill:
+# ask for the deadlines page before reading its state.
+function DState($c) { Send-Blink $c @{cmd='switch'; to='deadlines'} | Out-Null; State $c }
 function WaitFor([scriptblock]$cond, [int]$ms = 10000) {
   $sw = [System.Diagnostics.Stopwatch]::StartNew()
   while ($sw.ElapsedMilliseconds -lt $ms) { if (& $cond) { return $true }; Start-Sleep -Milliseconds 100 }
@@ -109,8 +112,10 @@ try {
   $script:effects.Clear()
   $p = Start-Blink 'g3b' $envs
   $c = Connect-Blink 'g3b'
-  $ok = WaitFor { $s = State $c; $s.state.module.sync.kind -ne 'syncing' -and $s.state.module.upcoming.Count -gt 0 }
-  $s = State $c
+  # The clock owns the pill when nothing is close, so look at the deadlines page explicitly.
+  Send-Blink $c @{cmd='switch'; to='deadlines'} | Out-Null
+  $ok = WaitFor { $s = DState $c; $s.state.module.sync.kind -ne 'syncing' -and $s.state.module.upcoming.Count -gt 0 }
+  $s = DState $c
   Check 'the notch comes back with the data' $ok
   Check 'the done deadline is still done' ($s.state.module.doneList -contains 'Problem Set 4')
   Start-Sleep -Milliseconds 800; Flush $c
@@ -119,25 +124,25 @@ try {
   'offline and recovery'
   $server.Kill(); Start-Sleep -Milliseconds 500
   Send-Blink $c @{cmd='refresh'} | Out-Null
-  $ok = WaitFor { $s = State $c; $s.state.module.sync.kind -in @('offline', 'error') } 15000
-  $s = State $c
+  $ok = WaitFor { $s = DState $c; $s.state.module.sync.kind -in @('offline', 'error') } 15000
+  $s = DState $c
   Check 'with the server gone the footer says so' $ok "kind=$($s.state.module.sync.kind) text=$($s.state.module.sync.text)"
   Check 'the cached deadlines stay on screen' ($s.state.module.upcoming.Count -gt 0)
   $server = Start-Server; Start-Sleep -Milliseconds 800
   Send-Blink $c @{cmd='refresh'} | Out-Null
-  $ok = WaitFor { $s = State $c; $s.state.module.sync.kind -eq 'ok' } 15000
-  $s = State $c
+  $ok = WaitFor { $s = DState $c; $s.state.module.sync.kind -eq 'ok' } 15000
+  $s = DState $c
   Check 'once it is back, a refresh recovers' $ok "kind=$($s.state.module.sync.kind)"
 
   'personal events and settings'
   $due = [DateTimeOffset]::UtcNow.AddHours(2).ToUnixTimeMilliseconds()
   WriteJson 'local_events.json' @(@{ id = 'local-test-1'; title = 'Dentist'; dueMs = $due; allDay = $false })
   Send-Blink $c @{cmd='reload_local'} | Out-Null
-  $s = State $c
+  $s = DState $c
   Check 'a personal event appears' ($s.state.module.upcoming -contains 'Dentist') ($s.state.module.upcoming -join ', ')
   Check 'and is the nearest deadline' ($s.state.module.upcoming[0] -eq 'Dentist')
   $r = Send-Blink $c @{cmd='settings'; patch=@{ feeds = @() }}
-  $s = State $c
+  $s = DState $c
   Check 'removing the feed in settings drops its deadlines but keeps personal events' ($s.state.module.upcoming.Count -eq 1 -and $s.state.module.upcoming[0] -eq 'Dentist') ($s.state.module.upcoming -join ', ')
   Send-Blink $c @{cmd='quit'} | Out-Null
   Start-Sleep -Milliseconds 500; if (-not $p.HasExited) { $p.Kill() }
@@ -150,8 +155,10 @@ try {
     [System.IO.File]::WriteAllText((Join-Path $cmRoot 'settings.json'), '{"version":1,"onboarded":true,"toast":false,"feeds":[{"id":"ics-cm","kind":"ics","label":"CM","enabled":true}]}', $utf8)
     $p = Start-Blink 'g3cm' @{ BLINK_DATA_DIR = $cmRoot; BLINK_TZ = 'Asia/Jakarta' }
     $c = Connect-Blink 'g3cm'
-    $ok = WaitFor { $s = State $c; $s.state.module.sync.kind -ne 'syncing' -and $s.state.module.upcoming.Count -gt 0 }
-    $s = State $c
+    # The clock owns the pill when nothing is close, so look at the deadlines page explicitly.
+    Send-Blink $c @{cmd='switch'; to='deadlines'} | Out-Null
+    $ok = WaitFor { $s = DState $c; $s.state.module.sync.kind -ne 'syncing' -and $s.state.module.upcoming.Count -gt 0 }
+    $s = DState $c
     Check 'a feed whose link is only in Credential Manager is fetched' $ok "kind=$($s.state.module.sync.kind)"
     Send-Blink $c @{cmd='quit'} | Out-Null
   } finally {

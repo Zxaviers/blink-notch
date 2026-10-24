@@ -22,6 +22,13 @@ fn two_modules(settings: serde_json::Value) -> App {
     App::new(Clock::manual(WALL_BASE), normalize_settings(Some(&settings)), tz(), 1.0, "en", modules).expect("app")
 }
 
+/// Two modules where a deadline takes the pill only when it is due within `hours` (the deadlines' `urgentHours` option).
+fn two_modules_urgent(hours: f64) -> App {
+    let mut app = two_modules(json!({}));
+    app.configure_modules(&[ModuleConfig { id: "deadlines".into(), enabled: true, options: json!({ "urgentHours": hours }) }]);
+    app
+}
+
 fn cfg(list: &[(&str, bool)]) -> Vec<ModuleConfig> {
     list.iter().map(|(id, on)| ModuleConfig { id: id.to_string(), enabled: *on, options: serde_json::Value::Null }).collect()
 }
@@ -35,25 +42,26 @@ fn shown(app: &App) -> Option<String> {
 }
 
 #[test]
-fn a_deadline_keeps_the_pill_by_default_and_the_clock_takes_it_when_nothing_is_near() {
+fn the_clock_rests_on_the_pill_until_a_deadline_is_close() {
+    // The nearest deadline is 3 h 13 m away. By default "close" is five hours.
     let mut app = two_modules(json!({}));
     app.tick();
-    assert_eq!(app.rest_owner_module(), "deadlines", "resting style always: the nearest deadline is always shown");
+    assert_eq!(app.rest_owner_module(), "deadlines", "inside the default five hours the deadline takes the pill");
 
-    let mut app = two_modules(json!({ "restingStyle": "when-due", "dueHorizonHours": 1 }));
+    let mut app = two_modules_urgent(1.0);
     app.tick();
-    assert_eq!(app.rest_owner_module(), "clock", "the nearest deadline is hours away, so the calm clock rests there");
+    assert_eq!(app.rest_owner_module(), "clock", "hours away is not close: the calm clock rests there");
     let rest = app.state_json()["rest"].clone();
     assert_eq!(rest["count"], "19:00", "Jakarta time of the test clock");
 
-    let mut app = two_modules(json!({ "restingStyle": "when-due", "dueHorizonHours": 4 }));
+    let mut app = two_modules_urgent(4.0);
     app.tick();
-    assert_eq!(app.rest_owner_module(), "deadlines", "inside the horizon the deadline wins");
+    assert_eq!(app.rest_owner_module(), "deadlines", "inside the chosen hours the deadline wins");
 }
 
 #[test]
 fn opening_shows_the_module_that_owns_the_pill() {
-    let mut app = two_modules(json!({ "restingStyle": "when-due", "dueHorizonHours": 1 }));
+    let mut app = two_modules_urgent(1.0);
     app.tick();
     open_by_hover(&mut app);
     assert_eq!(app.active_module(), "clock");
@@ -180,7 +188,7 @@ fn a_peek_offered_while_the_panel_is_open_waits_for_it_to_close() {
 
 #[test]
 fn clicking_a_peek_from_a_module_opens_that_module() {
-    let mut app = two_modules(json!({ "restingStyle": "when-due", "dueHorizonHours": 1 }));
+    let mut app = two_modules_urgent(1.0);
     app.tick();
     assert_eq!(app.rest_owner_module(), "clock");
     // A peek that came from the deadlines module (slot 0) while the clock owns the pill.
@@ -291,4 +299,124 @@ fn the_calendar_page_browses_months_and_marks_nothing_it_was_not_told_about() {
     app.key(Key::Home);
     app.render();
     assert_eq!(app.module_mut::<ClockModule>().unwrap().month_offset(), 0);
+}
+
+fn weather_app(source: std::sync::Arc<blink_native::modules::clock::FakeWeather>) -> App {
+    let clock = ClockModule::new().with_weather(source, std::sync::Arc::new(|| {}));
+    let modules: Vec<Box<dyn Module>> = vec![Box::new(clock), Box::new(DeadlinesModule::new(Box::new(DemoSource::new(WALL_BASE))))];
+    let mut app = App::new(Clock::manual(WALL_BASE), normalize_settings(Some(&json!({}))), tz(), 1.0, "en", modules).expect("app");
+    // The demo deadline is hours away: not close, so the calm clock owns the pill and opens first.
+    app.configure_modules(&[ModuleConfig { id: "deadlines".into(), enabled: true, options: json!({ "urgentHours": 1.0 }) }]);
+    app
+}
+
+/// Let the weather worker answer: it runs on its own thread.
+fn wait_for_weather(app: &mut App) {
+    for _ in 0..200 {
+        app.tick();
+        app.render();
+        if !app.state_json()["module"]["place"].is_null() {
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+}
+
+#[test]
+fn the_clock_page_shows_the_weather_first_and_swaps_to_the_calendar() {
+    let source = blink_native::modules::clock::FakeWeather::new();
+    let mut app = weather_app(source.clone());
+    app.tick();
+    open_by_hover(&mut app);
+    settle(&mut app);
+    app.render();
+    assert_eq!(app.active_module(), "clock");
+    assert_eq!(app.state_json()["module"]["pane"], "Weather", "the weather is what sits beside the time");
+    wait_for_weather(&mut app);
+    let state = app.state_json();
+    assert_eq!(state["module"]["place"], "Jakarta (time zone)", "with no city chosen the time zone names one");
+    assert_eq!(state["module"]["temp"].as_f64().map(|t| t.round()), Some(25.0));
+    let asked = source.asked.lock().unwrap().clone();
+    assert_eq!(asked, vec!["locate:Jakarta".to_string(), "forecast:-7.98,112.63".to_string()]);
+
+    // The switch at the top right turns it into the calendar, and back.
+    let click = |app: &mut App, target: &str| {
+        let hit = app.state_json()["module"]["hits"].as_array().unwrap().iter().find(|h| h["target"] == target).cloned().expect(target);
+        let (x, y) = (hit["x"].as_f64().unwrap() as f32 + 4.0, hit["y"].as_f64().unwrap() as f32 + 4.0);
+        app.pointer(PointerKind::Move, x, y);
+        app.pointer(PointerKind::Down, x, y);
+        app.pointer(PointerKind::Up, x, y);
+        app.render();
+    };
+    click(&mut app, "ShowCalendar");
+    assert_eq!(app.state_json()["module"]["pane"], "Calendar");
+    assert!(app.state_json()["module"]["hits"].as_array().unwrap().iter().any(|h| h["target"] == "NextMonth"));
+    click(&mut app, "ShowWeather");
+    assert_eq!(app.state_json()["module"]["pane"], "Weather");
+    assert_eq!(source.asked.lock().unwrap().len(), 2, "swapping does not fetch again");
+}
+
+#[test]
+fn a_city_from_the_settings_is_used_and_the_default_pane_can_be_the_calendar() {
+    let source = blink_native::modules::clock::FakeWeather::new();
+    let mut app = weather_app(source.clone());
+    app.configure_modules(&[
+        ModuleConfig { id: "clock".into(), enabled: true, options: json!({ "pane": "calendar", "weather": { "name": "Malang", "lat": -7.98, "lon": 112.63, "units": "f" } }) },
+        ModuleConfig { id: "deadlines".into(), enabled: true, options: json!({ "urgentHours": 1.0 }) },
+    ]);
+    app.tick();
+    open_by_hover(&mut app);
+    settle(&mut app);
+    app.render();
+    assert_eq!(app.state_json()["module"]["pane"], "Calendar");
+    let hit = app.state_json()["module"]["hits"].as_array().unwrap().iter().find(|h| h["target"] == "ShowWeather").cloned().unwrap();
+    let (x, y) = (hit["x"].as_f64().unwrap() as f32 + 4.0, hit["y"].as_f64().unwrap() as f32 + 4.0);
+    app.pointer(PointerKind::Move, x, y);
+    app.pointer(PointerKind::Down, x, y);
+    app.render();
+    wait_for_weather(&mut app);
+    assert_eq!(app.state_json()["module"]["place"], "Malang");
+    assert_eq!(source.asked.lock().unwrap().clone(), vec!["forecast:-7.98,112.63".to_string()], "no guessing when a city is chosen");
+}
+
+#[test]
+fn a_failed_weather_says_so_and_a_click_asks_again() {
+    let source = blink_native::modules::clock::FakeWeather::new();
+    source.fail.store(true, std::sync::atomic::Ordering::SeqCst);
+    let mut app = weather_app(source.clone());
+    app.tick();
+    open_by_hover(&mut app);
+    settle(&mut app);
+    for _ in 0..200 {
+        app.tick();
+        app.render();
+        if app.state_json()["module"]["failed"] == true {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    assert_eq!(app.state_json()["module"]["failed"], true);
+    source.fail.store(false, std::sync::atomic::Ordering::SeqCst);
+    let hit = app.state_json()["module"]["hits"].as_array().unwrap().iter().find(|h| h["target"] == "RetryWeather").cloned().expect("a retry area");
+    let (x, y) = (hit["x"].as_f64().unwrap() as f32 + 4.0, hit["y"].as_f64().unwrap() as f32 + 4.0);
+    app.pointer(PointerKind::Move, x, y);
+    app.pointer(PointerKind::Down, x, y);
+    wait_for_weather(&mut app);
+    assert!(!app.state_json()["module"]["place"].is_null(), "the second try worked");
+}
+
+#[test]
+fn the_place_under_the_weather_opens_the_settings_on_the_weather() {
+    let source = blink_native::modules::clock::FakeWeather::new();
+    let mut app = weather_app(source);
+    app.tick();
+    open_by_hover(&mut app);
+    settle(&mut app);
+    wait_for_weather(&mut app);
+    let hit = app.state_json()["module"]["hits"].as_array().unwrap().iter().find(|h| h["target"] == "ChoosePlace").cloned().expect("the place is a button");
+    let (x, y) = (hit["x"].as_f64().unwrap() as f32 + 4.0, hit["y"].as_f64().unwrap() as f32 + 4.0);
+    app.take_effects();
+    app.pointer(PointerKind::Move, x, y);
+    app.pointer(PointerKind::Down, x, y);
+    assert_eq!(app.take_effects(), vec![blink_native::app::AppEffect::OpenSettingsAt("weather".into())]);
 }

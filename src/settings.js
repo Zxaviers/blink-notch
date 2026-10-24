@@ -1,6 +1,8 @@
-// Settings window: feeds, notifications, display, personal events, general,
-// plus the first-run wizard. Changes are written through the Rust store and
-// announced to the notch with `settings-changed` / `data-changed`.
+// Settings window, in two separate scopes (the notch opens the one it was asked from):
+//   deadlines (the gear on the Deadlines page): calendar feeds, notifications, my events, the pill;
+//   app (the three dots in the header): display, pages, weather, music, general.
+// Plus the first-run wizard. Changes are written through the Rust store and announced to the notch with
+// `settings-changed` / `data-changed` / `host-changed` (the pages and their options live in host.json).
 
 import { api } from './api.js'
 import { h, clear } from './dom.js'
@@ -13,7 +15,13 @@ import { normalizeLocalEvent } from './lib/localEvents.js'
 import { dueLabel } from './lib/countdown.js'
 import { acceleratorFromEvent, DEFAULT_HOTKEY } from './lib/hotkey.js'
 
-const SECTIONS = ['feeds', 'notifications', 'display', 'events', 'general']
+const SCOPES = {
+  deadlines: ['feeds', 'notifications', 'events', 'pill'],
+  app: ['display', 'pages', 'weather', 'music', 'general']
+}
+/** The pages Blink knows, in the order they turn by default. */
+const PAGE_IDS = ['clock', 'deadlines', 'controls', 'music', 'projects', 'system']
+const scopeOf = (name) => (SCOPES.deadlines.includes(name) ? 'deadlines' : 'app')
 
 const nav = document.getElementById('nav')
 const main = document.getElementById('main')
@@ -23,7 +31,9 @@ let settings = normalizeSettings(null)
 let localEvents = []
 let language = 'en'
 let t = createT('en')
+let scope = 'deadlines'
 let section = 'feeds'
+let host = { modules: [] }
 let wizardStep = 1
 let wizardKind = null
 
@@ -33,7 +43,47 @@ function applyLanguage () {
   language = resolveLanguage(settings.language, navigator.language)
   t = createT(language)
   document.documentElement.lang = language
-  document.title = t('settings.title')
+  document.title = t(`settings.title.${scope}`)
+}
+
+// ------------------------------------------------------- host.json (pages)
+
+/** Every page in order: the saved ones first, then any the file does not mention yet. */
+function hostModules () {
+  const saved = Array.isArray(host.modules) ? host.modules.filter((m) => m && PAGE_IDS.includes(m.id)) : []
+  const seen = new Set()
+  const list = []
+  for (const m of saved) {
+    if (seen.has(m.id)) continue
+    seen.add(m.id)
+    list.push({ id: m.id, enabled: m.enabled !== false, options: m.options && typeof m.options === 'object' ? m.options : {} })
+  }
+  for (const id of PAGE_IDS) if (!seen.has(id)) list.push({ id, enabled: true, options: {} })
+  return list
+}
+
+async function saveHost (modules) {
+  host = { ...host, modules }
+  try {
+    await api.storeSet('host', host)
+  } catch {
+    return false
+  }
+  api.emit('host-changed')
+  return true
+}
+
+const optionsOf = (id) => hostModules().find((m) => m.id === id)?.options ?? {}
+
+/** Change some options of one page (an undefined value removes the option). */
+function setOptions (id, patch) {
+  const modules = hostModules().map((m) => {
+    if (m.id !== id) return m
+    const options = { ...m.options, ...patch }
+    for (const key of Object.keys(options)) if (options[key] === undefined) delete options[key]
+    return { ...m, options }
+  })
+  return saveHost(modules)
 }
 
 async function save (patch) {
@@ -319,14 +369,127 @@ function displaySection () {
     field(t('display.language'), select(
       [['auto', t('display.language.auto')], ['en', 'English'], ['id', 'Bahasa Indonesia']],
       settings.language, (v) => save({ language: v }))),
-    field(t('display.resting'), select(
-      [['always', t('display.resting.always')], ['when-due', t('display.resting.when-due')], ['hover', t('display.resting.hover')]],
-      settings.restingStyle, (v) => save({ restingStyle: v }))),
-    field(t('display.dueHorizon'), numberInput(settings.dueHorizonHours, { min: 1, max: 336 }, (v) => save({ dueHorizonHours: v }))),
     field(t('display.hoverDelay'), numberInput(settings.hoverDelayMs, { min: 0, max: 1000, step: 10 }, (v) => save({ hoverDelayMs: v }))),
     monitorField,
     field(t('display.offset'), numberInput(settings.offsetX, { min: -2000, max: 2000, step: 10 }, (v) => save({ offsetX: v }))),
     hotkeyControl())
+}
+
+/** The pill: what it shows at rest, and when a deadline takes it from the clock. */
+function pillSection () {
+  const urgent = Number(optionsOf('deadlines').urgentHours)
+  return h('section', {},
+    h('h1', {}, t('pill.title')),
+    h('p', {}, t('pill.intro')),
+    field(t('pill.urgent'), numberInput(Number.isFinite(urgent) && urgent > 0 ? urgent : 5, { min: 0.5, max: 336, step: 0.5 }, (v) => {
+      const hours = Number(v)
+      setOptions('deadlines', { urgentHours: Number.isFinite(hours) && hours > 0 ? hours : undefined }).then(renderMain)
+    }), t('pill.urgent.hint')),
+    field(t('display.resting'), select(
+      [['always', t('display.resting.always')], ['when-due', t('display.resting.when-due')], ['hover', t('display.resting.hover')]],
+      settings.restingStyle, (v) => save({ restingStyle: v }))),
+    field(t('display.dueHorizon'), numberInput(settings.dueHorizonHours, { min: 1, max: 336 }, (v) => save({ dueHorizonHours: v }))))
+}
+
+function pagesSection () {
+  const modules = hostModules()
+  const move = (index, by) => {
+    const next = [...modules]
+    const [item] = next.splice(index, 1)
+    next.splice(index + by, 0, item)
+    saveHost(next).then(renderMain)
+  }
+  const list = h('ul', { class: 'list' })
+  modules.forEach((m, i) => {
+    list.append(h('li', {},
+      h('label', { class: 'inline grow' },
+        h('input', {
+          type: 'checkbox', checked: m.enabled,
+          onchange: (e) => saveHost(modules.map((x) => (x.id === m.id ? { ...x, enabled: e.target.checked } : x)))
+        }),
+        t(`pages.${m.id}`)),
+      h('button', { class: 'btn', type: 'button', disabled: i === 0, 'aria-label': t('pages.up'), title: t('pages.up'), onclick: () => move(i, -1) }, '\u2191'),
+      h('button', { class: 'btn', type: 'button', disabled: i === modules.length - 1, 'aria-label': t('pages.down'), title: t('pages.down'), onclick: () => move(i, 1) }, '\u2193')))
+  })
+  return h('section', {}, h('h1', {}, t('pages.title')), h('p', {}, t('pages.intro')), list)
+}
+
+function weatherSection () {
+  const options = optionsOf('clock')
+  const place = options.weather && Number.isFinite(options.weather.lat) && Number.isFinite(options.weather.lon) ? options.weather : null
+  const units = options.weather?.units === 'f' ? 'f' : 'c'
+  const keepWeather = (patch) => ({ ...(options.weather ?? {}), ...patch })
+  const out = status()
+  const results = h('ul', { class: 'list' })
+  const query = h('input', {
+    type: 'text', class: 'wide', maxlength: 80, autocomplete: 'off', placeholder: place?.name ?? '',
+    onkeydown: (e) => { if (e.key === 'Enter') search() }
+  })
+  const searchBtn = h('button', { class: 'btn', type: 'button', onclick: search }, t('weather.search'))
+
+  async function search () {
+    const name = query.value.trim()
+    if (!name) return
+    clear(results)
+    out.set('', t('weather.searching'))
+    searchBtn.disabled = true
+    try {
+      const found = await api.weatherFind(name, language)
+      if (!found.length) {
+        out.set('error', t('weather.noResults'))
+        return
+      }
+      out.set('', '')
+      for (const p of found) {
+        results.append(h('li', {},
+          h('div', { class: 'grow' }, h('div', { class: 'name' }, p.label)),
+          h('button', {
+            class: 'btn primary', type: 'button',
+            onclick: async () => {
+              await setOptions('clock', { weather: keepWeather({ name: p.name, lat: p.lat, lon: p.lon }) })
+              renderMain()
+            }
+          }, t('weather.use'))))
+      }
+    } catch {
+      out.set('error', t('weather.failed'))
+    } finally {
+      searchBtn.disabled = false
+    }
+  }
+
+  return h('section', {},
+    h('h1', {}, t('weather.title')),
+    h('p', {}, t('weather.intro')),
+    h('p', {}, place ? t('weather.current', { name: place.name }) : t('weather.guess')),
+    field(t('weather.city'), query),
+    h('div', { class: 'inline' }, searchBtn, place && h('button', {
+      class: 'btn', type: 'button',
+      onclick: async () => {
+        await setOptions('clock', { weather: units === 'f' ? { units: 'f' } : undefined })
+        renderMain()
+      }
+    }, t('weather.clear'))),
+    out,
+    results,
+    field(t('weather.units'), select([['c', t('weather.units.c')], ['f', t('weather.units.f')]], units,
+      (v) => setOptions('clock', { weather: keepWeather({ units: v }) }))),
+    field(t('weather.pane'), select([['weather', t('weather.pane.weather')], ['calendar', t('weather.pane.calendar')]],
+      options.pane === 'calendar' ? 'calendar' : 'weather', (v) => setOptions('clock', { pane: v }))))
+}
+
+function musicSection () {
+  const options = optionsOf('music')
+  return h('section', {},
+    h('h1', {}, t('music.title')),
+    h('p', {}, t('music.intro')),
+    h('label', { class: 'check' },
+      h('input', { type: 'checkbox', checked: options.lyrics !== false, onchange: (e) => setOptions('music', { lyrics: e.target.checked }) }),
+      t('music.lyrics')),
+    h('p', { class: 'hint' }, t('music.lyrics.hint')),
+    h('label', { class: 'check' },
+      h('input', { type: 'checkbox', checked: options.peek !== false, onchange: (e) => setOptions('music', { peek: e.target.checked }) }),
+      t('music.peek')))
 }
 
 function eventsSection () {
@@ -482,17 +645,32 @@ const BUILDERS = {
   notifications: notificationsSection,
   display: displaySection,
   events: eventsSection,
+  pill: pillSection,
+  pages: pagesSection,
+  weather: weatherSection,
+  music: musicSection,
   general: generalSection
 }
 
 // ------------------------------------------------------------------- layout
 
 function renderNav () {
-  clear(nav).append(...SECTIONS.map((name) => h('button', {
-    type: 'button',
-    'aria-current': name === section ? 'page' : null,
-    onclick: () => { section = name; renderAll() }
-  }, t(`nav.${name}`))))
+  clear(nav).append(
+    h('p', { class: 'nav-title' }, t(`nav.group.${scope}`)),
+    ...SCOPES[scope].map((name) => h('button', {
+      type: 'button',
+      'aria-current': name === section ? 'page' : null,
+      onclick: () => { section = name; renderAll() }
+    }, t(`nav.${name}`))))
+}
+
+/** Go to a section, which also picks the scope (deadlines or Blink) it belongs to. */
+function openSection (name) {
+  if (!(name in BUILDERS)) return
+  section = name
+  scope = scopeOf(name)
+  document.title = t(`settings.title.${scope}`)
+  renderAll()
 }
 
 function renderMain () {
@@ -563,19 +741,19 @@ function renderAll () {
 
 async function init () {
   // The notch opens this on the part it was asked from: the deadlines' feeds, or Blink's general settings.
-  if (typeof window.__SECTION__ === 'string' && window.__SECTION__ in BUILDERS) section = window.__SECTION__
-  window.__openSection = (name) => {
-    if (name in BUILDERS) {
-      section = name
-      renderAll()
-    }
+  if (typeof window.__SECTION__ === 'string' && window.__SECTION__ in BUILDERS) {
+    section = window.__SECTION__
+    scope = scopeOf(section)
   }
-  const [rawSettings, events] = await Promise.all([
+  window.__openSection = openSection
+  const [rawSettings, events, rawHost] = await Promise.all([
     api.storeGet('settings').catch(() => null),
-    api.storeGet('local_events').catch(() => null)
+    api.storeGet('local_events').catch(() => null),
+    api.storeGet('host').catch(() => null)
   ])
   settings = normalizeSettings(rawSettings)
   localEvents = Array.isArray(events) ? events : []
+  host = rawHost && typeof rawHost === 'object' ? rawHost : { modules: [] }
   applyLanguage()
   renderAll()
 }

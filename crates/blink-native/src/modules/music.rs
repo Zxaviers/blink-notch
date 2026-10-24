@@ -188,6 +188,7 @@ fn word(lang: Lang, key: &str) -> &'static str {
         "lyrics" => if id { "Lirik" } else { "Lyrics" },
         "loading" => if id { "Mencari lirik…" } else { "Looking for lyrics…" },
         "none" => if id { "Lirik tidak ditemukan" } else { "No lyrics found" },
+        "unavailable" => if id { "Layanan lirik tidak terjangkau. Klik untuk coba lagi." } else { "Couldn't reach the lyrics service. Click to try again." },
         "plain" => if id { "Lirik tanpa waktu" } else { "Lyrics without timing" },
         "off" => if id { "Pencarian lirik dimatikan" } else { "Lyrics lookup is off" },
         "now" => if id { "Sedang diputar" } else { "Now playing" },
@@ -222,6 +223,8 @@ enum Target {
     Seek,
     /// A line of the lyrics (click to jump there).
     Line(u64),
+    /// The message that the lyrics service could not be reached (click to ask again).
+    RetryLyrics,
 }
 
 #[derive(Clone, Debug)]
@@ -478,7 +481,16 @@ impl MusicModule {
         let key = Self::query(st).key();
         match self.lyrics.get(&key) {
             None | Some(LyricsState::Loading) => centered(kit, word(lang, "loading")),
-            Some(LyricsState::Ready(Lyrics::None)) => centered(kit, word(lang, "none")),
+            Some(LyricsState::Ready(Lyrics::None)) => {
+                centered(kit, word(lang, "none"));
+                // What was searched for, so a mismatch with the player's own spelling is easy to see.
+                let searched = format!("{} - {}", st.artist, st.title);
+                put_centered(kit, Face::Sans, 10.5, x + w / 2.0, cy + 8.0, 16.0, w - 8.0, &searched, theme.dim, frame.alpha * 0.7);
+            }
+            Some(LyricsState::Ready(Lyrics::Unavailable)) => {
+                centered(kit, word(lang, "unavailable"));
+                self.hits.push(Hit { x, y: y0, w, h: CONTENT_H, target: Target::RetryLyrics, track: (0.0, 0.0) });
+            }
             Some(LyricsState::Ready(Lyrics::Plain(lines))) => {
                 // Words without times: shown from the top, moved with the wheel.
                 let lines = lines.clone();
@@ -675,6 +687,10 @@ impl Module for MusicModule {
                     Target::Previous => return self.do_action(&MusicAction::Previous, env),
                     Target::ToggleLyrics => return self.do_action(&MusicAction::ToggleLyrics, env),
                     Target::Seek => self.drag_ms = Some(Self::seek_value(&hit, x, st.duration_ms)),
+                    Target::RetryLyrics => {
+                        self.lyrics.remove(&Self::query(&st).key());
+                        self.ensure_lyrics(&st);
+                    }
                     Target::Line(at) => {
                         if st.can_seek {
                             self.command(MediaCommand::Seek(at), env);
@@ -805,7 +821,7 @@ impl Module for MusicModule {
             "hasArt": st.art.is_some(),
             "position": st.position_at(env.wall_ms),
             "playing": st.playing,
-            "lyrics": match self.lyrics_for(&st) { None => "none-asked", Some(LyricsState::Loading) => "loading", Some(LyricsState::Ready(Lyrics::Synced(l))) => if l.is_empty() { "empty" } else { "synced" }, Some(LyricsState::Ready(Lyrics::Plain(_))) => "plain", Some(LyricsState::Ready(Lyrics::None)) => "not-found" },
+            "lyrics": match self.lyrics_for(&st) { None => "none-asked", Some(LyricsState::Loading) => "loading", Some(LyricsState::Ready(Lyrics::Synced(l))) => if l.is_empty() { "empty" } else { "synced" }, Some(LyricsState::Ready(Lyrics::Plain(_))) => "plain", Some(LyricsState::Ready(Lyrics::None)) => "not-found", Some(LyricsState::Ready(Lyrics::Unavailable)) => "unavailable" },
             "scrollTo": self.scroll_to,
             "hits": self.hits.iter().map(|h| serde_json::json!({ "x": h.x, "y": h.y, "w": h.w, "h": h.h, "target": format!("{:?}", h.target) })).collect::<Vec<_>>(),
         })

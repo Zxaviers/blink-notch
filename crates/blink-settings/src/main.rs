@@ -121,6 +121,18 @@ fn open_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
     app.opener().open_url(url, None::<&str>).map_err(|_| "OPEN".to_string())
 }
 
+/// Cities matching a name, for the weather section. Blocking network: off the UI thread.
+#[tauri::command]
+async fn weather_find(name: String, language: String) -> Result<Vec<Value>, String> {
+    let lang = if language == "id" { blink_core::i18n::Lang::Id } else { blink_core::i18n::Lang::En };
+    tauri::async_runtime::spawn_blocking(move || {
+        let places = blink_core::weather::OpenMeteo::new().search(&name, lang)?;
+        Ok(places.iter().map(|p| json!({ "name": p.name, "label": p.long_name(), "lat": p.lat, "lon": p.lon })).collect())
+    })
+    .await
+    .map_err(|_| "NETWORK".to_string())?
+}
+
 #[tauri::command]
 fn autostart_is_enabled() -> bool {
     blink_core::autostart::is_enabled()
@@ -254,6 +266,7 @@ fn main() {
             autostart_enable,
             autostart_disable,
             diagnostics,
+            weather_find,
         ])
         // Closing the window ends the program, so no web engine stays behind.
         .on_window_event(|window, event| {
@@ -265,6 +278,7 @@ fn main() {
             // The page announces its changes as events; they become messages to the notch.
             app.listen("settings-changed", |_| tell_notch("reload_settings"));
             app.listen("data-changed", |_| tell_notch("reload_local"));
+            app.listen("host-changed", |_| tell_notch("reload_host"));
             show_settings(app.handle(), section_from(&std::env::args().collect::<Vec<_>>()));
             Ok(())
         })

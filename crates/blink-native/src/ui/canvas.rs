@@ -39,6 +39,14 @@ pub enum Icon {
     ArrowUp,
     Battery,
     Music,
+    Cloud,
+    CloudSun,
+    Rain,
+    Snow,
+    Fog,
+    Moon,
+    Storm,
+    Calendar,
     Play,
     Pause,
     SkipBack,
@@ -394,6 +402,18 @@ impl Canvas {
                 if i == 0 { pb.move_to(x, y) } else { pb.line_to(x, y) }
             }
         };
+        // A cloud: four round bumps over a flat bottom, shifted by (ox, oy).
+        let cloud = |pb: &mut PathBuilder, ox: f32, oy: f32| {
+            let (lx, ly) = (-4.6 + ox, 3.6 + oy);
+            let (rx, ry) = (4.6 + ox, 3.6 + oy);
+            let (a, b) = (p(lx, ly), p(rx, ry));
+            pb.move_to(a.0, a.1);
+            pb.line_to(b.0, b.1);
+            arc(pb, (4.6 + ox, 1.4 + oy), 2.2, -90.0, 90.0);
+            arc(pb, (1.6 + ox, -0.6 + oy), 3.4, -10.0, -200.0);
+            arc(pb, (-2.2 + ox, 0.6 + oy), 2.2, -60.0, -240.0);
+            arc(pb, (-4.6 + ox, 1.4 + oy), 2.2, 90.0, 270.0);
+        };
         let polygon = |pb: &mut PathBuilder, pts: &[(f32, f32)]| {
             for (i, pt) in pts.iter().enumerate() {
                 let (x, y) = p(pt.0, pt.1);
@@ -588,6 +608,54 @@ impl Canvas {
                 arc(&mut pb, (-3.0, 4.2), 2.0, 0.0, 360.0);
                 arc(&mut pb, (3.0, 2.6), 2.0, 0.0, 360.0);
             }
+            Icon::Cloud | Icon::CloudSun | Icon::Rain | Icon::Snow | Icon::Storm => {
+                // The sun peeks out from behind a cloud; the others hang something under it.
+                let (ox, oy) = if icon == Icon::CloudSun { (0.0, 1.6) } else { (0.0, -1.8) };
+                cloud(&mut pb, ox, oy);
+                match icon {
+                    Icon::CloudSun => {
+                        arc(&mut pb, (-3.2, -3.4), 1.6, 0.0, 360.0);
+                        for i in 0..6 {
+                            let a = (i as f32 * 60.0 - 30.0).to_radians();
+                            line(&mut pb, (-3.2 + 2.4 * a.cos(), -3.4 + 2.4 * a.sin()), (-3.2 + 3.2 * a.cos(), -3.4 + 3.2 * a.sin()));
+                        }
+                    }
+                    Icon::Rain => {
+                        for x in [-3.0, 0.0, 3.0] {
+                            line(&mut pb, (x + 0.8, 3.0), (x - 0.4, 6.0));
+                        }
+                    }
+                    Icon::Snow => {
+                        for x in [-3.0, 0.0, 3.0] {
+                            arc(&mut pb, (x, 4.6), 0.35, 0.0, 360.0);
+                        }
+                    }
+                    Icon::Storm => {
+                        polygon(&mut pb, &[(1.0, 2.2), (-1.8, 5.2), (0.2, 5.2), (-0.6, 7.2), (2.2, 4.0), (0.2, 4.0)]);
+                    }
+                    _ => {}
+                }
+            }
+            Icon::Fog => {
+                line(&mut pb, (-5.0, -3.0), (5.0, -3.0));
+                line(&mut pb, (-3.0, -0.4), (6.0, -0.4));
+                line(&mut pb, (-6.0, 2.2), (3.0, 2.2));
+                line(&mut pb, (-4.0, 4.8), (4.0, 4.8));
+            }
+            Icon::Moon => {
+                // A crescent: a big arc and a smaller one cutting into it.
+                arc(&mut pb, (0.0, 0.0), 5.2, 45.0, 315.0);
+                arc(&mut pb, (2.4, -1.4), 3.9, 332.0, 112.0);
+            }
+            Icon::Calendar => {
+                line(&mut pb, (-5.6, -3.4), (5.6, -3.4));
+                line(&mut pb, (5.6, -3.4), (5.6, 5.4));
+                line(&mut pb, (5.6, 5.4), (-5.6, 5.4));
+                line(&mut pb, (-5.6, 5.4), (-5.6, -3.4));
+                line(&mut pb, (-5.6, -0.4), (5.6, -0.4));
+                line(&mut pb, (-3.0, -5.4), (-3.0, -2.4));
+                line(&mut pb, (3.0, -5.4), (3.0, -2.4));
+            }
             Icon::Play => {
                 polygon(&mut pb, &[(-3.2, -5.2), (5.2, 0.0), (-3.2, 5.2)]);
             }
@@ -778,7 +846,8 @@ mod tests {
             Icon::Check, Icon::ArrowUpRight, Icon::Alarm, Icon::Refresh, Icon::Gear, Icon::Undo, Icon::Speaker, Icon::SpeakerMuted, Icon::Sun, Icon::Wifi,
             Icon::Bluetooth, Icon::Mic, Icon::MicMuted, Icon::Cast, Icon::Monitor, Icon::Lock, Icon::Crop, Icon::ChevronRight, Icon::ChevronLeft,
             Icon::Bolt, Icon::Headphones, Icon::Plus, Icon::Close, Icon::Folder, Icon::File, Icon::Download, Icon::ArrowUp, Icon::Battery, Icon::Music,
-            Icon::Play, Icon::Pause, Icon::SkipBack, Icon::SkipForward, Icon::Message,
+            Icon::Play, Icon::Pause, Icon::SkipBack, Icon::SkipForward, Icon::Message, Icon::Cloud, Icon::CloudSun, Icon::Rain, Icon::Snow, Icon::Fog,
+            Icon::Moon, Icon::Storm, Icon::Calendar,
         ] {
             let mut c = Canvas::new(40, 40, 2.0);
             c.icon(icon, 10.0, 10.0, 14.0, Rgb(255, 255, 255), 1.0);

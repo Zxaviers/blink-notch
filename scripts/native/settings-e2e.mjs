@@ -70,7 +70,8 @@ class Pipe {
 
   close () { this.sock?.destroy() }
 }
-const state = async (pipe) => (await pipe.send({ cmd: 'state' }))
+// The clock owns the pill when nothing is close, so ask for the deadlines page before reading its state.
+const state = async (pipe) => { await pipe.send({ cmd: 'switch', to: 'deadlines' }); return pipe.send({ cmd: 'state' }) }
 
 // ---------------------------------------------------------------- the page (CDP)
 class Page {
@@ -177,7 +178,7 @@ try {
 
   section('language change reaches the notch')
   const before = (await state(pipeA)).state.module.sync.text
-  await page.eval("document.querySelectorAll('#nav button')[2].click()") // Display
+  await page.eval("window.__openSection('display')")
   await sleep(300)
   await page.eval(`(() => {
     const sel = [...document.querySelectorAll('#main select')].find((s) => [...s.options].some((o) => o.value === 'id'))
@@ -209,8 +210,30 @@ try {
   check('the notch registered it', Boolean(live), (await state(pipeA)).window.hotkey)
   check('and settings.json has it', readJson('settings.json')?.hotkey === 'Ctrl+Alt+Shift+F6')
 
+  section('the two settings scopes, pages and options reach the notch')
+  const navNames = () => page.eval("[...document.querySelectorAll('#nav button')].map((b) => b.textContent)")
+  check('Blink settings (the three dots) has its own sections, without the deadlines ones', (await navNames()).length === 5, JSON.stringify(await navNames()))
+  check('and the pill options are not on the Display page', await page.eval("!document.querySelector('#main').textContent.includes('Always show the pill') && !document.querySelector('#main').textContent.includes('Selalu tampilkan pil')"))
+  await page.eval("window.__openSection('pages')")
+  await sleep(300)
+  await page.eval("(() => { const c = document.querySelectorAll('#main li input[type=checkbox]')[4]; c.checked = false; c.dispatchEvent(new Event('change', { bubbles: true })) })()")
+  const projectsOff = await until(async () => (await state(pipeA)).state.modules.find((m) => m.id === 'projects')?.enabled === false ? true : null)
+  check('turning a page off in settings removes it from the notch', Boolean(projectsOff))
+  await page.eval("window.__openSection('weather')")
+  await sleep(300)
+  await page.eval("(() => { const sel = [...document.querySelectorAll('#main select')].find((s) => [...s.options].some((o) => o.value === 'f')); sel.value = 'f'; sel.dispatchEvent(new Event('change', { bubbles: true })) })()")
+  const unitsSaved = await until(() => readJson('host.json')?.modules?.find((m) => m.id === 'clock')?.options?.weather?.units === 'f' ? true : null)
+  check('the weather units are saved with the Clock page options', Boolean(unitsSaved))
+  await page.eval("window.__openSection('pill')")
+  await sleep(300)
+  check('the deadlines scope has its own four sections', (await navNames()).length === 4, JSON.stringify(await navNames()))
+  await page.eval("(() => { const n = document.querySelector('#main input[type=number]'); n.value = '2'; n.dispatchEvent(new Event('change', { bubbles: true })) })()")
+  const urgentSaved = await until(() => readJson('host.json')?.modules?.find((m) => m.id === 'deadlines')?.options?.urgentHours === 2 ? true : null)
+  check('the hours before a deadline takes the pill are saved for the Deadlines page', Boolean(urgentSaved))
+  check('and the pages saved before are kept', readJson('host.json')?.modules?.find((m) => m.id === 'projects')?.enabled === false)
+
   section('personal events')
-  await page.eval("document.querySelectorAll('#nav button')[3].click()")
+  await page.eval("window.__openSection('events')")
   await sleep(300)
   await page.eval(`(() => {
     const d = new Date(Date.now() + 36 * 3600e3)
@@ -225,7 +248,7 @@ try {
   check('local_events.json has it', readJson('local_events.json')?.some((e) => e.title === 'Dentist'))
 
   section('export, import, diagnostics, autostart')
-  await page.eval("document.querySelectorAll('#nav button')[4].click()")
+  await page.eval("window.__openSection('general')")
   await sleep(300)
   await page.eval("window.__clip = []; navigator.clipboard.writeText = async (t) => { window.__clip.push(t) }")
   await page.eval("document.querySelectorAll('#main button.btn')[0].click()")
@@ -252,7 +275,7 @@ try {
   run(SETTINGS, [], baseEnv)
   await sleep(2500)
   check('a second launch does not start a second settings program', countProcs('blink-settings') === 1, `count=${countProcs('blink-settings')}`)
-  await page.eval("document.querySelectorAll('#nav button')[0].click()")
+  await page.eval("window.__openSection('feeds')")
   await sleep(300)
   await page.eval("window.confirm = () => true; document.querySelector('#main .btn.danger').click()")
   const removed = await until(() => readJson('settings.json')?.feeds?.length === 0)

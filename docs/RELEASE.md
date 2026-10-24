@@ -102,6 +102,10 @@ The Music page shows what Windows says is playing (the same list the volume flyo
 
 **Lyrics are the one thing that goes online**, and only after you turn lyrics on for a song (the speech-bubble button): the song's title, artist, album and length are sent to [lrclib.net](https://lrclib.net), a free open lyrics service, to find matching lyrics. Nothing else is sent, and nothing is saved on disk (the answer is remembered while Blink runs). `"lyrics": false` in the music module's options in `host.json` forbids the lookup altogether.
 
+## Weather
+
+The Clock page shows the weather. Blink asks [open-meteo.com](https://open-meteo.com) (a free service, no account or key) and sends only the **coordinates of the city you chose** (or, until you choose one, the name of the city in your Windows time zone, to find its coordinates). Nothing else is sent, and nothing is saved on disk. Swap the pane to the calendar with the switch at the top right of the page and Blink stops asking while you have the calendar as the default (`"pane": "calendar"` in the clock module's options).
+
 ## Projects
 
 The Projects page keeps tasks and the paths of files and folders in one small file, `projects.json`, in Blink's data folder. Nothing is sent anywhere. A file or folder you drop on the notch is only remembered by its path (nothing is copied or read), and removing it from a project never touches the file. The clipboard is read only when you press Ctrl+V while typing into one of the page's fields, and only its text.

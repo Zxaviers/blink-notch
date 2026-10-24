@@ -164,6 +164,8 @@ impl DeadlineSource for DemoSource {
 // -------------------------------------------------------------- layout
 
 const MAX_UPCOMING_ROWS: usize = 12;
+/// How close a deadline has to be to take the resting pill from the clock.
+pub const DEFAULT_URGENT_HOURS: f64 = 5.0;
 const MAX_OVERDUE_ROWS: usize = 4;
 /// The left column: the next deadline in big numbers, and the buttons.
 const LEFT_W: f32 = 150.0;
@@ -215,6 +217,8 @@ pub struct DeadlinesModule {
     /// Height of the whole list, from the last layout.
     content_h: f32,
     peek_task: Option<String>,
+    /// A deadline this close (or already missed) takes the pill from the clock (`urgentHours`, 5 by default).
+    urgent_hours: f64,
 }
 
 struct Model {
@@ -253,7 +257,7 @@ fn tone(frame: &PanelFrame, urgency: &str) -> Rgb {
 
 impl DeadlinesModule {
     pub fn new(source: Box<dyn DeadlineSource>) -> Self {
-        DeadlinesModule { source, state: PanelState::default(), hits: Vec::new(), row_rects: HashMap::new(), content_h: 0.0, peek_task: None }
+        DeadlinesModule { source, state: PanelState::default(), hits: Vec::new(), row_rects: HashMap::new(), content_h: 0.0, peek_task: None, urgent_hours: DEFAULT_URGENT_HOURS }
     }
 
     pub fn source_mut(&mut self) -> &mut dyn DeadlineSource {
@@ -706,27 +710,22 @@ impl Module for DeadlinesModule {
         (a.to_string(), b.to_string())
     }
 
-    /// A deadline inside the horizon (or one already missed) outranks the clock; any deadline
-    /// does when the user wants it always shown; a far one yields the pill to the clock.
-    fn rest_priority(&mut self, env: &Env, settings: &Settings) -> u8 {
-        let model = self.model(env);
-        let Some(hero) = &model.view.hero else { return 0 };
-        let soon = hero.due_ms <= env.wall_ms + (settings.due_horizon_hours * 3_600_000) as i64;
-        match (soon, settings.resting_style.as_str()) {
-            (true, _) => 3,
-            (false, "always") | (false, "hover") => 2,
-            _ => 0,
-        }
+    fn set_options(&mut self, options: &serde_json::Value) {
+        self.urgent_hours = options.get("urgentHours").and_then(serde_json::Value::as_f64).filter(|h| (0.1..=720.0).contains(h)).unwrap_or(DEFAULT_URGENT_HOURS);
     }
 
-    fn rest_style(&mut self, env: &Env, resting_style: &str, due_horizon_hours: f64) -> crate::shell::RestStyle {
-        use crate::shell::RestStyle;
+    /// The clock rests on the pill until a deadline is close (inside `urgentHours`, or already missed):
+    /// then the deadline takes it.
+    fn rest_priority(&mut self, env: &Env, _settings: &Settings) -> u8 {
         let model = self.model(env);
-        match blink_core::view::rest_mode_for(resting_style, model.view.hero.as_ref(), env.wall_ms, due_horizon_hours) {
-            "hot" => RestStyle::Hot,
-            "mini" => RestStyle::Mini,
-            _ => RestStyle::Full,
-        }
+        let Some(hero) = &model.view.hero else { return 0 };
+        if hero.due_ms <= env.wall_ms + (self.urgent_hours * 3_600_000.0) as i64 { 3 } else { 0 }
+    }
+
+    fn rest_style(&mut self, _env: &Env, resting_style: &str, _due_horizon_hours: f64) -> crate::shell::RestStyle {
+        use crate::shell::RestStyle;
+        // Only "hover" hides the pill (an invisible strip along the top that still opens on the mouse).
+        if resting_style == "hover" { RestStyle::Hot } else { RestStyle::Full }
     }
 
     fn debug_now(&mut self, env: &Env) -> serde_json::Value {
