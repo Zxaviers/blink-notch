@@ -911,7 +911,7 @@ impl App {
         }
         // The bars move with the music: redraw a few times a second, but only while it plays and the notch shows them.
         if self.music_playing() && (self.shell.mode() == Mode::Open || (self.shell.mode() == Mode::Rest && self.shell.rest_style() == RestStyle::Full)) {
-            wake = [wake, Some(now + 120)].into_iter().flatten().min();
+            wake = [wake, Some(now + 150)].into_iter().flatten().min();
         }
         for i in self.enabled_indices() {
             let w = self.slots[i].module.next_wake(&env, showing && i == self.active);

@@ -107,15 +107,29 @@ impl Canvas {
             None => (x0, y0, x1, y1),
         };
         self.clip = Some(merged);
-        if let Some(rect) = tiny_skia::Rect::from_ltrb(x0 as f32, y0 as f32, x1.max(x0) as f32, y1.max(y0) as f32) {
-            let path = PathBuilder::from_rect(rect);
-            match self.mask.as_mut() {
-                Some(m) => m.intersect_path(&path, FillRule::Winding, false, Transform::identity()),
-                None => {
-                    if let Some(mut m) = Mask::new(self.pm.width(), self.pm.height()) {
-                        m.fill_path(&path, FillRule::Winding, false, Transform::identity());
-                        self.mask = Some(m);
+        // The soft clip, narrowed to the rectangle by hand: a whole-window path fill per clip was the biggest cost of a frame.
+        let (w, h) = (self.pm.width() as i32, self.pm.height() as i32);
+        let (rx0, ry0, rx1, ry1) = (x0.clamp(0, w), y0.clamp(0, h), x1.clamp(0, w).max(x0.clamp(0, w)), y1.clamp(0, h).max(y0.clamp(0, h)));
+        match self.mask.as_mut() {
+            Some(m) => {
+                let data = m.data_mut();
+                for y in 0..h {
+                    let row = &mut data[(y * w) as usize..((y + 1) * w) as usize];
+                    if y < ry0 || y >= ry1 {
+                        row.fill(0);
+                    } else {
+                        row[..rx0 as usize].fill(0);
+                        row[rx1 as usize..].fill(0);
                     }
+                }
+            }
+            None => {
+                if let Some(mut m) = Mask::new(self.pm.width(), self.pm.height()) {
+                    let data = m.data_mut();
+                    for y in ry0..ry1 {
+                        data[(y * w + rx0) as usize..(y * w + rx1) as usize].fill(255);
+                    }
+                    self.mask = Some(m);
                 }
             }
         }
@@ -208,7 +222,7 @@ impl Canvas {
         }
         pb.close();
         if let Some(path) = pb.finish() {
-            self.pm.fill_path(&path, &Self::paint(color, alpha), FillRule::Winding, Transform::identity(), self.mask.as_ref());
+            self.pm.fill_path(&path, &Self::paint(color, alpha), FillRule::Winding, Transform::identity(), Self::mask_for(&self.mask, &path, 6.0));
         }
     }
 
@@ -220,7 +234,7 @@ impl Canvas {
         pb.line_to((x1 * s).max(x0 * s + 0.1), y * s);
         if let Some(path) = pb.finish() {
             let stroke = Stroke { width: thickness * s, line_cap: LineCap::Round, ..Stroke::default() };
-            self.pm.stroke_path(&path, &Self::paint(color, alpha), &stroke, Transform::identity(), self.mask.as_ref());
+            self.pm.stroke_path(&path, &Self::paint(color, alpha), &stroke, Transform::identity(), Self::mask_for(&self.mask, &path, 6.0));
         }
     }
 
@@ -269,7 +283,7 @@ impl Canvas {
         let mut paint = Paint::default();
         paint.shader = shader;
         paint.anti_alias = true;
-        self.pm.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), self.mask.as_ref());
+        self.pm.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), Self::mask_for(&self.mask, &path, 6.0));
     }
 
     /// A rounded rectangle whose colour and opacity change from one end to the other.
@@ -277,6 +291,34 @@ impl Canvas {
     pub fn gradient_rrect_alpha(&mut self, x: f32, y: f32, w: f32, h: f32, radius: f32, a: (Rgb, f32), b: (Rgb, f32), vertical: bool) {
         let s = self.scale;
         let (x, y, w, h) = (x * s, y * s, w * s, h * s);
+        if vertical && radius <= 0.0 {
+            // The common case (a page's colour wash) row by row: one colour per row, which is far cheaper than the shader.
+            let (x0, y0, x1, y1) = self.paint_bounds(x.round() as i32, y.round() as i32, (x + w).round() as i32, (y + h).round() as i32);
+            let cw = self.pm.width() as usize;
+            let mask = self.mask.as_ref().map(|m| m.data());
+            let data = self.pm.data_mut();
+            for py in y0..y1 {
+                let t = ((py as f32 + 0.5 - y) / h.max(1.0)).clamp(0.0, 1.0);
+                let lerp = |p: u8, q: u8| (f32::from(p) + (f32::from(q) - f32::from(p)) * t).round() as u8;
+                let (ca, aa) = a;
+                let (cb, ab) = b;
+                let color = Rgb(lerp(ca.0, cb.0), lerp(ca.1, cb.1), lerp(ca.2, cb.2));
+                let alpha = (aa + (ab - aa) * t).clamp(0.0, 1.0);
+                if alpha <= 0.0 {
+                    continue;
+                }
+                let a8 = (alpha * 255.0 + 0.5) as u32;
+                for px in x0..x1 {
+                    let i = py as usize * cw + px as usize;
+                    let a = match mask {
+                        Some(m) if m[i] != 255 => Self::div255(a8 * u32::from(m[i])),
+                        _ => a8,
+                    };
+                    Self::blend(&mut data[i * 4..][..4], color, a);
+                }
+            }
+            return;
+        }
         let Some(path) = Self::rrect_path(x, y, w, h, radius * s) else { return };
         let (p0, p1) = if vertical { (Point::from_xy(x, y), Point::from_xy(x, y + h)) } else { (Point::from_xy(x, y), Point::from_xy(x + w, y)) };
         let stops = vec![GradientStop::new(0.0, Self::color_of(a.0, a.1)), GradientStop::new(1.0, Self::color_of(b.0, b.1))];
@@ -284,7 +326,7 @@ impl Canvas {
         let mut paint = Paint::default();
         paint.shader = shader;
         paint.anti_alias = true;
-        self.pm.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), self.mask.as_ref());
+        self.pm.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), Self::mask_for(&self.mask, &path, 6.0));
     }
 
     /// A picture (album art) scaled into a rounded rectangle.
@@ -301,26 +343,91 @@ impl Canvas {
         let mut paint = Paint::default();
         paint.shader = shader;
         paint.anti_alias = true;
-        self.pm.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), self.mask.as_ref());
+        self.pm.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), Self::mask_for(&self.mask, &path, 6.0));
     }
 
     /// A circle that fades from `color` at the centre to nothing at the edge: a soft glow.
+    /// Drawn pixel by pixel (the general gradient pipeline is several times slower for a shape this soft).
     pub fn glow(&mut self, cx: f32, cy: f32, radius: f32, color: Rgb, alpha: f32) {
         let s = self.scale;
         let (cx, cy, r) = (cx * s, cy * s, radius * s);
-        if r <= 0.5 {
+        if r <= 0.5 || alpha <= 0.0 {
             return;
         }
-        let stops = vec![GradientStop::new(0.0, Self::color_of(color, alpha)), GradientStop::new(1.0, Self::color_of(color, 0.0))];
-        let Some(shader) = RadialGradient::new(Point::from_xy(cx, cy), Point::from_xy(cx, cy), r, stops, SpreadMode::Pad, Transform::identity()) else { return };
-        let mut paint = Paint::default();
-        paint.shader = shader;
-        paint.anti_alias = true;
-        let mut pb = PathBuilder::new();
-        pb.push_circle(cx, cy, r);
-        if let Some(path) = pb.finish() {
-            self.pm.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), self.mask.as_ref());
+        let (x0, y0, x1, y1) = self.paint_bounds((cx - r).floor() as i32, (cy - r).floor() as i32, (cx + r).ceil() as i32, (cy + r).ceil() as i32);
+        let (w, a0) = (self.pm.width() as usize, alpha.clamp(0.0, 1.0));
+        let mask = self.mask.as_ref().map(|m| m.data());
+        let data = self.pm.data_mut();
+        for y in y0..y1 {
+            let dy = y as f32 + 0.5 - cy;
+            for x in x0..x1 {
+                let dx = x as f32 + 0.5 - cx;
+                let d = (dx * dx + dy * dy).sqrt();
+                if d >= r {
+                    continue;
+                }
+                let mut a = a0 * (1.0 - d / r);
+                if let Some(m) = &mask {
+                    a *= f32::from(m[y as usize * w + x as usize]) / 255.0;
+                }
+                Self::over(&mut data[(y as usize * w + x as usize) * 4..][..4], color, a);
+            }
         }
+    }
+
+    /// The mask to draw `path` with: none at all when the mask lets everything through where the path (and `margin` around it,
+    /// for a stroke) is, since a masked fill is many times slower than a plain one.
+    fn mask_for<'a>(mask: &'a Option<Mask>, path: &tiny_skia::Path, margin: f32) -> Option<&'a Mask> {
+        let m = mask.as_ref()?;
+        let b = path.bounds();
+        let (w, h) = (m.width() as i32, m.height() as i32);
+        let (x0, x1) = (((b.left() - margin).floor() as i32).clamp(0, w), ((b.right() + margin).ceil() as i32).clamp(0, w));
+        let (y0, y1) = (((b.top() - margin).floor() as i32).clamp(0, h), ((b.bottom() + margin).ceil() as i32).clamp(0, h));
+        let data = m.data();
+        for y in y0..y1 {
+            if !data[(y * w + x0) as usize..(y * w + x1.max(x0)) as usize].iter().all(|&v| v == 255) {
+                return Some(m);
+            }
+        }
+        None
+    }
+
+    /// The integer pixel box `(x0, y0, x1, y1)` clipped to the canvas and to the current clip rectangle.
+    fn paint_bounds(&self, x0: i32, y0: i32, x1: i32, y1: i32) -> (i32, i32, i32, i32) {
+        let (mut x0, mut y0, mut x1, mut y1) = (x0.max(0), y0.max(0), x1.min(self.pm.width() as i32), y1.min(self.pm.height() as i32));
+        if let Some((a0, b0, a1, b1)) = self.clip {
+            x0 = x0.max(a0);
+            y0 = y0.max(b0);
+            x1 = x1.min(a1);
+            y1 = y1.min(b1);
+        }
+        (x0, y0, x1.max(x0), y1.max(y0))
+    }
+
+    /// `color` at opacity `a` (0 to 1) over one premultiplied RGBA pixel.
+    #[inline]
+    fn over(px: &mut [u8], color: Rgb, a: f32) {
+        Self::blend(px, color, (a.clamp(0.0, 1.0) * 255.0 + 0.5) as u32);
+    }
+
+    /// `x / 255`, rounded, without a division.
+    #[inline]
+    fn div255(x: u32) -> u32 {
+        let x = x + 128;
+        (x + (x >> 8)) >> 8
+    }
+
+    /// `color` at opacity `a` (0 to 255) over one premultiplied RGBA pixel, in whole numbers.
+    #[inline]
+    fn blend(px: &mut [u8], color: Rgb, a: u32) {
+        if a == 0 {
+            return;
+        }
+        let inv = 255 - a;
+        px[0] = Self::div255(u32::from(color.0) * a + u32::from(px[0]) * inv) as u8;
+        px[1] = Self::div255(u32::from(color.1) * a + u32::from(px[1]) * inv) as u8;
+        px[2] = Self::div255(u32::from(color.2) * a + u32::from(px[2]) * inv) as u8;
+        px[3] = Self::div255(255 * a + u32::from(px[3]) * inv) as u8;
     }
 
     /// A glow spread along a rounded rectangle: soft light around a pill or a bar.
@@ -339,7 +446,7 @@ impl Canvas {
         let mut pb = PathBuilder::new();
         pb.push_circle(cx * s, cy * s, (radius * s).max(0.1));
         if let Some(path) = pb.finish() {
-            self.pm.fill_path(&path, &Self::paint(color, alpha), FillRule::Winding, Transform::identity(), self.mask.as_ref());
+            self.pm.fill_path(&path, &Self::paint(color, alpha), FillRule::Winding, Transform::identity(), Self::mask_for(&self.mask, &path, 6.0));
         }
     }
 
@@ -356,7 +463,7 @@ impl Canvas {
         let mut pb = PathBuilder::new();
         pb.push_circle(cx, cy, r);
         if let Some(path) = pb.finish() {
-            self.pm.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), self.mask.as_ref());
+            self.pm.fill_path(&path, &paint, FillRule::Winding, Transform::identity(), Self::mask_for(&self.mask, &path, 6.0));
         }
     }
 
@@ -377,7 +484,7 @@ impl Canvas {
         }
         if let Some(path) = pb.finish() {
             let stroke = Stroke { width: thickness * s, line_cap: LineCap::Round, line_join: LineJoin::Round, ..Stroke::default() };
-            self.pm.stroke_path(&path, &Self::paint(color, alpha), &stroke, Transform::identity(), self.mask.as_ref());
+            self.pm.stroke_path(&path, &Self::paint(color, alpha), &stroke, Transform::identity(), Self::mask_for(&self.mask, &path, 6.0));
         }
     }
 
@@ -697,10 +804,10 @@ impl Canvas {
             // The transport symbols are solid shapes; the rest are strokes.
             let solid = matches!(icon, Icon::Play | Icon::Pause | Icon::SkipBack | Icon::SkipForward);
             if solid {
-                self.pm.fill_path(&path, &Self::paint(color, alpha), FillRule::Winding, Transform::identity(), self.mask.as_ref());
+                self.pm.fill_path(&path, &Self::paint(color, alpha), FillRule::Winding, Transform::identity(), Self::mask_for(&self.mask, &path, 6.0));
             }
             let stroke = Stroke { width: if solid { 1.2 } else { 1.5 } * u, line_cap: LineCap::Round, line_join: LineJoin::Round, ..Stroke::default() };
-            self.pm.stroke_path(&path, &Self::paint(color, alpha), &stroke, Transform::identity(), self.mask.as_ref());
+            self.pm.stroke_path(&path, &Self::paint(color, alpha), &stroke, Transform::identity(), Self::mask_for(&self.mask, &path, 6.0));
         }
     }
 
@@ -729,6 +836,7 @@ impl Canvas {
         let base = (baseline * s).round() as i32;
         let mut pen = x * s;
         let alpha = alpha.clamp(0.0, 1.0);
+        let alpha_i = (alpha * 255.0 + 0.5) as u32;
         let stride = self.width() as usize;
         let mask = self.mask.as_ref().map(|m| m.data());
 
@@ -750,19 +858,12 @@ impl Canvas {
                     if cov == 0 {
                         continue;
                     }
-                    let mut a = cov as f32 / 255.0 * alpha;
+                    let mut a = Self::div255(u32::from(cov) * alpha_i);
                     let i = (y as usize * stride + xx as usize) * 4;
                     if let Some(m) = &mask {
-                        a *= f32::from(m[y as usize * stride + xx as usize]) / 255.0;
-                        if a <= 0.0 {
-                            continue;
-                        }
+                        a = Self::div255(a * u32::from(m[y as usize * stride + xx as usize]));
                     }
-                    let inv = 1.0 - a;
-                    data[i] = (color.0 as f32 * a + data[i] as f32 * inv) as u8;
-                    data[i + 1] = (color.1 as f32 * a + data[i + 1] as f32 * inv) as u8;
-                    data[i + 2] = (color.2 as f32 * a + data[i + 2] as f32 * inv) as u8;
-                    data[i + 3] = (255.0 * a + data[i + 3] as f32 * inv) as u8;
+                    Self::blend(&mut data[i..i + 4], color, a);
                 }
             }
             pen += g.advance + spacing * s;

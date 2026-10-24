@@ -281,6 +281,10 @@ struct Runtime {
     fullscreen_override: bool,
     /// Time between consecutive animation frames (ms), for the pacing check.
     frame_times: Vec<f32>,
+    /// Where the time of each presented frame went, in ms: (render, copy, UpdateLayeredWindow), summed since `frames` last asked.
+    cost: (f32, f32, f32, u32),
+    /// What woke the window since `frames` last asked: window messages by number (timers by id), for finding what keeps it busy.
+    wakes: std::collections::BTreeMap<String, u32>,
     last_frame: Option<Instant>,
     last_a11y: Instant,
     sources: Sources,
@@ -354,7 +358,9 @@ impl Runtime {
         if self.hidden {
             return;
         }
+        let t0 = Instant::now();
         self.app.render();
+        let t1 = Instant::now();
         // How far this frame really reaches, measured on the canvas. (Estimating it from the shape
         // at a slightly later moment under-counts while the notch moves fast, and the rows between
         // the guess and the truth kept their old pixels: trails of earlier frames.)
@@ -375,6 +381,7 @@ impl Runtime {
             }
         }
         self.prev_rows = rows;
+        let t2 = Instant::now();
         let origin = POINT { x: self.origin.0, y: self.origin.1 };
         let size = SIZE { cx: self.surface.w as i32, cy: self.surface.h as i32 };
         let source = POINT::default();
@@ -382,6 +389,9 @@ impl Runtime {
         unsafe {
             let _ = UpdateLayeredWindow(self.hwnd, None, Some(&origin), Some(&size), Some(self.surface.dc), Some(&source), COLORREF(0), Some(&blend), ULW_ALPHA);
         }
+        let t3 = Instant::now();
+        let ms = |a: Instant, b: Instant| b.duration_since(a).as_secs_f32() * 1000.0;
+        self.cost = (self.cost.0 + ms(t0, t1), self.cost.1 + ms(t1, t2), self.cost.2 + ms(t2, t3), self.cost.3 + 1);
         self.frames += 1;
         self.dirty = false;
     }
@@ -893,6 +903,8 @@ impl Runtime {
 
     fn on_message(&mut self, msg: u32, wparam: WPARAM, lparam: LPARAM) -> Option<LRESULT> {
         let scale = self.scale();
+        let key = if msg == WM_TIMER { format!("timer{}", wparam.0) } else { format!("{msg:#x}") };
+        *self.wakes.entry(key).or_insert(0) += 1;
         match msg {
             WM_MOUSEACTIVATE => return Some(LRESULT(3)), // MA_NOACTIVATE
             WM_ERASEBKGND => return Some(LRESULT(1)),
@@ -1423,7 +1435,10 @@ impl Runtime {
                 let mut sorted = times.clone();
                 sorted.sort_by(|a, b| a.total_cmp(b));
                 let pct = |q: f32| sorted.get(((n as f32 - 1.0) * q).round() as usize).copied().unwrap_or(0.0);
-                return Ok(json!({ "frames": n, "minMs": if n > 0 { min } else { 0.0 }, "maxMs": max, "avgMs": avg, "p50Ms": pct(0.5), "p95Ms": pct(0.95), "over20ms": late }));
+                let (cr, cc, cu, cn) = std::mem::take(&mut self.cost);
+                let wakes = std::mem::take(&mut self.wakes);
+                let per = |v: f32| if cn > 0 { v / cn as f32 } else { 0.0 };
+                return Ok(json!({ "wakes": wakes, "presented": cn, "renderMs": per(cr), "copyMs": per(cc), "presentMs": per(cu), "frames": n, "minMs": if n > 0 { min } else { 0.0 }, "maxMs": max, "avgMs": avg, "p50Ms": pct(0.5), "p95Ms": pct(0.95), "over20ms": late }));
             }
             "scale" => {
                 self.scale_override = Some(f("value"));
@@ -1686,6 +1701,8 @@ pub fn run(opts: Options) -> Result<(), String> {
             vis_hotkey: String::new(),
             fullscreen_override: false,
             frame_times: Vec::new(),
+            cost: (0.0, 0.0, 0.0, 0),
+            wakes: std::collections::BTreeMap::new(),
             last_frame: None,
             last_a11y: Instant::now(),
             sources: Sources::default(),
@@ -1758,7 +1775,13 @@ pub fn run(opts: Options) -> Result<(), String> {
                     let _ = TranslateMessage(&msg);
                     DispatchMessageW(&msg);
                 }
-                with_rt(|rt| rt.frame());
+                // The notch opening and closing is drawn on every refresh. Anything else that moves (the lyrics gliding to
+                // the next line, a slider being dragged) is drawn at about 70 frames a second at most: on a 144 Hz screen that
+                // is half the work, and nobody sees the difference.
+                let wait = with_rt(|rt| !rt.app.shell().is_animating(rt.app.now()) && rt.last_frame.is_some_and(|t| t.elapsed().as_secs_f32() < 0.012)).unwrap_or(false);
+                if !wait {
+                    with_rt(|rt| rt.frame());
+                }
                 let _ = DwmFlush();
             }
         } else {
