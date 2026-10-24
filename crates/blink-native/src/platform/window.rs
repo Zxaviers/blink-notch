@@ -852,6 +852,19 @@ impl Runtime {
         )
     }
 
+    /// The agents requests (the notch pipe and the control pipe): an update, a removal, the list.
+    fn agent_command(&mut self, v: &Value) -> Result<Value, String> {
+        let result = match v["cmd"].as_str().unwrap_or("") {
+            "agent_update" => self.app.agent_update(v),
+            "agent_remove" => self.app.agent_remove(v["id"].as_str().unwrap_or("")),
+            _ => self.app.agent_list(),
+        };
+        self.process_effects();
+        self.dirty = true;
+        self.reschedule();
+        result
+    }
+
     /// Requests from the settings program (the notch pipe). A small, fixed set.
     fn ipc_command(&mut self, line: &str) -> String {
         let reply = match serde_json::from_str::<Value>(line) {
@@ -879,6 +892,7 @@ impl Runtime {
                     Ok(json!({}))
                 }
                 "diagnostics" => Ok(json!({ "text": self.diagnostics() })),
+                "agent_update" | "agent_remove" | "agent_list" => self.agent_command(&v),
                 // The installer and `blink --quit` ask the running notch to leave cleanly.
                 "quit" => {
                     unsafe {
@@ -1421,6 +1435,7 @@ impl Runtime {
                 };
                 self.refresh_fullscreen();
             }
+            "agent_update" | "agent_remove" | "agent_list" => return self.agent_command(&v),
             "desktop" => {
                 // Pretend the empty desktop is (or is not) in front; null goes back to asking Windows.
                 self.desktop_sim = v["on"].as_bool();
@@ -1656,6 +1671,7 @@ pub fn run(opts: Options) -> Result<(), String> {
         Box::new(ControlsModule::new(controls_backend)),
         Box::new(MusicModule::new(media_backend, lyrics_source, media_wake)),
         Box::new(ProjectsModule::new(Store::new(store.dir()), clock.wall_ms())),
+        Box::new(crate::modules::agents::AgentsModule::new()),
         Box::new(SystemModule::new()),
     ];
     let mut app = App::new(clock, settings, tz, scale, &system_language(), modules)?;

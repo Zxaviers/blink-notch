@@ -19,10 +19,10 @@ const BRONE_EXPORT_URL = 'https://brone.ub.ac.id/calendar/export.php'
 
 const SCOPES = {
   deadlines: ['feeds', 'notifications', 'events', 'pill'],
-  app: ['display', 'pages', 'weather', 'music', 'general']
+  app: ['display', 'pages', 'weather', 'music', 'agents', 'general']
 }
 /** The pages Blink knows, in the order they turn by default. */
-const PAGE_IDS = ['clock', 'deadlines', 'controls', 'music', 'projects', 'system']
+const PAGE_IDS = ['clock', 'deadlines', 'controls', 'music', 'projects', 'agents', 'system']
 const scopeOf = (name) => (SCOPES.deadlines.includes(name) ? 'deadlines' : 'app')
 
 const nav = document.getElementById('nav')
@@ -534,6 +534,43 @@ function musicSection () {
       t('music.peek')))
 }
 
+/** AI agents report to the notch with `blinkctl`; here: the two options and the commands to copy. */
+function agentsSection () {
+  const options = optionsOf('agents')
+  const out = status()
+  const example = [
+    'blinkctl agent --id claude-1 --name "Claude Code" --state running --title "Refactor the parser"',
+    'blinkctl agent --id claude-1 --state input --title "Run the tests?"',
+    'blinkctl agent --id claude-1 --state done --title "Finished"',
+    'blinkctl agent --id claude-1 --remove'
+  ].join('\n')
+  return h('section', {},
+    h('h1', {}, t('agents.title')),
+    h('p', {}, t('agents.intro')),
+    h('label', { class: 'check' },
+      h('input', { type: 'checkbox', checked: options.accept !== false, onchange: (e) => setOptions('agents', { accept: e.target.checked }) }),
+      t('agents.accept')),
+    h('p', { class: 'hint' }, t('agents.accept.hint')),
+    h('label', { class: 'check' },
+      h('input', { type: 'checkbox', checked: options.peek !== false, onchange: (e) => setOptions('agents', { peek: e.target.checked }) }),
+      t('agents.peek')),
+    h('h2', {}, t('agents.example')),
+    h('pre', { class: 'code' }, example),
+    h('button', {
+      class: 'btn', type: 'button',
+      onclick: async () => {
+        try {
+          await navigator.clipboard.writeText(example)
+          out.set('ok', t('general.diagnostics.done'))
+        } catch {
+          out.set('error', t('general.diagnostics.failed'))
+        }
+      }
+    }, t('agents.copy')),
+    out,
+    h('p', { class: 'hint' }, t('agents.docs')))
+}
+
 function eventsSection () {
   const out = status()
   const title = h('input', { type: 'text', class: 'wide', maxlength: 120 })
@@ -691,6 +728,7 @@ const BUILDERS = {
   pages: pagesSection,
   weather: weatherSection,
   music: musicSection,
+  agents: agentsSection,
   general: generalSection
 }
 

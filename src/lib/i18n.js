@@ -73,6 +73,7 @@ const en = {
   'nav.pages': 'Pages',
   'nav.weather': 'Weather',
   'nav.music': 'Music',
+  'nav.agents': 'Agents',
 
   'pill.title': 'The pill',
   'pill.intro': 'The small bar at the top shows the clock. A deadline takes it over only when it is close.',
@@ -88,6 +89,7 @@ const en = {
   'pages.controls': 'Controls',
   'pages.music': 'Music and lyrics',
   'pages.projects': 'Projects',
+  'pages.agents': 'AI agents',
   'pages.system': 'System peeks (battery, Wi-Fi, volume\u2026)',
 
   'weather.title': 'Weather',
@@ -108,6 +110,14 @@ const en = {
   'weather.pane.weather': 'Weather',
   'weather.pane.calendar': 'Calendar',
 
+  'agents.title': 'AI agents',
+  'agents.intro': 'Any program, an AI agent included, can tell the notch what it is doing with the blinkctl command: running, waiting for you, finished or failed. The notch shows it on the Agents page, peeks when one needs you or finishes, and shows one that waits for you on the pill.',
+  'agents.accept': 'Accept reports from programs on this PC',
+  'agents.accept.hint': 'Only programs running as you can reach the notch. Turn this off to stop all reports.',
+  'agents.peek': 'Peek when an agent needs me, finishes or fails',
+  'agents.example': 'Commands',
+  'agents.copy': 'Copy the commands',
+  'agents.docs': 'For Claude Code hooks and other examples, see docs/AGENTS.md in the Blink folder.',
   'music.title': 'Music',
   'music.intro': 'Blink reads what is playing from Windows, so it works with any player: Spotify, a browser tab on YouTube Music, and more.',
   'music.lyrics': 'Look up lyrics',
@@ -318,6 +328,7 @@ const id = {
   'nav.pages': 'Halaman',
   'nav.weather': 'Cuaca',
   'nav.music': 'Musik',
+  'nav.agents': 'Agen',
 
   'pill.title': 'Pil',
   'pill.intro': 'Bar kecil di atas menampilkan jam. Deadline mengambil alih hanya saat sudah dekat.',
@@ -333,6 +344,7 @@ const id = {
   'pages.controls': 'Kontrol',
   'pages.music': 'Musik dan lirik',
   'pages.projects': 'Proyek',
+  'pages.agents': 'Agen AI',
   'pages.system': 'Info sistem (baterai, Wi-Fi, volume\u2026)',
 
   'weather.title': 'Cuaca',
@@ -353,6 +365,14 @@ const id = {
   'weather.pane.weather': 'Cuaca',
   'weather.pane.calendar': 'Kalender',
 
+  'agents.title': 'Agen AI',
+  'agents.intro': 'Program apa pun, termasuk agen AI, bisa memberi tahu notch apa yang sedang dikerjakannya lewat perintah blinkctl: berjalan, menunggu kamu, selesai, atau gagal. Notch menampilkannya di halaman Agen, mengintip saat ada yang butuh kamu atau selesai, dan menampilkan yang menunggu kamu di pil.',
+  'agents.accept': 'Terima laporan dari program di PC ini',
+  'agents.accept.hint': 'Hanya program yang berjalan sebagai kamu yang bisa menjangkau notch. Matikan untuk menghentikan semua laporan.',
+  'agents.peek': 'Intip saat agen butuh aku, selesai, atau gagal',
+  'agents.example': 'Perintah',
+  'agents.copy': 'Salin perintah',
+  'agents.docs': 'Untuk hook Claude Code dan contoh lain, lihat docs/AGENTS.md di folder Blink.',
   'music.title': 'Musik',
   'music.intro': 'Blink membaca apa yang sedang diputar dari Windows, jadi berfungsi dengan pemutar apa pun: Spotify, tab browser YouTube Music, dan lainnya.',
   'music.lyrics': 'Cari lirik',

@@ -150,6 +150,7 @@ Section "Install"
 
   File "${BINDIR}\blink.exe"
   File "${BINDIR}\blink-settings.exe"
+  File "${BINDIR}\blinkctl.exe"
   WriteUninstaller "$INSTDIR\uninstall.exe"
 
   CreateDirectory "$SMPROGRAMS\${APP}"
@@ -237,6 +238,7 @@ Section "Uninstall"
 
   Delete "$INSTDIR\blink.exe"
   Delete "$INSTDIR\blink-settings.exe"
+  Delete "$INSTDIR\blinkctl.exe"
   Delete "$INSTDIR\uninstall.exe"
   RMDir "$INSTDIR"
   Delete "$SMPROGRAMS\${APP}\${APP}.lnk"
