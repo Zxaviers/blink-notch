@@ -23,6 +23,10 @@ pub enum AppEffect {
     OpenSettings,
     /// Blink's own settings (the button at the top right).
     OpenAppSettings,
+    /// Open a file or folder.
+    OpenPath(String),
+    /// Show a file in its folder.
+    RevealPath(String),
     RefreshFeeds,
     /// Take (true) or give back (false) real keyboard focus.
     KeyboardFocus(bool),
@@ -375,6 +379,10 @@ impl App {
                     }
                 }
                 Effect::Peek => want_peek = true,
+                Effect::TakeKeyboard => self.ensure_keyboard(),
+                Effect::ReleaseKeyboard => self.release_keyboard(),
+                Effect::OpenPath(p) => self.effects.push(AppEffect::OpenPath(p)),
+                Effect::RevealPath(p) => self.effects.push(AppEffect::RevealPath(p)),
                 Effect::ShowPeek(view) => peeks.push(view),
             }
         }
@@ -513,7 +521,7 @@ impl App {
         if self.shell.mode() != Mode::Open {
             return;
         }
-        if matches!(key, Key::Left | Key::Right | Key::Tab) && self.panel_indices().len() > 1 {
+        if matches!(key, Key::Left | Key::Right | Key::Tab) && self.panel_indices().len() > 1 && !self.slots[self.active].module.captures_keys() {
             self.switch_by(if key == Key::Left { -1 } else { 1 });
             return;
         }
@@ -534,6 +542,72 @@ impl App {
             self.slots[self.active].module.keyboard_mode(false, &env);
         }
         self.shell.close(now);
+    }
+
+    /// Take the keyboard for a page that is about to be typed into (a click on "add"), unless it has it.
+    fn ensure_keyboard(&mut self) {
+        if self.shell.keyboard() || self.shell.mode() != Mode::Open {
+            return;
+        }
+        let now = self.clock.now_ms();
+        let tz = self.tz.clone();
+        let env = self.env(&tz);
+        self.slots[self.active].module.keyboard_mode(true, &env);
+        self.shell.enter_keyboard(now);
+        self.effects.push(AppEffect::KeyboardFocus(true));
+    }
+
+    /// Give the keyboard back after a page took it for typing; the notch stays open while the pointer is on it.
+    fn release_keyboard(&mut self) {
+        if !self.shell.keyboard() {
+            return;
+        }
+        let now = self.clock.now_ms();
+        let tz = self.tz.clone();
+        let env = self.env(&tz);
+        self.slots[self.active].module.keyboard_mode(false, &env);
+        self.shell.release_keyboard(now);
+        self.effects.push(AppEffect::KeyboardFocus(false));
+    }
+
+    /// Text pasted from the clipboard goes to the page being typed into.
+    pub fn paste(&mut self, text: &str) {
+        if self.shell.mode() != Mode::Open {
+            return;
+        }
+        let effects = self.slots[self.active].module.paste(text);
+        self.apply_module_effects(self.active, effects);
+    }
+
+    /// Files are being dragged over the notch (or have left): open it on the Projects page with its drop zone lit.
+    pub fn drag_files(&mut self, over: bool) {
+        let now = self.clock.now_ms();
+        self.last_activity = now;
+        let Some(i) = self.slots.iter().position(|s| s.enabled && s.module.id() == "projects") else { return };
+        if let Some(p) = self.module_mut::<crate::modules::projects::ProjectsModule>() {
+            p.set_drag_over(over);
+        }
+        if over {
+            if self.shell.mode() != Mode::Open {
+                self.active = i;
+                self.refresh_panel_height();
+                self.shell.click(now);
+            } else {
+                self.switch_to(i);
+            }
+        } else if !self.shell.keyboard() {
+            self.shell.pointer_leave(now);
+        }
+    }
+
+    /// Files or folders dropped on the notch: the Projects page takes them (and shows them).
+    pub fn drop_files(&mut self, paths: &[String]) {
+        let Some(i) = self.slots.iter().position(|s| s.enabled && s.module.id() == "projects") else { return };
+        let effects = self.slots[i].module.drop_files(paths);
+        self.apply_module_effects(i, effects);
+        if self.shell.mode() == Mode::Open {
+            self.switch_to(i);
+        }
     }
 
     /// The global hotkey: open and take keyboard focus, or close.

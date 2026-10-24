@@ -53,6 +53,7 @@ use crate::live::LiveSource;
 use crate::modules::clock::ClockModule;
 use crate::modules::controls::{ControlsModule, FakeControls};
 use crate::modules::music::{FakeLyrics, FakeMedia, MediaBackend, MusicModule};
+use crate::modules::projects::ProjectsModule;
 use crate::modules::system::SystemModule;
 use crate::modules::deadlines::{DeadlineSource, DeadlinesModule, DemoSource};
 use crate::modules::{Key, Module, PointerKind};
@@ -219,6 +220,14 @@ fn apps_use_light_theme() -> bool {
         )
     };
     ok.is_ok() && value != 0
+}
+
+/// Open a file or folder the way a double-click does.
+fn open_path(path: &str) {
+    let wide: Vec<u16> = path.encode_utf16().chain(Some(0)).collect();
+    unsafe {
+        ShellExecuteW(None, w!("open"), PCWSTR(wide.as_ptr()), None, None, SW_SHOWNORMAL);
+    }
 }
 
 fn open_url(url: &str) {
@@ -461,6 +470,20 @@ impl Runtime {
                         self.effects_log.push(format!("open_url:{url}"));
                     } else {
                         open_url(&url);
+                    }
+                }
+                AppEffect::OpenPath(path) => {
+                    if self.control && std::env::var_os("BLINK_REAL_SOURCES").is_none() {
+                        self.effects_log.push(format!("open_path:{path}"));
+                    } else {
+                        open_path(&path);
+                    }
+                }
+                AppEffect::RevealPath(path) => {
+                    if self.control && std::env::var_os("BLINK_REAL_SOURCES").is_none() {
+                        self.effects_log.push(format!("reveal_path:{path}"));
+                    } else {
+                        let _ = std::process::Command::new("explorer.exe").arg(format!("/select,{path}")).spawn();
                     }
                 }
                 AppEffect::OpenSettings => self.open_settings("feeds"),
@@ -913,6 +936,16 @@ impl Runtime {
                     0x0D => Some(Key::Enter),
                     0x20 => Some(Key::Space),
                     0x1B => Some(Key::Escape),
+                    0x08 => Some(Key::Backspace),
+                    0x2E => Some(Key::Delete),
+                    // Ctrl+V pastes (the clipboard's text goes to the page being typed into).
+                    0x56 if unsafe { windows::Win32::UI::Input::KeyboardAndMouse::GetKeyState(0x11) } < 0 => {
+                        if let Some(text) = super::clipboard::read_text() {
+                            self.app.paste(&text);
+                            self.after();
+                        }
+                        None
+                    }
                     _ => None,
                 };
                 if let Some(k) = key {
@@ -975,6 +1008,15 @@ impl Runtime {
             }
             WM_DATA => {
                 self.app.data_changed();
+                self.after();
+            }
+            super::dropper::WM_DRAG => {
+                self.app.drag_files(wparam.0 == 1);
+                self.after();
+            }
+            super::dropper::WM_DROPPED => {
+                let paths = unsafe { Box::from_raw(lparam.0 as *mut Vec<String>) };
+                self.app.drop_files(&paths);
                 self.after();
             }
             WM_POWERBROADCAST if wparam.0 == sysevents::PBT_POWERSETTINGCHANGE => {
@@ -1081,7 +1123,7 @@ impl Runtime {
             "fullscreen": self.fullscreen,
             "hotkey": self.hotkey,
             "tray": self.tray.is_some(),
-            "sources": { "power": self.sources.power, "wifi": self.sources.wifi, "audio": self.sources.audio, "bluetooth": self.sources.bluetooth, "keys": self.sources.keys, "volumeKeys": self.media_keys && self.take_volume_keys && !self.hidden },
+            "sources": { "power": self.sources.power, "wifi": self.sources.wifi, "audio": self.sources.audio, "bluetooth": self.sources.bluetooth, "keys": self.sources.keys, "volumeKeys": self.media_keys && self.take_volume_keys && !self.hidden, "dropTarget": super::dropper::registered() },
             "surface": { "w": self.surface.w, "h": self.surface.h },
         })
     }
@@ -1172,10 +1214,17 @@ impl Runtime {
                     "enter" => Key::Enter,
                     "space" => Key::Space,
                     "escape" => Key::Escape,
+                    "backspace" => Key::Backspace,
+                    "delete" => Key::Delete,
                     "char" => Key::Char(v["ch"].as_str().and_then(|s| s.chars().next()).ok_or("char needs ch")?),
                     other => return Err(format!("unknown key {other}")),
                 };
                 self.app.key(key);
+            }
+            "paste" => self.app.paste(v["text"].as_str().unwrap_or("")),
+            "drop" => {
+                let paths: Vec<String> = v["paths"].as_array().map(|a| a.iter().filter_map(|p| p.as_str().map(String::from)).collect()).unwrap_or_default();
+                self.app.drop_files(&paths);
             }
             "hotkey" => self.app.hotkey(),
             "focus_lost" => self.app.focus_lost(),
@@ -1560,11 +1609,12 @@ pub fn run(opts: Options) -> Result<(), String> {
         None => (super::media::WinMedia::start(media_wake.clone()), std::sync::Arc::new(blink_core::lyrics::LrcLib::new())),
     };
     let modules: Vec<Box<dyn Module>> = vec![
-        // The pages in the order they turn: time and calendar, then deadlines, then the controls, then music.
+        // The pages in the order they turn: time and calendar, then deadlines, then the controls, then music and projects.
         Box::new(ClockModule::new()),
         Box::new(DeadlinesModule::new(source)),
         Box::new(ControlsModule::new(controls_backend)),
         Box::new(MusicModule::new(media_backend, lyrics_source, media_wake)),
+        Box::new(ProjectsModule::new(Store::new(store.dir()), clock.wall_ms())),
         Box::new(SystemModule::new()),
     ];
     let mut app = App::new(clock, settings, tz, scale, &system_language(), modules)?;
@@ -1577,6 +1627,7 @@ pub fn run(opts: Options) -> Result<(), String> {
 
     let (pw, ph) = ((WINDOW_W * scale).round() as i32, (WINDOW_H * scale).round() as i32);
     let hwnd = create_window(pw, ph, 0, 0)?;
+    super::dropper::register(hwnd);
     target.store(hwnd.0 as isize, Ordering::Relaxed);
     let surface = Surface::new(pw as u32, ph as u32)?;
     let control = opts.control.is_some();

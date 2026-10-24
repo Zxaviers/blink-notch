@@ -22,6 +22,7 @@ pub mod local_events;
 pub mod lyrics;
 pub mod merge;
 pub mod planner;
+pub mod projects;
 pub mod secret;
 pub mod settings;
 pub mod store;

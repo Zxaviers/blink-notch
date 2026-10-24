@@ -299,6 +299,17 @@ impl Shell {
         self.open(now);
     }
 
+    /// Leave keyboard mode without closing: the notch now follows the pointer again (it closes after
+    /// the grace time if the pointer is not on it).
+    pub fn release_keyboard(&mut self, now: u64) {
+        if self.keyboard {
+            self.keyboard = false;
+            if self.mode == Mode::Open && !self.hovering && !self.pinned {
+                self.grace_at = Some(now + self.cfg.grace_ms);
+            }
+        }
+    }
+
     pub fn exit_keyboard(&mut self, now: u64) {
         if self.keyboard {
             self.close(now);

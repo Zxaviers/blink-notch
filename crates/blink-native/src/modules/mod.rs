@@ -6,6 +6,7 @@ pub mod clock;
 pub mod controls;
 pub mod deadlines;
 pub mod music;
+pub mod projects;
 pub mod system;
 
 use blink_core::i18n::Translator;
@@ -83,6 +84,7 @@ pub enum Action {
     OpenSettings,
     Control(controls::ControlCommand),
     Music(music::MusicAction),
+    Project(projects::ProjectAction),
 }
 
 /// What the host must do for a module.
@@ -101,6 +103,14 @@ pub enum Effect {
     Toast { title: String, body: String, url: Option<String> },
     /// The module has something to peek about (see `Module::peek`).
     Peek,
+    /// The module wants to be typed into: take the keyboard (what the hotkey does).
+    TakeKeyboard,
+    /// The typing is over: give the keyboard back (only if the module took it, not if the person opened the notch with the hotkey).
+    ReleaseKeyboard,
+    /// Open a file or folder the way a double-click would.
+    OpenPath(String),
+    /// Show a file in its folder.
+    RevealPath(String),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -125,6 +135,8 @@ pub enum Key {
     Enter,
     Space,
     Escape,
+    Backspace,
+    Delete,
     Char(char),
 }
 
@@ -187,6 +199,21 @@ pub trait Module {
     }
 
     /// The name on the module's tab.
+    /// The module is being typed into: the host leaves Left, Right and Tab to it instead of turning the page.
+    fn captures_keys(&self) -> bool {
+        false
+    }
+
+    /// Text pasted from the clipboard.
+    fn paste(&mut self, _text: &str) -> Vec<Effect> {
+        Vec::new()
+    }
+
+    /// Files or folders were dropped on the notch (full paths).
+    fn drop_files(&mut self, _paths: &[String]) -> Vec<Effect> {
+        Vec::new()
+    }
+
     /// Something is playing (the header's bars move while it is).
     fn playing(&self) -> bool {
         false

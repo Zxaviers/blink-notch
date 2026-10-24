@@ -17,7 +17,7 @@ try {
   function Click($target) { $h = (Mod).hits | Where-Object { $_.target -eq $target } | Select-Object -First 1; if (-not $h) { throw "no control $target" }; $x = $h.x + $h.w / 2; $y = $h.y + $h.h / 2; Ctl @{cmd='mouse'; kind='move'; x=$x; y=$y} | Out-Null; Ctl @{cmd='mouse'; kind='down'; x=$x; y=$y} | Out-Null; Ctl @{cmd='mouse'; kind='up'; x=$x; y=$y} | Out-Null; Ctl @{cmd='advance'; ms=60} | Out-Null }
 
   $m = Ctl @{cmd='modules'}
-  Check 'music is one of the pages, after the controls' (($m.modules | ForEach-Object { $_.id }) -join ',' -eq 'clock,deadlines,controls,music,system') (($m.modules | ForEach-Object { $_.id }) -join ',')
+  Check 'music is one of the pages, after the controls' (($m.modules | ForEach-Object { $_.id }) -join ',' -eq 'clock,deadlines,controls,music,projects,system') (($m.modules | ForEach-Object { $_.id }) -join ',')
   Ctl @{cmd='mouse'; kind='move'; x=320; y=10} | Out-Null; Ctl @{cmd='advance'; ms=900} | Out-Null
   Ctl @{cmd='switch'; to='music'} | Out-Null; Ctl @{cmd='advance'; ms=400} | Out-Null
   Check 'with nothing playing the page says so' ((Mod).active -eq $false)

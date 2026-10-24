@@ -638,7 +638,7 @@ impl DeadlinesModule {
                 vec![Effect::RefreshFeeds]
             }
             Action::OpenSettings => vec![Effect::OpenSettings],
-            Action::Control(_) | Action::Music(_) => Vec::new(),
+            Action::Control(_) | Action::Music(_) | Action::Project(_) => Vec::new(),
         }
     }
 
@@ -757,6 +757,7 @@ impl Module for DeadlinesModule {
             Some(Action::OpenSettings) => "OpenSettings".to_string(),
             Some(Action::Control(_)) => "Control".to_string(),
             Some(Action::Music(_)) => "Music".to_string(),
+            Some(Action::Project(_)) => "Project".to_string(),
             None => String::new(),
         };
         serde_json::json!({

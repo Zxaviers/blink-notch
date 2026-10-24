@@ -1,6 +1,8 @@
 //! Windows glue: the window, input, focus handling, the control pipe.
 
+pub mod clipboard;
 pub mod control;
+pub mod dropper;
 pub mod focus;
 pub mod media;
 pub mod mediakeys;

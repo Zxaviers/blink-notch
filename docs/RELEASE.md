@@ -101,3 +101,7 @@ The WebView2 build is tagged `webview2-v0.1` and stays on `main` until the nativ
 The Music page shows what Windows says is playing (the same list the volume flyout and the lock screen use), so it works with Spotify, a browser tab or any player that reports to Windows. It reads the title, artist, album, position and cover from Windows; none of that is stored or sent anywhere.
 
 **Lyrics are the one thing that goes online**, and only after you turn lyrics on for a song (the speech-bubble button): the song's title, artist, album and length are sent to [lrclib.net](https://lrclib.net), a free open lyrics service, to find matching lyrics. Nothing else is sent, and nothing is saved on disk (the answer is remembered while Blink runs). `"lyrics": false` in the music module's options in `host.json` forbids the lookup altogether.
+
+## Projects
+
+The Projects page keeps tasks and the paths of files and folders in one small file, `projects.json`, in Blink's data folder. Nothing is sent anywhere. A file or folder you drop on the notch is only remembered by its path (nothing is copied or read), and removing it from a project never touches the file. The clipboard is read only when you press Ctrl+V while typing into one of the page's fields, and only its text.
