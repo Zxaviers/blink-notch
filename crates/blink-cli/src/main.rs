@@ -4,14 +4,19 @@
 //!   blinkctl agent --id ID --remove
 //!   blinkctl agent --list
 //!   blinkctl agent --json            read one JSON update per line from standard input and forward each
+//!   blinkctl hook claude|gemini      an agent's hook: reads the event from standard input (see docs/AGENTS.md)
+//!   blinkctl run [--name N] -- COMMAND ...   run any program and show it on the notch while it lives
+//!   blinkctl mcp                     an MCP server (standard input and output) with one tool, for agents that speak MCP
 //!   blinkctl ping
 //!
 //! STATE is running, input (waiting for you), done, error or idle. Add `--quiet` to exit 0 silently when the notch is not
 //! running (for hooks that must never fail). Exit codes: 0 done, 2 wrong use, 3 the notch is not running, 4 the notch
 //! refused (the reason is printed).
 
-use std::io::BufRead;
+use std::io::{BufRead, IsTerminal, Read, Write};
 use std::process::exit;
+
+mod mcp;
 
 use blink_core::ipc::{self, IpcError};
 use serde_json::{json, Map, Value};
@@ -21,6 +26,9 @@ const USAGE: &str = "usage:
   blinkctl agent --id ID --remove
   blinkctl agent --list
   blinkctl agent --json        (one JSON update per line on standard input)
+  blinkctl hook claude|gemini  (an agent's hook; the event comes on standard input)
+  blinkctl run [--id ID] [--name NAME] -- COMMAND [ARGS...]
+  blinkctl mcp                 (an MCP server on standard input and output)
   blinkctl ping";
 
 fn fail(code: i32, message: &str) -> ! {
@@ -105,9 +113,104 @@ fn send(request: &Value, quiet: bool) -> Value {
     }
 }
 
+/// Send a request without minding that the notch is not running. `Ok(true)` delivered, `Ok(false)` nobody listening,
+/// `Err(code)` the notch refused.
+fn deliver(request: &Value) -> Result<bool, String> {
+    match ipc::request(request) {
+        Ok(_) => Ok(true),
+        Err(IpcError::NotRunning) => Ok(false),
+        Err(IpcError::Failed(code)) => Err(code),
+    }
+}
+
+/// `blinkctl hook <dialect>`: one command for every event of an agent. It never fails an agent's hook: whatever goes wrong here,
+/// the exit code is 0 (only an unknown dialect, which is a mistake in the setup, is not).
+fn hook(args: &[String]) -> ! {
+    use blink_core::agent_hooks::{from_hook, stdout_for, HookAction, DIALECTS};
+    let Some(dialect) = args.first() else { fail(2, &format!("hook needs a dialect: {}", DIALECTS.join(", "))) };
+    if !DIALECTS.contains(&dialect.as_str()) {
+        fail(2, &format!("unknown dialect {dialect} (known: {})", DIALECTS.join(", ")));
+    }
+    let mut input = String::new();
+    if !std::io::stdin().is_terminal() {
+        let _ = std::io::stdin().lock().take(1_000_000).read_to_string(&mut input);
+    }
+    let event: Value = serde_json::from_str(input.trim()).unwrap_or(Value::Null);
+    match from_hook(dialect, &event) {
+        Ok(HookAction::Update(update)) => {
+            let _ = deliver(&update);
+        }
+        Ok(HookAction::Remove(id)) => {
+            let _ = deliver(&json!({ "cmd": "agent_remove", "id": id }));
+        }
+        Ok(HookAction::Ignore) | Err(_) => {}
+    }
+    if let Some(out) = stdout_for(dialect) {
+        println!("{out}");
+    }
+    exit(0);
+}
+
+/// `blinkctl run [--id ID] [--name NAME] -- COMMAND ARGS`: the program runs as it would have, in this console, and the notch
+/// shows it while it lives and how it ended. Its exit code is ours.
+fn run(args: &[String]) -> ! {
+    let split = args.iter().position(|a| a == "--").unwrap_or_else(|| fail(2, "run needs `--` before the command"));
+    let (flags, command) = (&args[..split], &args[split + 1..]);
+    let Some(program) = command.first() else { fail(2, "run needs a command after `--`") };
+    let stem = std::path::Path::new(program).file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| "program".to_string());
+    let (mut id, mut name) = (format!("run-{}-{}", stem.chars().filter(|c| c.is_ascii_alphanumeric()).take(20).collect::<String>(), std::process::id()), stem);
+    let mut it = flags.iter();
+    while let Some(flag) = it.next() {
+        match flag.as_str() {
+            "--id" => id = it.next().cloned().unwrap_or_else(|| fail(2, "--id needs a value")),
+            "--name" => name = it.next().cloned().unwrap_or_else(|| fail(2, "--name needs a value")),
+            "--quiet" | "-q" => {}
+            other => fail(2, &format!("unknown option {other}")),
+        }
+    }
+    let tell = |state: &str, title: &str| {
+        let _ = deliver(&json!({ "cmd": "agent_update", "id": id, "name": name, "state": state, "title": title }));
+    };
+    tell("running", "Running");
+    match std::process::Command::new(program).args(&command[1..]).status() {
+        Ok(status) => {
+            let code = status.code().unwrap_or(1);
+            if code == 0 { tell("done", "Finished") } else { tell("error", &format!("Exited with code {code}")) }
+            exit(code);
+        }
+        Err(e) => {
+            tell("error", "Could not start");
+            fail(127, &format!("cannot run {program}: {e}"));
+        }
+    }
+}
+
+/// `blinkctl mcp`: serve the one tool until the client closes standard input, then take the agent off the list.
+fn mcp_server() -> ! {
+    let mut session = mcp::Session::new(std::process::id());
+    let stdout = std::io::stdout();
+    for line in std::io::stdin().lock().lines().map_while(Result::ok) {
+        if line.trim().is_empty() {
+            continue;
+        }
+        if let Some(answer) = mcp::handle(&line, &mut session, &mut |update| deliver(&update)) {
+            let mut out = stdout.lock();
+            let _ = writeln!(out, "{answer}");
+            let _ = out.flush();
+        }
+    }
+    if session.reported {
+        let _ = deliver(&json!({ "cmd": "agent_remove", "id": session.id() }));
+    }
+    exit(0);
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(String::as_str) {
+        Some("hook") => hook(&args[1..]),
+        Some("run") => run(&args[1..]),
+        Some("mcp") => mcp_server(),
         Some("ping") => {
             let answer = send(&json!({ "cmd": "ping" }), false);
             println!("Blink {}", answer["version"].as_str().unwrap_or("?"));

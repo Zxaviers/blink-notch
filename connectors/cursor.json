@@ -1,0 +1,15 @@
+{
+  "id": "cursor",
+  "name": "Cursor",
+  "description": "Adds the Blink MCP server to Cursor, so its agent can report what it is doing. The agent decides when to report (the tool tells it to), so it is less exact than a hook.",
+  "verified": false,
+  "docs": "https://cursor.com/docs",
+  "detect": ["%USERPROFILE%\\.cursor"],
+  "install": {
+    "kind": "json-mcp",
+    "files": ["%USERPROFILE%\\.cursor\\mcp.json"],
+    "servers_key": "mcpServers",
+    "server_name": "blink",
+    "args": ["mcp"]
+  }
+}

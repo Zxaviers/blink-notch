@@ -123,7 +123,11 @@ foreach ($p in Get-Process -Name 'blink-settings' -ErrorAction SilentlyContinue)
 const countProcs = (name) => Number(ps(`@(Get-Process -Name '${name}' -ErrorAction SilentlyContinue).Count`))
 const credentialTargets = () => execFileSync('cmdkey', ['/list']).toString()
 
+// A pretend home folder with a pretend Claude Code in it: connecting an agent writes there, never to the real settings.
+const fakeHome = path.join(tmp, 'home')
+fs.mkdirSync(path.join(fakeHome, '.claude'), { recursive: true })
 const baseEnv = {
+  BLINK_HOME: fakeHome,
   BLINK_DATA_DIR: dataDir,
   BLINK_TZ: 'Asia/Jakarta',
   BLINK_RUN_KEY: RUN_KEY,
@@ -234,12 +238,28 @@ try {
   await page.eval("(() => { const c = document.querySelectorAll('#main input[type=checkbox]')[1]; c.checked = false; c.dispatchEvent(new Event('change', { bubbles: true })) })()")
   const agentPeekSaved = await until(() => readJson('host.json')?.modules?.find((m) => m.id === 'agents')?.options?.peek === false ? true : null)
   check('the Agents options are saved with the page options', Boolean(agentPeekSaved))
-  await page.eval("document.querySelector('#main .btn.primary').click()") // Try it now
+  await page.eval("[...document.querySelectorAll('#main .btn')].find((b) => b.textContent === 'Try it now' || b.textContent === 'Coba sekarang').click()")
   const demoThere = await until(async () => (((await pipeA.send({ cmd: 'agent_list' })).agents ?? []).some((x) => x.id === 'demo-agent') ? true : null))
   check('"Try it now" sends a pretend agent to the running notch', Boolean(demoThere))
   await page.eval("[...document.querySelectorAll('#main .btn')].find((b) => b.textContent === 'Remove the demo agent' || b.textContent === 'Hapus agen contoh').click()")
   const demoGone = await until(async () => (((await pipeA.send({ cmd: 'agent_list' })).agents ?? []).length === 0 ? true : null))
   check('and "Remove the demo agent" takes it away', Boolean(demoGone))
+  // Connect an agent: the list knows Claude Code is here, Connect writes the hooks, Disconnect takes them away again.
+  const card = (name) => `[...document.querySelectorAll('#main .connector')].find((c) => c.querySelector('.name').textContent === '${name}')`
+  const foundBadge = await until(() => page.eval(`${card('Claude Code')}?.querySelector('.badge')?.className.includes('found') === true`))
+  check('the list finds Claude Code on this (pretend) PC', Boolean(foundBadge), await page.eval(`${card('Claude Code')}?.outerHTML.slice(0, 300)`))
+  check('and says Cursor is not here', await page.eval(`${card('Cursor')}?.querySelector('.badge')?.className.includes('absent') === true`))
+  check('while a command-in-front connector is just to copy', await page.eval(`${card('Any terminal agent or command')}?.querySelector('.badge')?.className.includes('copy') === true`))
+  await page.eval(`${card('Claude Code')}.querySelector('.btn.primary').click()`)
+  const hooksWritten = await until(() => { try { const j = JSON.parse(fs.readFileSync(path.join(fakeHome, '.claude', 'settings.json'), 'utf8')); return j.hooks?.Stop?.[0]?.hooks?.[0]?.command?.includes('blinkctl') && j.hooks?.Notification && j.hooks?.SessionEnd ? j : null } catch { return null } })
+  check('Connect writes the hooks into the settings of Claude Code', Boolean(hooksWritten), JSON.stringify(hooksWritten))
+  const stopCommand = hooksWritten?.hooks?.Stop?.[0]?.hooks?.[0]?.command ?? ''
+  check('and the command is blinkctl with its hook word', /blinkctl\.exe"? hook claude$/i.test(stopCommand) || /~\d.*hook claude$/i.test(stopCommand), stopCommand)
+  const connectedBadge = await until(() => page.eval(`${card('Claude Code')}?.querySelector('.badge')?.className.includes('connected') === true`))
+  check('the card now says Connected', Boolean(connectedBadge))
+  await page.eval(`${card('Claude Code')}.querySelector('.btn:not(.primary)').click()`)
+  const hooksGone = await until(() => { try { const j = JSON.parse(fs.readFileSync(path.join(fakeHome, '.claude', 'settings.json'), 'utf8')); return j.hooks === undefined ? true : null } catch { return null } })
+  check('Disconnect removes only what was added', Boolean(hooksGone))
   check('and the page shows the commands to copy', await page.eval("document.querySelector('#main pre.code')?.textContent.includes('blinkctl agent') === true"))
   await page.eval("window.__openSection('weather')")
   await sleep(300)

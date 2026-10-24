@@ -1,0 +1,10 @@
+{
+  "id": "any-script",
+  "name": "Any script or tool",
+  "description": "Report from your own script with blinkctl agent: any state at any moment. See docs/AGENTS.md.",
+  "verified": true,
+  "install": {
+    "kind": "snippet",
+    "text": "{{blinkctl}} agent --id my-tool --name \"My tool\" --state running --title \"Working\" --quiet\n{{blinkctl}} agent --id my-tool --state input --title \"Needs you\" --quiet\n{{blinkctl}} agent --id my-tool --state done --title \"Finished\" --quiet\n{{blinkctl}} agent --id my-tool --remove --quiet"
+  }
+}

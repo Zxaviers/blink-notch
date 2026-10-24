@@ -151,6 +151,70 @@ fn open_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
     app.opener().open_url(url, None::<&str>).map_err(|_| "OPEN".to_string())
 }
 
+// ------------------------------------------------------------------ connectors
+
+/// Where `blinkctl.exe` is: next to this program.
+fn connector_ctx() -> Result<blink_core::connectors::Ctx, String> {
+    let ctl = std::env::current_exe().map_err(|_| "BLINKCTL_MISSING")?.with_file_name("blinkctl.exe");
+    if !ctl.exists() {
+        return Err("BLINKCTL_MISSING".to_string());
+    }
+    Ok(blink_core::connectors::Ctx::new(ctl.clone(), short_path(&ctl)))
+}
+
+/// The 8.3 form of a path, when Windows has one (a hook command without a space in it runs the same in any shell).
+fn short_path(path: &std::path::Path) -> Option<String> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows::core::PCWSTR;
+    use windows::Win32::Storage::FileSystem::GetShortPathNameW;
+    let wide: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+    let mut buf = vec![0u16; 1024];
+    let n = unsafe { GetShortPathNameW(PCWSTR(wide.as_ptr()), Some(&mut buf)) } as usize;
+    (n > 0 && n < buf.len()).then(|| String::from_utf16_lossy(&buf[..n]))
+}
+
+fn connectors() -> Result<Vec<blink_core::connectors::Connector>, String> {
+    let dir = store()?.dir().join("connectors");
+    Ok(blink_core::connectors::all(Some(&dir)))
+}
+
+/// The agents Blink can connect to, with whether each is on this PC and already connected.
+#[tauri::command]
+fn connectors_list() -> Result<Vec<Value>, String> {
+    use blink_core::connectors::{status, Install};
+    let ctx = connector_ctx().ok();
+    Ok(connectors()?
+        .iter()
+        .map(|c| {
+            let st = status(c);
+            let kind = match &c.install {
+                Install::JsonHooks { .. } => "hooks",
+                Install::JsonMcp { .. } => "mcp",
+                Install::File { .. } => "plugin",
+                Install::Snippet { .. } => "copy",
+            };
+            json!({
+                "id": c.id, "name": c.name, "description": c.description, "verified": c.verified, "docs": c.docs, "kind": kind,
+                "user": c.user, "installable": c.installable(), "found": st.found, "connected": st.connected,
+                "target": st.target.map(|t| t.to_string_lossy().to_string()),
+                "snippet": ctx.as_ref().and_then(|x| c.snippet(x)),
+            })
+        })
+        .collect())
+}
+
+/// Connect (write what the connector says) or disconnect one agent; the answer says what was changed.
+#[tauri::command]
+fn connector_set(id: String, on: bool) -> Result<String, String> {
+    let all = connectors()?;
+    let c = all.iter().find(|c| c.id == id).ok_or("UNKNOWN_CONNECTOR")?;
+    if on {
+        blink_core::connectors::connect(c, &connector_ctx()?)
+    } else {
+        blink_core::connectors::disconnect(c)
+    }
+}
+
 /// Send the notch a pretend agent, so the Agents page can be tried without any real agent (`remove` takes it away again).
 #[tauri::command]
 async fn agent_demo(state: String, title: String, remove: bool) -> Result<(), String> {
@@ -330,6 +394,8 @@ fn main() {
             weather_find,
             show_tour,
             agent_demo,
+            connectors_list,
+            connector_set,
             clipboard_text,
         ])
         // Closing the window ends the program, so no web engine stays behind.

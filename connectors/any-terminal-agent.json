@@ -1,0 +1,10 @@
+{
+  "id": "any-terminal-agent",
+  "name": "Any terminal agent or command",
+  "description": "Start it through blinkctl run: the notch shows it running while it lives, then finished or failed by its exit code. No setup in the agent itself.",
+  "verified": true,
+  "install": {
+    "kind": "snippet",
+    "text": "{{blinkctl}} run --name \"My agent\" -- opencode\n{{blinkctl}} run --name \"Build\" -- npm test"
+  }
+}

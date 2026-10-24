@@ -534,6 +534,57 @@ function musicSection () {
       t('music.peek')))
 }
 
+/** The list of agents Blink can connect to: one card each, filled in when the answer comes. */
+function connectorList (out) {
+  const box = h('div', { class: 'connectors' }, h('p', { class: 'hint' }, t('connectors.loading')))
+  const errorOf = (e) => (typeof e === 'string' && e === 'BLINKCTL_MISSING' ? t('connectors.missing') : String(e))
+  const reload = () => api.connectorsList().then((list) => {
+    clear(box)
+    for (const c of list) {
+      const state = c.connected ? 'connected' : c.found ? 'found' : c.installable ? 'absent' : 'copy'
+      const buttons = []
+      if (c.installable && (c.found || c.connected)) {
+        buttons.push(h('button', {
+          class: c.connected ? 'btn' : 'btn primary', type: 'button',
+          onclick: async () => {
+            try {
+              out.set('ok', await api.connectorSet(c.id, !c.connected))
+            } catch (e) {
+              out.set('error', errorOf(e))
+            }
+            reload()
+          }
+        }, t(c.connected ? 'connectors.disconnect' : 'connectors.connect')))
+      }
+      if (c.snippet) {
+        buttons.push(h('button', {
+          class: 'btn', type: 'button',
+          onclick: async () => {
+            try {
+              await navigator.clipboard.writeText(c.snippet)
+              out.set('ok', t('general.diagnostics.done'))
+            } catch {
+              out.set('error', t('general.diagnostics.failed'))
+            }
+          }
+        }, t('connectors.copy')))
+      }
+      if (c.docs) buttons.push(h('button', { class: 'btn', type: 'button', onclick: () => api.openUrl(c.docs).catch(() => {}) }, t('connectors.docs')))
+      box.append(h('div', { class: `connector ${state}` },
+        h('div', { class: 'connector-head' },
+          h('span', { class: 'name' }, c.name),
+          h('span', { class: `badge ${state}` }, t(`connectors.state.${state}`)),
+          c.user && h('span', { class: 'badge' }, t('connectors.yours'))),
+        h('p', { class: 'meta' }, c.description),
+        !c.verified && c.installable && h('p', { class: 'hint' }, t('connectors.unverified')),
+        c.connected && c.target && h('p', { class: 'hint' }, c.target),
+        h('div', { class: 'inline' }, buttons)))
+    }
+  }).catch((e) => { clear(box).append(h('p', { class: 'status error' }, errorOf(e))) })
+  reload()
+  return box
+}
+
 /** AI agents report to the notch with `blinkctl`; here: the two options and the commands to copy. */
 function agentsSection () {
   const options = optionsOf('agents')
@@ -554,6 +605,9 @@ function agentsSection () {
     h('label', { class: 'check' },
       h('input', { type: 'checkbox', checked: options.peek !== false, onchange: (e) => setOptions('agents', { peek: e.target.checked }) }),
       t('agents.peek')),
+    h('h2', {}, t('connectors.title')),
+    h('p', {}, t('connectors.intro')),
+    connectorList(out),
     h('h2', {}, t('agents.try')),
     h('p', {}, t('agents.try.hint')),
     h('div', { class: 'inline' },

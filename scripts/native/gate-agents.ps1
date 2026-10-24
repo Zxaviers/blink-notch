@@ -54,6 +54,61 @@ try {
   $r = Run @('agent', '--id', 'a', '--state', 'running', '--quiet'); Check 'with --quiet it is a silent success' ($r.Code -eq 0 -and $r.Text -eq '')
   $env:BLINK_IPC = 'gate-agents'
 
+  'hooks: one command for every event of an agent'
+  function Hook($dialect, $json) { $ErrorActionPreference = 'Continue'; $out = $json | & $ctl hook $dialect 2>&1; [pscustomobject]@{ Code = $LASTEXITCODE; Text = (($out | ForEach-Object { "$_" }) -join "`n") } }
+  $cwd = 'C:\Users\me\projects\parser'
+  $r = Hook 'claude' (@{ hook_event_name = 'UserPromptSubmit'; session_id = 'sess1111aaaa'; cwd = $cwd } | ConvertTo-Json -Compress)
+  $a = @(Agents)
+  Check 'a Claude Code prompt shows a running agent named for the project' ($r.Code -eq 0 -and $a.Count -eq 1 -and $a[0].name -like 'Claude Code*parser' -and $a[0].state -eq 'running') ($a | ConvertTo-Json -Compress)
+  $null = Hook 'claude' (@{ hook_event_name = 'UserPromptSubmit'; session_id = 'sess2222bbbb'; cwd = 'C:\other\site' } | ConvertTo-Json -Compress)
+  Check 'a second session is a second agent' (@(Agents).Count -eq 2)
+  $null = Hook 'claude' (@{ hook_event_name = 'Notification'; session_id = 'sess1111aaaa'; cwd = $cwd; message = 'Claude needs your permission to use Bash' } | ConvertTo-Json -Compress)
+  $first = @(Agents) | Where-Object { $_.name -like '*parser' }
+  Check 'a notification says it needs you, in its own words' ($first.state -eq 'input' -and $first.title -eq 'Claude needs your permission to use Bash') ($first | ConvertTo-Json -Compress)
+  $null = Hook 'claude' (@{ hook_event_name = 'Stop'; session_id = 'sess1111aaaa'; cwd = $cwd } | ConvertTo-Json -Compress)
+  Check 'Stop is finished' ((@(Agents) | Where-Object { $_.name -like '*parser' }).state -eq 'done')
+  $null = Hook 'claude' (@{ hook_event_name = 'SessionEnd'; session_id = 'sess1111aaaa'; cwd = $cwd } | ConvertTo-Json -Compress)
+  $null = Hook 'claude' (@{ hook_event_name = 'SessionEnd'; session_id = 'sess2222bbbb'; cwd = 'C:\other\site' } | ConvertTo-Json -Compress)
+  Check 'the end of a session takes it off the list' (@(Agents).Count -eq 0)
+  $g = Hook 'gemini' (@{ hook_event_name = 'BeforeAgent'; session_id = 'gem00000'; cwd = $cwd } | ConvertTo-Json -Compress)
+  Check 'Gemini CLI has its own dialect and gets JSON back' ($g.Code -eq 0 -and $g.Text -eq '{}' -and (@(Agents) | Where-Object { $_.name -like 'Gemini CLI*' }).state -eq 'running') $g.Text
+  $null = Hook 'gemini' (@{ hook_event_name = 'SessionEnd'; session_id = 'gem00000'; cwd = $cwd } | ConvertTo-Json -Compress)
+  $r = Hook 'claude' 'not json at all'; Check 'a hook never fails its agent, whatever it is given' ($r.Code -eq 0 -and @(Agents).Count -eq 0)
+  $r = Hook 'nope' '{}'; Check 'only an unknown dialect is an error' ($r.Code -eq 2)
+  $env:BLINK_IPC = 'gate-agents-nobody'
+  $r = Hook 'claude' (@{ hook_event_name = 'Stop' } | ConvertTo-Json -Compress); Check 'with no notch running a hook is a silent success' ($r.Code -eq 0 -and $r.Text -eq '')
+  $env:BLINK_IPC = 'gate-agents'
+
+  'run: any program, no setup'
+  $r = Run @('run', '--id', 'job-ok', '--name', 'Build', '--', 'cmd', '/c', 'exit', '0')
+  Check 'a program that succeeds ends as finished' ($r.Code -eq 0 -and (@(Agents) | Where-Object { $_.id -eq 'job-ok' }).state -eq 'done') ($r.Text)
+  $r = Run @('run', '--id', 'job-bad', '--', 'cmd', '/c', 'exit', '3')
+  Check 'one that fails ends as an error, with its own exit code' ($r.Code -eq 3 -and (@(Agents) | Where-Object { $_.id -eq 'job-bad' }).state -eq 'error' -and (@(Agents) | Where-Object { $_.id -eq 'job-bad' }).title -eq 'Exited with code 3')
+  $r = Run @('run', '--id', 'job-none', '--', 'definitely-not-a-program-xyz'); Check 'a program that cannot start is said, and is an error on the notch' ($r.Code -eq 127 -and (@(Agents) | Where-Object { $_.id -eq 'job-none' }).state -eq 'error')
+  foreach ($id in 'job-ok', 'job-bad', 'job-none') { $null = Run @('agent', '--id', $id, '--remove') }
+
+  'mcp: for any agent that speaks it'
+  $psi = New-Object System.Diagnostics.ProcessStartInfo; $psi.FileName = $ctl; $psi.Arguments = 'mcp'
+  $psi.RedirectStandardInput = $true; $psi.RedirectStandardOutput = $true; $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true
+  $psi.EnvironmentVariables['BLINK_IPC'] = 'gate-agents'
+  $mcp = [System.Diagnostics.Process]::Start($psi)
+  function Rpc($o) { $mcp.StandardInput.WriteLine(($o | ConvertTo-Json -Compress -Depth 8)); $mcp.StandardInput.Flush() }
+  function Reply() { $line = $mcp.StandardOutput.ReadLine(); if ($line) { $line | ConvertFrom-Json } }
+  Rpc @{ jsonrpc = '2.0'; id = 1; method = 'initialize'; params = @{ protocolVersion = '2025-06-18'; clientInfo = @{ name = 'antigravity-client' }; capabilities = @{} } }
+  $init = Reply
+  Check 'the server introduces itself' ($init.result.serverInfo.name -eq 'blink')
+  Rpc @{ jsonrpc = '2.0'; method = 'notifications/initialized' }
+  Rpc @{ jsonrpc = '2.0'; id = 2; method = 'tools/list' }
+  $list = Reply
+  Check 'it offers the one tool' ($list.result.tools.Count -eq 1 -and $list.result.tools[0].name -eq 'blink_report_status')
+  Rpc @{ jsonrpc = '2.0'; id = 3; method = 'tools/call'; params = @{ name = 'blink_report_status'; arguments = @{ state = 'input'; title = 'Approve the plan?' } } }
+  $call = Reply
+  $m = @(Agents) | Where-Object { $_.id -like 'mcp-antigravityclient-*' }
+  Check 'a call shows up on the notch under the client''s name' ($call.result.isError -ne $true -and $m.name -eq 'Antigravity Client' -and $m.state -eq 'input' -and $m.title -eq 'Approve the plan?') ($m | ConvertTo-Json -Compress)
+  $mcp.StandardInput.Close()
+  $null = $mcp.WaitForExit(5000)
+  Check 'when the client closes the connection the agent leaves the list' (@(Agents).Count -eq 0)
+
   'the page'
   Ctl @{cmd='agent_update'; id='a1'; name='Gemini CLI'; state='input'; title='Apply the migration?'} | Out-Null
   Ctl @{cmd='mouse'; kind='move'; x=320; y=10} | Out-Null; Ctl @{cmd='advance'; ms=900} | Out-Null

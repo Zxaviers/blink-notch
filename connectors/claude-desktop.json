@@ -1,0 +1,15 @@
+{
+  "id": "claude-desktop",
+  "name": "Claude Desktop",
+  "description": "Adds the Blink MCP server to Claude Desktop (restart Claude Desktop afterwards), so chats and tasks there can report what they are doing.",
+  "verified": false,
+  "docs": "https://modelcontextprotocol.io/quickstart/user",
+  "detect": ["%APPDATA%\\Claude"],
+  "install": {
+    "kind": "json-mcp",
+    "files": ["%APPDATA%\\Claude\\claude_desktop_config.json"],
+    "servers_key": "mcpServers",
+    "server_name": "blink",
+    "args": ["mcp"]
+  }
+}

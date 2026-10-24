@@ -19,6 +19,8 @@ export const api = {
   openUrl: (url) => invoke('open_url', { url }),
   openSettings: () => invoke('open_settings'),
   diagnostics: () => invoke('diagnostics'),
+  connectorsList: () => invoke('connectors_list'),
+  connectorSet: (id, on) => invoke('connector_set', { id, on }),
   agentDemo: (state, title, remove = false) => invoke('agent_demo', { state, title, remove }),
   showTour: () => invoke('show_tour'),
   clipboardText: () => invoke('clipboard_text'),
