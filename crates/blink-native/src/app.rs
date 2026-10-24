@@ -10,7 +10,8 @@ use serde_json::{json, Value};
 use crate::clock::Clock;
 use crate::host::ModuleConfig;
 use crate::modules::{Effect, Env, Key, Kit, Module, PanelFrame, PeekView, PointerKind, RestView, HEADER_H, PAGER_H};
-use crate::shell::{Mode, RestStyle, Shape, Shell, ShellConfig, OPEN_MAX_H, OPEN_W, REST_FULL, WINDOW_H, WINDOW_W};
+use crate::look::Look;
+use crate::shell::{Mode, RestStyle, Shape, Shell, ShellConfig, OPEN_MAX_H, OPEN_W, WINDOW_H, WINDOW_W};
 use crate::ui::canvas::{Canvas, Icon};
 use crate::ui::text::{Face, Fonts};
 use crate::ui::theme::{panel_surface, Rgb, Surface, Theme};
@@ -81,6 +82,8 @@ pub struct App {
     effects: Vec<AppEffect>,
     /// The last frame's panel height, to retarget the shell when content changes.
     last_panel_h: f32,
+    /// Palette, accent and pill shape (Blink settings, Display).
+    look: Look,
     /// The first-run tour, when it is showing: which card.
     tour: Option<usize>,
     /// Where the tour's buttons are (window coordinates), from the last frame.
@@ -138,6 +141,7 @@ impl App {
             pointer: None,
             effects: Vec::new(),
             last_panel_h: 0.0,
+            look: Look::default(),
             tour: None,
             tour_hits: Vec::new(),
             desktop: false,
@@ -791,6 +795,20 @@ impl App {
         }
     }
 
+    /// Take a new look (palette, accent, pill shape); the pill eases to its new shape.
+    pub fn set_look(&mut self, look: Look) {
+        if self.look == look {
+            return;
+        }
+        self.look = look;
+        let now = self.clock.now_ms();
+        self.shell.set_rest_full(look.pill(), now);
+    }
+
+    pub fn look(&self) -> Look {
+        self.look
+    }
+
     /// Show the welcome tour: the notch opens by itself on the first card and stays until the tour is finished or skipped.
     pub fn start_tour(&mut self) {
         let now = self.clock.now_ms();
@@ -1056,8 +1074,13 @@ impl App {
         let env = self.env(&tz);
         let shape = self.shell.shape(now);
         let openness = self.shell.openness(now);
-        let pill = Theme::dark();
-        let panel_theme = self.panel_theme();
+        let palette = self.look.palette();
+        let mut pill = Theme::dark();
+        pill.bg = palette.body;
+        let mut panel_theme = self.panel_theme();
+        if panel_theme.surface == Surface::Dark {
+            panel_theme.bg = palette.body;
+        }
         let reduced = self.shell.config().reduced_motion;
         let fade = if reduced { self.shell.fade_in(now) } else { 1.0 };
 
@@ -1110,11 +1133,12 @@ impl App {
                 theme: &panel_theme,
                 alpha: open_alpha,
                 // The module sees its page: the panel without the header above and the pager below.
-                viewport_h: (self.shell.target().h.max(REST_FULL.h) - HEADER_H - self.tabs_height()).max(0.0),
+                viewport_h: (self.shell.target().h.max(self.shell.rest_full().h) - HEADER_H - self.tabs_height()).max(0.0),
                 origin_x: (WINDOW_W - OPEN_W) / 2.0,
                 origin_y: HEADER_H,
                 width: OPEN_W,
                 keyboard: self.shell.keyboard(),
+                accent: self.look.accent,
             };
             if self.slots[self.active].module.id() == "clock" {
                 let marks: Vec<(i64, &'static str)> = self.slots.iter_mut().filter(|s| s.enabled).flat_map(|s| s.module.due_dates(&env)).collect();
@@ -1122,8 +1146,12 @@ impl App {
                     clock.set_marks(marks);
                 }
             }
+            // The palette's own light, in the top-left corner of the panel.
+            if let Some(glow) = palette.glow {
+                self.canvas.glow(frame.origin_x + 70.0, HEADER_H + 30.0, 210.0, glow, open_alpha * 0.20);
+            }
             if let Some(step) = self.tour {
-                self.tour_hits = crate::tour::draw(&mut self.canvas, &mut self.fonts, &panel_theme, open_alpha, step, self.lang, self.pointer, frame.origin_x, frame.origin_y, frame.width);
+                self.tour_hits = crate::tour::draw(&mut self.canvas, &mut self.fonts, &panel_theme, open_alpha, step, self.lang, self.pointer, self.look.accent, frame.origin_x, frame.origin_y, frame.width);
                 self.tab_rects.clear();
                 self.draw_header(&panel_theme, open_alpha, &env);
             } else {
@@ -1151,7 +1179,7 @@ impl App {
         } else {
             self.slots[self.active].module.title_parts(lang)
         };
-        let accent = if self.tour.is_some() { Rgb(0x4e, 0xa8, 0xff) } else { self.slots[self.active].module.accent() };
+        let accent = self.look.accent.unwrap_or_else(|| if self.tour.is_some() { Rgb(0x4e, 0xa8, 0xff) } else { self.slots[self.active].module.accent() });
         let size = 15.0;
         let base = cy - 10.0 + self.fonts.baseline(Face::SansBold, size, 20.0);
         let adv = self.canvas.text(&mut self.fonts, Face::SansBold, size, left, base, &first, theme.fg, alpha, 0.0);
@@ -1200,7 +1228,7 @@ impl App {
         if order.len() < 2 {
             return;
         }
-        let notch_h = self.shell.target().h.max(REST_FULL.h);
+        let notch_h = self.shell.target().h.max(self.shell.rest_full().h);
         let dot_y = notch_h - PAGER_H / 2.0 - 1.0;
         let (small, wide, gap) = (5.0_f32, 20.0_f32, 6.0_f32);
         let total: f32 = order.iter().map(|i| if *i == self.active { wide } else { small }).sum::<f32>() + gap * (order.len() as f32 - 1.0);
@@ -1268,7 +1296,7 @@ impl App {
 
     fn draw_eyes(&mut self, f: &crate::eyes::EyeFrame, theme: &Theme, alpha: f32) {
         let cx = WINDOW_W / 2.0;
-        let cy = REST_FULL.h / 2.0 - 1.0;
+        let cy = self.shell.rest_full().h / 2.0 - 1.0;
         let glow = Rgb(0x9a, 0xe0, 0xff);
         let a = alpha * f.appear;
         // They grow into place, and look a few pixels to the side.
@@ -1282,7 +1310,7 @@ impl App {
         // A soft light under the notch, like a screen glowing in the dark; dimmer when drowsy.
         let line_w = 40.0 + 50.0 * f.open;
         let (c0, c1) = (Rgb(0x38, 0xd6, 0xe8), Rgb(0xa7, 0x8b, 0xfa));
-        self.canvas.gradient_rrect(cx - line_w / 2.0, REST_FULL.h - 2.5, line_w, 2.0, 1.0, c0, c1, false, a * (0.4 + 0.45 * f.open));
+        self.canvas.gradient_rrect(cx - line_w / 2.0, self.shell.rest_full().h - 2.5, line_w, 2.0, 1.0, c0, c1, false, a * (0.4 + 0.45 * f.open));
     }
 
     // --------------------------------------------------------- pill and peek
@@ -1311,10 +1339,11 @@ impl App {
     /// The resting pill: a ring at the left, the text in the middle, quiet bars at the right.
     fn draw_rest(&mut self, rv: &RestView, theme: &Theme, alpha: f32, env: &Env) {
         let s = self.canvas.scale;
-        let left = (WINDOW_W - REST_FULL.w) / 2.0 + 17.0;
-        let right = (WINDOW_W + REST_FULL.w) / 2.0 - 17.0;
-        let cy = REST_FULL.h / 2.0;
-        let accent = self.slots[self.rest_owner].module.accent();
+        let rest = self.shell.rest_full();
+        let left = (WINDOW_W - rest.w) / 2.0 + 17.0;
+        let right = (WINDOW_W + rest.w) / 2.0 - 17.0;
+        let cy = rest.h / 2.0;
+        let accent = self.look.accent.unwrap_or_else(|| self.slots[self.rest_owner].module.accent());
         let (fraction, color) = self.ring_state(theme, env.wall_ms, accent);
         let faint = f32::from(theme.line.1) / 255.0 * alpha * 1.6;
         self.canvas.arc(left, cy, 5.8, 2.2, -90.0, 359.0, theme.line.0, faint);
@@ -1331,10 +1360,10 @@ impl App {
         let gap = if label.is_empty() { 0.0 } else { 8.0 };
         let x = WINDOW_W / 2.0 - (label_w + gap + count_w) / 2.0;
         if !label.is_empty() {
-            let base = self.fonts.baseline(Face::Mono, 11.5, REST_FULL.h);
+            let base = self.fonts.baseline(Face::Mono, 11.5, rest.h);
             self.canvas.text(&mut self.fonts, Face::Mono, 11.5, x, base, &label, theme.dim, alpha, 0.0);
         }
-        let base = self.fonts.baseline(Face::SansBold, size, REST_FULL.h);
+        let base = self.fonts.baseline(Face::SansBold, size, rest.h);
         self.canvas.text(&mut self.fonts, Face::SansBold, size, x + label_w + gap, base, &count, theme.urgency(rv.urgency), alpha, 0.0);
     }
 
@@ -1430,6 +1459,7 @@ impl App {
             "rest": { "label": rest.label, "count": rest.count, "urgency": rest.urgency },
             "panelHeight": self.last_panel_h,
             "tour": self.tour,
+            "look": { "palette": self.look.palette().id, "pill": self.look.pill_name(), "accent": self.look.accent.map(|c| format!("#{:02x}{:02x}{:02x}", c.0, c.1, c.2)) },
             "nextWake": self.next_wake(),
             "cachedGlyphs": self.fonts.cached_glyphs(),
             "module": module_debug,

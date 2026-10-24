@@ -43,6 +43,7 @@ impl Runtime {
         self.apply_media_keys();
         self.refresh_fullscreen();
         self.app.configure_modules(&crate::host::parse_modules(file.as_ref()));
+        self.app.set_look(crate::look::parse(file.as_ref()));
         let status = self.register_visibility_hotkey(&crate::host::parse_visibility_hotkey(file.as_ref()));
         if status != "ok" {
             self.effects_log.push(format!("hotkey:visibility:{status}"));

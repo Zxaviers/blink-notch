@@ -168,6 +168,8 @@ pub struct ClockModule {
     hits: Vec<(f32, f32, f32, f32, ClockHit)>,
     pointer: Option<(f32, f32)>,
     pane: Pane,
+    /// The accent the person chose for the chrome, from the last frame (None: this page's own blue).
+    accent_override: Option<Rgb>,
     weather_source: Option<Arc<dyn WeatherSource>>,
     wake: Option<Arc<dyn Fn() + Send + Sync>>,
     chosen: Option<ChosenPlace>,
@@ -190,6 +192,7 @@ impl Default for ClockModule {
             hits: Vec::new(),
             pointer: None,
             pane: Pane::Calendar,
+            accent_override: None,
             weather_source: None,
             wake: None,
             chosen: None,
@@ -485,7 +488,7 @@ impl Module for ClockModule {
     }
 
     fn accent(&self) -> Rgb {
-        Rgb(0x4e, 0xa8, 0xff)
+        self.accent_override.unwrap_or(Rgb(0x4e, 0xa8, 0xff))
     }
 
     fn title_parts(&self, lang: Lang) -> (String, String) {
@@ -540,6 +543,7 @@ impl Module for ClockModule {
         let theme = frame.theme;
         let lang = env.t.lang();
         self.hits.clear();
+        self.accent_override = frame.accent;
 
         // The left: the time, big and light, with the date under it.
         let left_w = 200.0;

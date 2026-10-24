@@ -975,7 +975,7 @@ impl Module for ControlsModule {
             self.backend.send(ControlCommand::Refresh);
         }
         let theme = crate::ui::theme::Theme::dark();
-        let frame = PanelFrame { theme: &theme, alpha: 1.0, viewport_h: crate::shell::OPEN_MAX_H, origin_x: 0.0, origin_y: 0.0, width: crate::shell::OPEN_W, keyboard: false };
+        let frame = PanelFrame { accent: None, theme: &theme, alpha: 1.0, viewport_h: crate::shell::OPEN_MAX_H, origin_x: 0.0, origin_y: 0.0, width: crate::shell::OPEN_W, keyboard: false };
         self.layout(env, kit, &frame, false)
     }
 

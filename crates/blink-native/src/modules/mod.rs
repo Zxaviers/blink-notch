@@ -185,6 +185,8 @@ pub struct PanelFrame<'a> {
     /// Width of the panel.
     pub width: f32,
     pub keyboard: bool,
+    /// The accent the person chose for the chrome (None: every page keeps its own colour).
+    pub accent: Option<Rgb>,
 }
 
 impl PanelFrame<'_> {

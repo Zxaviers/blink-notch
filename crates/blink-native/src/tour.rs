@@ -86,11 +86,13 @@ pub fn draw(
     step: usize,
     lang: Lang,
     pointer: Option<(f32, f32)>,
+    accent: Option<Rgb>,
     origin_x: f32,
     origin_y: f32,
     width: f32,
 ) -> Vec<(f32, f32, f32, f32, TourButton)> {
     let mut hits = Vec::new();
+    let accent_color = accent.unwrap_or(ACCENT);
     let c = card(step, lang);
     let x = origin_x + PAGE_SIDE;
     let w = width - 2.0 * PAGE_SIDE;
@@ -99,9 +101,9 @@ pub fn draw(
 
     // The picture, then the words.
     let (ix, iy) = (x + 20.0, origin_y + 26.0);
-    canvas.glow(ix, iy, 34.0, ACCENT, alpha * 0.25);
-    canvas.circle(ix, iy, 19.0, ACCENT, alpha * 0.18);
-    canvas.icon(c.icon, ix, iy, 20.0, ACCENT, alpha);
+    canvas.glow(ix, iy, 34.0, accent_color, alpha * 0.25);
+    canvas.circle(ix, iy, 19.0, accent_color, alpha * 0.18);
+    canvas.icon(c.icon, ix, iy, 20.0, accent_color, alpha);
     let tx = x + 50.0;
     let tw = w - 50.0;
     let base = origin_y + 4.0 + fonts.baseline(Face::SansBold, 15.0, 22.0);
@@ -125,7 +127,7 @@ pub fn draw(
     let nw = canvas.measure(fonts, Face::SansSemibold, 12.0, next_label, 0.0) + 28.0;
     let nx = x + w - nw;
     let hover = over(nx, by, nw, 26.0);
-    canvas.rrect(nx, by, nw, 26.0, 13.0, ACCENT, alpha * if hover { 1.0 } else { 0.94 });
+    canvas.rrect(nx, by, nw, 26.0, 13.0, accent_color, alpha * if hover { 1.0 } else { 0.94 });
     let base = by + fonts.baseline(Face::SansSemibold, 12.0, 26.0);
     canvas.text(fonts, Face::SansSemibold, 12.0, nx + 14.0, base, next_label, Rgb(0x06, 0x12, 0x20), alpha, 0.0);
     hits.push((nx, by, nw, 26.0, TourButton::Next));
@@ -143,7 +145,7 @@ pub fn draw(
     let dots_x = origin_x + width / 2.0 - (STEPS as f32 - 1.0) * 6.0 - 40.0;
     for i in 0..STEPS {
         let lit = i == step;
-        canvas.circle(dots_x + i as f32 * 12.0, by + 13.0, if lit { 3.2 } else { 2.4 }, if lit { ACCENT } else { theme.fg }, alpha * if lit { 1.0 } else { 0.3 });
+        canvas.circle(dots_x + i as f32 * 12.0, by + 13.0, if lit { 3.2 } else { 2.4 }, if lit { accent_color } else { theme.fg }, alpha * if lit { 1.0 } else { 0.3 });
     }
     hits
 }

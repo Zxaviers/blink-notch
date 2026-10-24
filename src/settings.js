@@ -403,10 +403,58 @@ function displaySection () {
       [['all', t('display.fullscreen.all')], ['games', t('display.fullscreen.games')], ['never', t('display.fullscreen.never')]],
       ['games', 'never'].includes(host.hideInFullscreen) ? host.hideInFullscreen : 'all',
       (v) => saveHost(hostModules(), { hideInFullscreen: v })), t('display.fullscreen.hint')),
+    lookControls(),
     field(t('display.hoverDelay'), numberInput(settings.hoverDelayMs, { min: 0, max: 1000, step: 10 }, (v) => save({ hoverDelayMs: v }))),
     monitorField,
     field(t('display.offset'), numberInput(settings.offsetX, { min: -2000, max: 2000, step: 10 }, (v) => save({ offsetX: v }))),
     hotkeyControl())
+}
+
+/** How the notch looks: the palette of its body, the accent of its chrome, the shape of the resting pill (all in host.json under `look`). */
+const PALETTES = [
+  ['midnight', '#000000', null], ['graphite', '#16171c', null], ['aurora', '#0a0e20', '#6d5dfc'],
+  ['sunset', '#160c11', '#ff7a59'], ['forest', '#07120d', '#34d399'], ['ocean', '#051218', '#22d3ee']
+]
+const ACCENTS = [
+  ['blue', '#4ea8ff'], ['violet', '#a78bfa'], ['pink', '#f472b6'], ['orange', '#fb923c'],
+  ['yellow', '#fbbf24'], ['green', '#34d399'], ['teal', '#2dd4bf'], ['red', '#f87171']
+]
+const PILLS = ['classic', 'compact', 'wide', 'square']
+
+function lookControls () {
+  const look = host.look && typeof host.look === 'object' ? host.look : {}
+  const palette = PALETTES.some((p) => p[0] === look.palette) ? look.palette : 'midnight'
+  const accent = typeof look.accent === 'string' ? look.accent : ''
+  const pill = PILLS.includes(look.pill) ? look.pill : 'classic'
+  const choose = (patch) => {
+    const next = { ...look, ...patch }
+    for (const key of Object.keys(next)) if (next[key] === '' || next[key] === undefined) delete next[key]
+    saveHost(hostModules(), { look: next }).then(renderMain)
+  }
+  const customHex = /^#[0-9a-fA-F]{6}$/.test(accent) ? accent : '#4ea8ff'
+  return h('div', { class: 'look' },
+    h('h2', {}, t('look.title')),
+    h('p', { class: 'hint' }, t('look.hint')),
+    h('div', { class: 'field' },
+      h('span', { class: 'label' }, t('look.palette')),
+      h('div', { class: 'swatches' }, PALETTES.map(([id, body, glow]) => h('button', {
+        type: 'button', class: 'swatch palette', title: t(`look.palette.${id}`), 'aria-label': t(`look.palette.${id}`), 'aria-pressed': String(id === palette),
+        style: `background: ${glow ? `radial-gradient(circle at 25% 25%, ${glow} 0%, ${body} 75%)` : body}`,
+        onclick: () => choose({ palette: id })
+      })))),
+    h('div', { class: 'field' },
+      h('span', { class: 'label' }, t('look.accent')),
+      h('div', { class: 'swatches' },
+        h('button', {
+          type: 'button', class: 'swatch auto', title: t('look.accent.auto'), 'aria-label': t('look.accent.auto'), 'aria-pressed': String(accent === ''),
+          onclick: () => choose({ accent: '' })
+        }, t('look.accent.auto')),
+        ACCENTS.map(([id, color]) => h('button', {
+          type: 'button', class: 'swatch accent', title: t(`look.accent.${id}`), 'aria-label': t(`look.accent.${id}`), 'aria-pressed': String(id === accent),
+          style: `background: ${color}`, onclick: () => choose({ accent: id })
+        })),
+        h('input', { type: 'color', class: 'swatch custom', value: customHex, title: t('look.accent.custom'), 'aria-label': t('look.accent.custom'), onchange: (e) => choose({ accent: e.target.value }) }))),
+    field(t('look.pill'), select(PILLS.map((id) => [id, t(`look.pill.${id}`)]), pill, (v) => choose({ pill: v }))))
 }
 
 /** The pill: what it shows at rest, and when a deadline takes it from the clock. */

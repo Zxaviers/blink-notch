@@ -89,6 +89,8 @@ pub struct Shell {
     peek_until: Option<u64>,
     keyboard: bool,
     pinned: bool,
+    /// The resting pill when it is shown in full (the look's choice; `REST_FULL` by default).
+    rest_full: Shape,
     /// Held open by the host (a song with its lyrics on the empty desktop, or the pin): the pointer leaving does not close it.
     hold: bool,
     mode_changed_at: u64,
@@ -109,6 +111,7 @@ impl Shell {
             peek_until: None,
             keyboard: false,
             pinned: false,
+            rest_full: REST_FULL,
             hold: false,
             mode_changed_at: 0,
         }
@@ -142,9 +145,24 @@ impl Shell {
 
     fn rest_shape(&self) -> Shape {
         match self.rest_style {
-            RestStyle::Full => REST_FULL,
+            RestStyle::Full => self.rest_full,
             RestStyle::Mini => REST_MINI,
             RestStyle::Hot => REST_HOT,
+        }
+    }
+
+    pub fn rest_full(&self) -> Shape {
+        self.rest_full
+    }
+
+    /// Another shape for the resting pill: the notch eases to it when it is at rest.
+    pub fn set_rest_full(&mut self, shape: Shape, now: u64) {
+        if self.rest_full != shape {
+            self.rest_full = shape;
+            self.open_height = self.open_height.max(shape.h);
+            if self.mode == Mode::Rest {
+                self.retarget(now);
+            }
         }
     }
 
@@ -176,7 +194,7 @@ impl Shell {
     /// How open the notch is, 0 (resting pill) to 1 (the panel at its own height). Contents fade on it.
     pub fn openness(&self, now: u64) -> f32 {
         let s = self.shape(now);
-        ((s.h - REST_FULL.h) / (self.open_height - REST_FULL.h).max(1.0)).clamp(0.0, 1.0)
+        ((s.h - self.rest_full.h) / (self.open_height - self.rest_full.h).max(1.0)).clamp(0.0, 1.0)
     }
 
     /// Fade of contents after a mode change, for reduced motion (shapes jump, text fades).
@@ -228,7 +246,7 @@ impl Shell {
 
     /// The panel's content height changed (clamped to the maximum).
     pub fn set_open_height(&mut self, h: f32, now: u64) {
-        let h = h.clamp(REST_FULL.h, OPEN_MAX_H);
+        let h = h.clamp(self.rest_full.h, OPEN_MAX_H);
         if (h - self.open_height).abs() > f32::EPSILON {
             self.open_height = h;
             if self.mode == Mode::Open {

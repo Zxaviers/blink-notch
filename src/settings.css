@@ -348,6 +348,42 @@ textarea {
   border-color: var(--brand);
 }
 
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.swatch {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  cursor: pointer;
+}
+.swatch.palette {
+  width: 44px;
+  border-radius: 10px;
+}
+.swatch.auto {
+  width: auto;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.82rem;
+}
+.swatch.custom {
+  background: none;
+  padding: 1px;
+}
+.swatch[aria-pressed="true"] {
+  border-color: var(--fg);
+  box-shadow: 0 0 0 2px var(--brand);
+}
+
 .code {
   margin: 0 0 10px;
   padding: 10px 12px;

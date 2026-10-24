@@ -11,6 +11,7 @@ pub mod events;
 pub mod eyes;
 pub mod host;
 pub mod live;
+pub mod look;
 pub mod modules;
 #[cfg(windows)]
 pub mod platform;
