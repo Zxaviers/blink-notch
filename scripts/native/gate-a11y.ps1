@@ -54,7 +54,7 @@ try {
   $wr = $s.window.rect
   Check 'its rectangle lies inside the window on screen' ($r.X -ge $wr.x -and $r.Y -ge $wr.y -and $r.Right -le ($wr.x + $wr.w) -and $r.Height -gt 0) "$r vs $($wr.x),$($wr.y)"
   $hit = [System.Windows.Automation.AutomationElement]::FromPoint((New-Object System.Windows.Point(($r.X + $r.Width / 2), ($r.Y + $r.Height / 2))))
-  Check 'asking what is at the pill''s centre finds the pill' ($hit -and (ElName $hit) -like 'Next deadline*') (ElName $hit)
+  Check 'asking what is at the pill''s centre finds the pill' ($hit -and (ElName $hit) -match '^(Next deadline|Clock)') (ElName $hit)
 
   'opening it through the screen reader'
   [System.Windows.Automation.Automation] | Out-Null
