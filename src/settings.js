@@ -15,6 +15,8 @@ import { normalizeLocalEvent } from './lib/localEvents.js'
 import { dueLabel } from './lib/countdown.js'
 import { acceleratorFromEvent, DEFAULT_HOTKEY } from './lib/hotkey.js'
 
+const BRONE_EXPORT_URL = 'https://brone.ub.ac.id/calendar/export.php'
+
 const SCOPES = {
   deadlines: ['feeds', 'notifications', 'events', 'pill'],
   app: ['display', 'pages', 'weather', 'music', 'general']
@@ -150,22 +152,48 @@ function addFeedForm ({ kind: initialKind, onSaved }) {
     type: 'text', class: 'wide', autocomplete: 'off', spellcheck: 'false',
     oninput: () => { testedUrl = ''; saveBtn.disabled = true }
   })
-  const testBtn = h('button', { class: 'btn', type: 'button', onclick: runTest }, t('feeds.test'))
+  const testBtn = h('button', { class: 'btn', type: 'button', onclick: () => runTest() }, t('feeds.test'))
+  // A shortcut to the page where the link is made (BRONE's calendar export), and a Paste that checks the link and adds it.
+  const exportBtn = h('button', { class: 'btn', type: 'button', onclick: () => api.openUrl(BRONE_EXPORT_URL).catch(() => out.set('error', t('error.NETWORK'))) }, t('feeds.brone'))
+  exportBtn.hidden = kind !== 'moodle'
+  const pasteBtn = h('button', { class: 'btn', type: 'button', onclick: pasteAndAdd }, t('feeds.paste'))
   const saveBtn = h('button', { class: 'btn primary', type: 'button', disabled: true, onclick: runSave }, t('feeds.save'))
 
   const kindSelect = select(
     FEED_KINDS.map((k) => [k, t(`feeds.kind.${k}`)]),
     kind,
-    (value) => { kind = value; help.textContent = t(`feeds.help.${kind}`); testedUrl = ''; saveBtn.disabled = true }
+    (value) => { kind = value; help.textContent = t(`feeds.help.${kind}`); testedUrl = ''; saveBtn.disabled = true; exportBtn.hidden = kind !== 'moodle' }
   )
 
+  /** Take the link from the clipboard, check that it works and, if it does, add the feed straight away. */
+  async function pasteAndAdd () {
+    let text = ''
+    try {
+      text = ((await api.clipboardText()) ?? '').trim()
+    } catch { /* nothing readable */ }
+    if (!text) {
+      out.set('error', t('feeds.paste.empty'))
+      return
+    }
+    urlInput.value = text
+    if (kind !== 'moodle' && /brone\.ub\.ac\.id/i.test(text)) {
+      kind = 'moodle'
+      kindSelect.value = 'moodle'
+      help.textContent = t(`feeds.help.${kind}`)
+    }
+    testedUrl = ''
+    saveBtn.disabled = true
+    if (await runTest()) await runSave()
+  }
+
+  /** Check the link in the box. Returns true when the calendar was read. */
   async function runTest () {
     let url
     try {
       url = validateUrl(urlInput.value)
     } catch (e) {
       out.set('error', errorText(e.code))
-      return
+      return false
     }
     const hint = kind === 'moodle' ? inspectMoodleUrl(url) : { ok: true, hint: null }
     out.set('', t('feeds.testing'))
@@ -174,7 +202,7 @@ function addFeedForm ({ kind: initialKind, onSaved }) {
       const res = await api.feedTest(url)
       if (res.error) {
         out.set('error', `${errorText(res.error.code)}${hint.hint ? ` ${t(`hint.${hint.hint}`)}` : ''}`)
-        return
+        return false
       }
       const tasks = parseTasks(res.ics, { now: new Date(), keepOverdueMs: 3 * DAY_MS, horizonMs: 365 * DAY_MS })
       const now = Date.now()
@@ -185,8 +213,10 @@ function addFeedForm ({ kind: initialKind, onSaved }) {
       }))
       testedUrl = url
       saveBtn.disabled = false
+      return true
     } catch (e) {
       out.set('error', errorText(e))
+      return false
     } finally {
       testBtn.disabled = false
     }
@@ -228,7 +258,7 @@ function addFeedForm ({ kind: initialKind, onSaved }) {
     help,
     field(t('feeds.label'), nameInput),
     field(t('feeds.url'), urlInput),
-    h('div', { class: 'inline' }, testBtn, saveBtn),
+    h('div', { class: 'inline' }, exportBtn, pasteBtn, testBtn, saveBtn),
     out)
 }
 
@@ -378,17 +408,6 @@ function displaySection () {
 /** The pill: what it shows at rest, and when a deadline takes it from the clock. */
 function pillSection () {
   const urgent = Number(optionsOf('deadlines').urgentHours)
-  const calendarOut = status()
-  const calendar = h('input', {
-    type: 'text', class: 'wide', autocomplete: 'off', spellcheck: 'false', placeholder: 'https://calendar.google.com/calendar/',
-    value: optionsOf('deadlines').calendarUrl ?? '',
-    onchange: (e) => {
-      const url = e.target.value.trim()
-      if (url && !/^https:\/\//i.test(url)) return calendarOut.set('error', t('pill.calendar.invalid'))
-      calendarOut.set('', '')
-      setOptions('deadlines', { calendarUrl: url || undefined })
-    }
-  })
   return h('section', {},
     h('h1', {}, t('pill.title')),
     h('p', {}, t('pill.intro')),
@@ -399,9 +418,7 @@ function pillSection () {
     field(t('display.resting'), select(
       [['always', t('display.resting.always')], ['when-due', t('display.resting.when-due')], ['hover', t('display.resting.hover')]],
       settings.restingStyle, (v) => save({ restingStyle: v }))),
-    field(t('display.dueHorizon'), numberInput(settings.dueHorizonHours, { min: 1, max: 336 }, (v) => save({ dueHorizonHours: v }))),
-    field(t('pill.calendar'), calendar, t('pill.calendar.hint')),
-    calendarOut)
+    field(t('display.dueHorizon'), numberInput(settings.dueHorizonHours, { min: 1, max: 336 }, (v) => save({ dueHorizonHours: v }))))
 }
 
 function pagesSection () {
@@ -493,9 +510,13 @@ function weatherSection () {
 
 function musicSection () {
   const options = optionsOf('music')
+  const seconds = Number.isFinite(Number(options.autoOpen)) && options.autoOpen !== undefined ? Number(options.autoOpen) : 10
   return h('section', {},
     h('h1', {}, t('music.title')),
     h('p', {}, t('music.intro')),
+    field(t('music.autoOpen'), select(
+      [[0, t('music.autoOpen.off')], [10, t('music.autoOpen.10')], [30, t('music.autoOpen.30')], [86400, t('music.autoOpen.hover')]],
+      seconds, (v) => setOptions('music', { autoOpen: Number(v) })), t('music.autoOpen.hint')),
     h('label', { class: 'check' },
       h('input', { type: 'checkbox', checked: options.lyrics !== false, onchange: (e) => setOptions('music', { lyrics: e.target.checked }) }),
       t('music.lyrics')),

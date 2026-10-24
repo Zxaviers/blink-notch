@@ -219,12 +219,7 @@ pub struct DeadlinesModule {
     peek_task: Option<String>,
     /// A deadline this close (or already missed) takes the pill from the clock (`urgentHours`, 5 by default).
     urgent_hours: f64,
-    /// Where the calendar button goes to add or change a deadline (`calendarUrl`, https only).
-    calendar_url: String,
 }
-
-/// The calendar the button opens until another is chosen.
-const DEFAULT_CALENDAR_URL: &str = "https://calendar.google.com/calendar/";
 
 struct Model {
     view: View,
@@ -262,7 +257,7 @@ fn tone(frame: &PanelFrame, urgency: &str) -> Rgb {
 
 impl DeadlinesModule {
     pub fn new(source: Box<dyn DeadlineSource>) -> Self {
-        DeadlinesModule { source, state: PanelState::default(), hits: Vec::new(), row_rects: HashMap::new(), content_h: 0.0, peek_task: None, urgent_hours: DEFAULT_URGENT_HOURS, calendar_url: DEFAULT_CALENDAR_URL.to_string() }
+        DeadlinesModule { source, state: PanelState::default(), hits: Vec::new(), row_rects: HashMap::new(), content_h: 0.0, peek_task: None, urgent_hours: DEFAULT_URGENT_HOURS }
     }
 
     pub fn source_mut(&mut self) -> &mut dyn DeadlineSource {
@@ -523,8 +518,6 @@ impl DeadlinesModule {
         }
         self.icon_button(kit, frame, bx, by, Icon::Gear, Action::OpenSettings, None, theme.fg);
         bx += BTN + 6.0;
-        self.icon_button(kit, frame, bx, by, Icon::Calendar, Action::OpenUrl(self.calendar_url.clone()), None, theme.fg);
-        bx += BTN + 6.0;
         if !model.view.done_list.is_empty() {
             let n = model.view.done_list.len().to_string();
             let text = env.t.t("section.done", &[("n", &n)]);
@@ -718,12 +711,6 @@ impl Module for DeadlinesModule {
     }
 
     fn set_options(&mut self, options: &serde_json::Value) {
-        self.calendar_url = options
-            .get("calendarUrl")
-            .and_then(serde_json::Value::as_str)
-            .map(str::trim)
-            .filter(|u| u.to_ascii_lowercase().starts_with("https://"))
-            .map_or_else(|| DEFAULT_CALENDAR_URL.to_string(), String::from);
         self.urgent_hours = options.get("urgentHours").and_then(serde_json::Value::as_f64).filter(|h| (0.1..=720.0).contains(h)).unwrap_or(DEFAULT_URGENT_HOURS);
     }
 
@@ -1004,9 +991,6 @@ impl Module for DeadlinesModule {
         let mut settings = Node::new(7, ROOT, Role::Button, w("settings"));
         settings.action = Some(NodeAction::Module(Action::OpenSettings));
         out.push(settings);
-        let mut calendar = Node::new(8, ROOT, Role::Button, w("calendar"));
-        calendar.action = Some(NodeAction::Module(Action::OpenUrl(self.calendar_url.clone())));
-        out.push(calendar);
         out
     }
 

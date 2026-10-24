@@ -184,6 +184,7 @@ fn the_lyrics_option_can_forbid_the_lookup_altogether() {
 #[test]
 fn a_new_song_peeks_but_the_first_one_does_not() {
     let mut r = rig(None);
+    r.app.configure_modules(&[blink_native::host::ModuleConfig { id: "music".into(), enabled: true, options: serde_json::json!({ "autoOpen": 0 }) }]);
     r.app.pointer(PointerKind::Leave, 0.0, 0.0);
     advance(&mut r.app, 600);
     settle(&mut r.app);
@@ -244,4 +245,70 @@ fn when_the_lyrics_service_cannot_be_reached_a_click_asks_again() {
     wait_for_lyrics(&mut app);
     assert_eq!(app.state_json()["module"]["lyrics"], "synced");
     assert_eq!(source.0.load(Ordering::SeqCst), 2);
+}
+
+/// A resting notch (no hover, nothing open) with a player: music is the second page.
+fn resting_rig() -> Rig {
+    let media = FakeMedia::new(WALL_BASE);
+    let lyrics = Arc::new(CountingLyrics { asked: AtomicUsize::new(0), lyrics: synced() });
+    let music = MusicModule::new(media.clone(), lyrics.clone(), Arc::new(|| {}));
+    let modules: Vec<Box<dyn Module>> = vec![Box::new(DeadlinesModule::new(Box::new(DemoSource::new(WALL_BASE)))), Box::new(music)];
+    let mut app = App::new(Clock::manual(WALL_BASE), normalize_settings(None), tz(), 1.0, "en", modules).expect("app");
+    app.tick();
+    app.pointer(PointerKind::Leave, 0.0, 0.0);
+    advance(&mut app, 600);
+    settle(&mut app);
+    Rig { app, media, lyrics }
+}
+
+#[test]
+fn a_song_that_starts_opens_the_notch_by_itself_on_the_music_and_its_lyrics() {
+    let mut r = resting_rig();
+    assert_eq!(r.app.state_json()["mode"], "rest");
+    r.media.set(|s| {
+        s.title = "Harbour Lights".into();
+        s.track += 1;
+    });
+    r.app.data_changed();
+    settle(&mut r.app);
+    r.app.render();
+    let state = r.app.state_json();
+    assert_eq!(state["mode"], "open", "no hover needed");
+    assert_eq!(r.app.active_module(), "music");
+    assert_eq!(state["module"]["showLyrics"], true, "with the lyrics");
+    assert_eq!(r.lyrics.asked.load(Ordering::SeqCst), 1, "the lyrics were asked for at once");
+    // It goes away by itself after a while.
+    advance(&mut r.app, 11_000);
+    settle(&mut r.app);
+    assert_eq!(r.app.state_json()["mode"], "rest");
+}
+
+#[test]
+fn the_notch_stays_open_while_the_pointer_is_on_it_and_a_song_that_was_already_playing_does_not_open_it() {
+    let mut r = resting_rig();
+    // The song playing since the start did not open anything (the rig started with it playing).
+    assert_eq!(r.app.state_json()["mode"], "rest");
+    r.media.set(|s| s.track += 1);
+    r.app.data_changed();
+    settle(&mut r.app);
+    r.app.render();
+    assert_eq!(r.app.state_json()["mode"], "open");
+    let (cx, cy) = (320.0, 40.0);
+    r.app.pointer(PointerKind::Move, cx, cy);
+    advance(&mut r.app, 15_000);
+    assert_eq!(r.app.state_json()["mode"], "open", "the pointer on it keeps it open");
+    r.app.pointer(PointerKind::Leave, 0.0, 0.0);
+    advance(&mut r.app, 2_000);
+    settle(&mut r.app);
+    assert_eq!(r.app.state_json()["mode"], "rest", "and it closes once the pointer is gone");
+}
+
+#[test]
+fn the_auto_open_can_be_turned_off_or_made_longer() {
+    let mut r = resting_rig();
+    r.app.configure_modules(&[blink_native::host::ModuleConfig { id: "music".into(), enabled: true, options: serde_json::json!({ "autoOpen": 0, "peek": false }) }]);
+    r.media.set(|s| s.track += 1);
+    r.app.data_changed();
+    settle(&mut r.app);
+    assert_eq!(r.app.state_json()["mode"], "rest", "autoOpen 0 keeps the notch where it was");
 }

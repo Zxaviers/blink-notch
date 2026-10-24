@@ -101,6 +101,8 @@ pub enum Effect {
     Announce(String),
     /// Offer this peek now (the module built it from an event).
     ShowPeek(PeekView),
+    /// Open this module's page by itself and close it again after this many ms (a pointer on it keeps it open).
+    AutoOpen(u64),
     /// A reminder: a system notification (when the user wants them).
     Toast { title: String, body: String, url: Option<String> },
     /// The module has something to peek about (see `Module::peek`).

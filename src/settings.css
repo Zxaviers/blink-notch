@@ -309,3 +309,7 @@ textarea {
   gap: 8px;
   margin-top: 20px;
 }
+
+.btn[hidden] {
+  display: none;
+}

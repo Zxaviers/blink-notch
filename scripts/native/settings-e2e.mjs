@@ -160,7 +160,7 @@ try {
     name.value = 'G4 fixture'
     url.value = 'http://127.0.0.1:${FIXTURE_PORT}/cal.ics'
     url.dispatchEvent(new Event('input', { bubbles: true }))
-    document.querySelector('#wizard .inline .btn:not(.primary)').click()
+    ;[...document.querySelectorAll('#wizard .inline .btn')].find((b) => b.textContent === 'Test link').click()
   })()`)
   const tested = await until(() => page.eval("document.querySelector('#wizard p.status.ok')?.textContent ?? null"), 15000)
   check('"Test link" fetches and understands the calendar', Boolean(tested) && /5/.test(tested), String(tested))
@@ -219,6 +219,11 @@ try {
   await page.eval("(() => { const c = document.querySelectorAll('#main li input[type=checkbox]')[4]; c.checked = false; c.dispatchEvent(new Event('change', { bubbles: true })) })()")
   const projectsOff = await until(async () => (await state(pipeA)).state.modules.find((m) => m.id === 'projects')?.enabled === false ? true : null)
   check('turning a page off in settings removes it from the notch', Boolean(projectsOff))
+  await page.eval("window.__openSection('music')")
+  await sleep(300)
+  await page.eval("(() => { const sel = [...document.querySelectorAll('#main select')].find((s) => [...s.options].some((o) => o.value === '30')); sel.value = '30'; sel.dispatchEvent(new Event('change', { bubbles: true })) })()")
+  const autoSaved = await until(() => readJson('host.json')?.modules?.find((m) => m.id === 'music')?.options?.autoOpen === 30 ? true : null)
+  check('how long the notch opens by itself for a new song is saved with the Music page options', Boolean(autoSaved))
   await page.eval("window.__openSection('weather')")
   await sleep(300)
   await page.eval("(() => { const sel = [...document.querySelectorAll('#main select')].find((s) => [...s.options].some((o) => o.value === 'f')); sel.value = 'f'; sel.dispatchEvent(new Event('change', { bubbles: true })) })()")
@@ -283,6 +288,30 @@ try {
   check('and deletes its Credential Manager entry', !credentialTargets().includes(`${createdFeedIds[0]}.deadline-notch`))
   const onlyEvent = await until(async () => { const u = (await state(pipeA)).state.module.upcoming; return u.length === 1 && u[0] === 'Dentist' ? true : null }, 15000)
   check('the notch drops the feed but keeps the personal event', Boolean(onlyEvent))
+
+  section('paste: one click checks the copied link and adds the deadlines')
+  const keepClip = ps('try { $c = Get-Clipboard -Raw -ErrorAction Stop; if ($c) { $c } } catch { }')
+  const clipIsText = keepClip.length > 0 // an empty or non-text clipboard is left alone: the test would have to overwrite it
+  if (clipIsText) {
+    ps(`Set-Clipboard -Value 'http://127.0.0.1:${FIXTURE_PORT}/cal.ics'`)
+    await page.eval("window.__openSection('feeds')")
+    await sleep(300)
+    const hasBrone = await page.eval("[...document.querySelectorAll('#main .btn')].some((b) => b.textContent.length > 0 && !b.hidden && b.textContent.includes('BRONE'))")
+    check('the form has a shortcut to the BRONE page for getting the link', Boolean(hasBrone))
+    await page.eval("[...document.querySelectorAll('#main .inline .btn')].find((b) => b.textContent === 'Paste and add' || b.textContent === 'Tempel dan tambahkan').click()")
+    const pasted = await until(() => { const j = readJson('settings.json'); return j?.feeds?.length === 1 ? j : null }, 20000)
+    check('Paste and add tests the copied link and saves it as a feed', Boolean(pasted))
+    createdFeedIds.push(...(pasted?.feeds ?? []).map((f) => f.id))
+    const added = await until(async () => ((await state(pipeA)).state.module.upcoming.includes('Problem Set 4') ? true : null), 15000)
+    check('and its deadlines appear in the notch', Boolean(added))
+    await page.eval("window.confirm = () => true; document.querySelector('#main .btn.danger').click()")
+    await until(() => readJson('settings.json')?.feeds?.length === 0)
+    ps(`Set-Clipboard -Value @'
+${keepClip}
+'@`)
+  } else {
+    console.log('  skip  the clipboard is empty or holds something other than text; not touching it')
+  }
 
   section('closing settings leaves no web engine behind')
   const openCount = ps("@(Get-CimInstance Win32_Process -Filter \"Name='msedgewebview2.exe'\" | Where-Object { $_.CommandLine -match 'dev.riski.blink' }).Count")

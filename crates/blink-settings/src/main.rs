@@ -45,6 +45,36 @@ fn store_set(name: String, value: Value) -> Result<(), String> {
     Ok(store()?.set_json(&name, &value)?)
 }
 
+/// The text on the clipboard, read only when the Paste button is pressed (an answer to the user's own click).
+#[tauri::command]
+fn clipboard_text() -> Option<String> {
+    use windows::Win32::Foundation::HGLOBAL;
+    use windows::Win32::System::DataExchange::{CloseClipboard, GetClipboardData, OpenClipboard};
+    use windows::Win32::System::Memory::{GlobalLock, GlobalUnlock};
+    const UNICODE_TEXT: u32 = 13;
+    const MAX_CHARS: usize = 4000;
+    unsafe {
+        OpenClipboard(None).ok()?;
+        let text = (|| {
+            let handle = GetClipboardData(UNICODE_TEXT).ok()?;
+            let memory = HGLOBAL(handle.0);
+            let ptr = GlobalLock(memory) as *const u16;
+            if ptr.is_null() {
+                return None;
+            }
+            let mut len = 0;
+            while len < MAX_CHARS && *ptr.add(len) != 0 {
+                len += 1;
+            }
+            let text = String::from_utf16_lossy(std::slice::from_raw_parts(ptr, len));
+            let _ = GlobalUnlock(memory);
+            Some(text)
+        })();
+        let _ = CloseClipboard();
+        text
+    }
+}
+
 /// Fetch a link the user typed, without saving it. Blocking network: off the UI thread.
 #[tauri::command]
 async fn feed_test(url: String) -> Result<FeedResult, String> {
@@ -267,6 +297,7 @@ fn main() {
             autostart_disable,
             diagnostics,
             weather_find,
+            clipboard_text,
         ])
         // Closing the window ends the program, so no web engine stays behind.
         .on_window_event(|window, event| {

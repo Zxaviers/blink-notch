@@ -147,6 +147,9 @@ pub enum MusicAction {
     ToggleLyrics,
 }
 
+/// The notch opens by itself for this long when a song starts (the `autoOpen` option, in seconds; 0 turns it off).
+const DEFAULT_AUTO_OPEN_MS: u64 = 10_000;
+
 /// Lyrics that need no network: a made-up song, a line every four seconds. For tests and scripted runs.
 pub struct FakeLyrics;
 
@@ -155,7 +158,7 @@ impl LyricsSource for FakeLyrics {
         if query.title.is_empty() || query.title == "Silence" {
             return Lyrics::None;
         }
-        const WORDS: [&str; 12] = [
+const WORDS: [&str; 12] = [
             "paper birds over the harbour",
             "carry the morning on their wings",
             "every window holds a song",
@@ -255,6 +258,10 @@ pub struct MusicModule {
     lookup_allowed: bool,
     /// `peek` option: a peek when the song changes.
     peek_on_change: bool,
+    /// How long the notch opens by itself when a song starts, in ms (0: it does not).
+    auto_open_ms: u64,
+    /// The first look at the player is not news.
+    started: bool,
     seen_track: Option<u64>,
     hits: Vec<Hit>,
     pointer: Option<(f32, f32)>,
@@ -283,6 +290,8 @@ impl MusicModule {
             show_lyrics: false,
             lookup_allowed: true,
             peek_on_change: true,
+            auto_open_ms: DEFAULT_AUTO_OPEN_MS,
+            started: false,
             seen_track: None,
             hits: Vec::new(),
             pointer: None,
@@ -580,6 +589,7 @@ impl Module for MusicModule {
     fn set_options(&mut self, options: &Value) {
         self.lookup_allowed = options.get("lyrics").and_then(Value::as_bool).unwrap_or(true);
         self.peek_on_change = options.get("peek").and_then(Value::as_bool).unwrap_or(true);
+        self.auto_open_ms = options.get("autoOpen").and_then(Value::as_f64).filter(|s| (0.0..=86_400.0).contains(s)).map_or(DEFAULT_AUTO_OPEN_MS, |s| (s * 1000.0) as u64);
     }
 
     fn playing(&self) -> bool {
@@ -749,7 +759,14 @@ impl Module for MusicModule {
             self.ensure_lyrics(&st);
             if self.seen_track != Some(st.track) {
                 // A new song: say so (not for the one already playing when the notch started).
-                if self.seen_track.is_some() && self.peek_on_change && st.playing {
+                if self.started && self.auto_open_ms > 0 && st.playing {
+                    // The notch opens by itself on the page, with the lyrics if they are allowed.
+                    if self.lookup_allowed {
+                        self.show_lyrics = true;
+                        self.ensure_lyrics(&st);
+                    }
+                    effects.push(Effect::AutoOpen(self.auto_open_ms));
+                } else if self.started && self.peek_on_change && st.playing {
                     effects.push(Effect::ShowPeek(PeekView {
                         code: st.artist.clone(),
                         title: st.title.clone(),
@@ -769,6 +786,7 @@ impl Module for MusicModule {
                 effects.push(Effect::Redraw);
             }
         }
+        self.started = true;
         let _ = env;
         effects
     }

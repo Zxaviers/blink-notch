@@ -322,7 +322,9 @@ impl LrcLib {
             if std::env::var_os("BLINK_MEDIA_DEBUG").is_some() {
                 eprintln!("lrclib: status {} for {path}", resp.status());
             }
-            return Got::NotFound;
+            // A busy or failing service says nothing about the song: worth asking again later.
+            let code = resp.status().as_u16();
+            return if code == 429 || code >= 500 { Got::Failed } else { Got::NotFound };
         }
         match resp.into_body().with_config().limit(2_000_000).read_to_string() {
             Ok(body) => Got::Body(body),
@@ -443,14 +445,18 @@ mod tests {
         assert_eq!(parse_response("not json"), Lyrics::None);
     }
 
-    /// Talks to lrclib.net for real, so it only runs when asked: `cargo test -p blink-core -- --ignored lrclib`.
+    /// Talks to lrclib.net for real, so it only runs when asked: `cargo test -p blink-core -- --ignored lrclib --nocapture`.
+    /// Another song: `BLINK_LYRICS_ARTIST` and `BLINK_LYRICS_TITLE`.
     #[test]
     #[ignore]
     fn lrclib_finds_a_well_known_song() {
-        let found = LrcLib::new().fetch(&Query { artist: "Rick Astley".into(), title: "Never Gonna Give You Up".into(), album: String::new(), duration_s: None });
+        let artist = std::env::var("BLINK_LYRICS_ARTIST").unwrap_or_else(|_| "Adele".into());
+        let title = std::env::var("BLINK_LYRICS_TITLE").unwrap_or_else(|_| "Hello".into());
+        let found = LrcLib::new().fetch(&Query { artist, title, album: String::new(), duration_s: None });
         match found {
             Lyrics::Synced(lines) => assert!(lines.len() > 10 && lines.windows(2).all(|w| w[0].at_ms <= w[1].at_ms)),
-            other => panic!("expected synced lyrics, got {other:?}"),
+            Lyrics::Plain(lines) => assert!(lines.len() > 10),
+            other => panic!("expected lyrics, got {other:?}"),
         }
     }
 

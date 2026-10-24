@@ -366,6 +366,7 @@ impl App {
 
     fn apply_module_effects(&mut self, from: usize, effects: Vec<Effect>) {
         let mut want_peek = false;
+        let mut auto_open: Option<u64> = None;
         let mut peeks: Vec<PeekView> = Vec::new();
         for e in effects {
             match e {
@@ -387,6 +388,16 @@ impl App {
                 Effect::OpenPath(p) => self.effects.push(AppEffect::OpenPath(p)),
                 Effect::RevealPath(p) => self.effects.push(AppEffect::RevealPath(p)),
                 Effect::ShowPeek(view) => peeks.push(view),
+                Effect::AutoOpen(ms) => auto_open = Some(ms),
+            }
+        }
+        if let Some(ms) = auto_open {
+            // Something worth seeing (a song started): the notch opens by itself, unless it is open or being typed into.
+            if self.shell.mode() != Mode::Open && !self.shell.keyboard() && self.slots[from].enabled && self.slots[from].module.has_panel() {
+                let now = self.clock.now_ms();
+                self.shell.open_for(now, ms);
+                self.active = from;
+                self.peek_queue.clear();
             }
         }
         if self.shell.mode() == Mode::Open {

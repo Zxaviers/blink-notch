@@ -269,6 +269,15 @@ impl Shell {
         self.set_mode(Mode::Open, now);
     }
 
+    /// Open by itself, and close again after `ms` unless the pointer is on it (it then closes when the pointer leaves).
+    pub fn open_for(&mut self, now: u64, ms: u64) {
+        if self.mode == Mode::Open {
+            return;
+        }
+        self.open(now);
+        self.grace_at = Some(now.saturating_add(ms));
+    }
+
     /// Back to the resting pill and out of keyboard mode.
     pub fn close(&mut self, now: u64) {
         self.keyboard = false;
