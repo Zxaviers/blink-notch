@@ -50,6 +50,30 @@ pub fn parse_take_over_volume_keys(value: Option<&Value>) -> bool {
     value.and_then(|v| v.get("takeOverVolumeKeys")).and_then(Value::as_bool).unwrap_or(true)
 }
 
+/// Which mouse and touchpad gestures are on (`gestures` in `host.json`, all on by default).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Gestures {
+    /// The wheel over the resting pill: volume (with Ctrl, brightness).
+    pub wheel: bool,
+    /// A middle click on the notch: play or pause.
+    pub middle: bool,
+    /// Shift and the wheel over the open notch: turn the pages.
+    pub page_wheel: bool,
+    /// A sideways swipe over the open notch: turn the pages.
+    pub swipe: bool,
+}
+
+impl Default for Gestures {
+    fn default() -> Self {
+        Gestures { wheel: true, middle: true, page_wheel: true, swipe: true }
+    }
+}
+
+pub fn parse_gestures(value: Option<&Value>) -> Gestures {
+    let flag = |key: &str| value.and_then(|v| v.get("gestures")).and_then(|g| g.get(key)).and_then(Value::as_bool).unwrap_or(true);
+    Gestures { wheel: flag("wheel"), middle: flag("middle"), page_wheel: flag("pageWheel"), swipe: flag("swipe") }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ModuleConfig {
     pub id: String,

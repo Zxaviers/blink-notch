@@ -9,7 +9,6 @@
 
 use std::ffi::c_void;
 use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -72,8 +71,6 @@ const PKEY_DEVICE_FRIENDLY_NAME: PROPERTYKEY = PROPERTYKEY { fmtid: GUID::from_u
 pub struct WinControls {
     shared: Arc<Mutex<ControlsState>>,
     tx: Sender<ControlCommand>,
-    /// The volume the panel shows is Sonar's master (Windows' own volume events are then about one channel and are not it).
-    sonar: Arc<AtomicBool>,
 }
 
 impl WinControls {
@@ -81,10 +78,8 @@ impl WinControls {
         let shared = Arc::new(Mutex::new(ControlsState::default()));
         let (tx, rx) = channel();
         let worker_state = shared.clone();
-        let sonar = Arc::new(AtomicBool::new(false));
-        let worker_sonar = sonar.clone();
-        let _ = std::thread::Builder::new().name("blink-controls".into()).spawn(move || worker(rx, worker_state, worker_sonar));
-        let me = Arc::new(WinControls { shared, tx, sonar });
+        let _ = std::thread::Builder::new().name("blink-controls".into()).spawn(move || worker(rx, worker_state));
+        let me = Arc::new(WinControls { shared, tx });
         me.send(ControlCommand::Refresh);
         me
     }
@@ -94,10 +89,8 @@ impl WinControls {
         let mut s = self.shared.lock().unwrap_or_else(|p| p.into_inner());
         match event {
             SystemEvent::Volume { percent, muted } => {
-                if !self.sonar.load(Ordering::Relaxed) {
-                    s.volume = *percent;
-                    s.muted = *muted;
-                }
+                s.volume = *percent;
+                s.muted = *muted;
             }
             SystemEvent::Brightness { percent } => s.brightness = Some(*percent),
             SystemEvent::Wifi { connected, ssid } => {
@@ -120,7 +113,7 @@ impl ControlsBackend for WinControls {
     }
 }
 
-fn worker(rx: Receiver<ControlCommand>, shared: Arc<Mutex<ControlsState>>, sonar_flag: Arc<AtomicBool>) {
+fn worker(rx: Receiver<ControlCommand>, shared: Arc<Mutex<ControlsState>>) {
     unsafe {
         let _ = RoInitialize(RO_INIT_MULTITHREADED);
     }
@@ -145,7 +138,6 @@ fn worker(rx: Receiver<ControlCommand>, shared: Arc<Mutex<ControlsState>>, sonar
         for c in last_volume.into_iter().chain(last_brightness).chain(rest) {
             let refresh_all = matches!(c, ControlCommand::Refresh);
             ctx.run(&c);
-            sonar_flag.store(ctx.sonar_target().is_some(), Ordering::Relaxed);
             let mut s = shared.lock().unwrap_or_else(|p| p.into_inner());
             if refresh_all {
                 *s = ctx.read_all();
@@ -426,7 +418,7 @@ unsafe fn enumerator() -> Option<IMMDeviceEnumerator> {
 }
 
 /// The friendly name of the default output.
-fn default_output_name() -> Option<String> {
+pub(crate) fn default_output_name() -> Option<String> {
     unsafe {
         let device = enumerator()?.GetDefaultAudioEndpoint(eRender, eConsole).ok()?;
         let store = device.OpenPropertyStore(STGM_READ).ok()?;

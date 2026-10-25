@@ -64,12 +64,17 @@ mod scripted;
 
 /// Wall clock a manual-clock run starts at (2026-10-22 12:00 UTC), so tests are repeatable.
 const MANUAL_WALL_BASE: i64 = 1_792_670_400_000;
+/// Sent to the window when the clipboard changes (after `AddClipboardFormatListener`).
+const WM_CLIPBOARDUPDATE: u32 = 0x031D;
 const TIMER_WAKE: usize = 1;
 const TIMER_QUIT: usize = 2;
 const TIMER_POLL: usize = 3;
 const TIMER_A11Y: usize = 4;
 const TIMER_KEYS: usize = 5;
 const TIMER_POINTER: usize = 6;
+const TIMER_CLIPBOARD: usize = 7;
+/// How long the clipboard is left alone after it changed before a copied picture is taken from it.
+const CLIPBOARD_SETTLE_MS: u32 = 400;
 /// How often the pointer is looked at while the notch thinks it is on it (Windows can lose a mouse-up or a mouse-leave).
 const POINTER_CHECK_MS: u32 = 250;
 /// Keep screen-reader snapshots at most this often (mouse moves arrive far faster).
@@ -571,6 +576,13 @@ impl Runtime {
                         self.app.drag_out_end(&paths, accepted);
                     }
                 }
+                AppEffect::PasteClipboard => {
+                    if self.control {
+                        self.effects_log.push("paste_clipboard".to_string());
+                    } else {
+                        self.clipboard_to_shelf(false);
+                    }
+                }
                 AppEffect::TourDone => {
                     // Remembered, so the tour comes once (the settings can show it again).
                     let _ = self.store.write_atomic("tour.json", b"{\"done\":true}");
@@ -847,6 +859,29 @@ impl Runtime {
         }
     }
 
+    /// Put what the clipboard holds on the shelf: copied files by their paths, a picture or text as a file the notch makes in its own
+    /// folder. `images_only` is the listener that takes copied pictures by themselves.
+    fn clipboard_to_shelf(&mut self, images_only: bool) {
+        use super::clipboard::Clip;
+        let Some(dir) = self.app.shelf_files_dir() else { return };
+        let made = |this: &mut Runtime, extension: &str, bytes: &[u8]| -> Option<String> {
+            std::fs::create_dir_all(&dir).ok()?;
+            let path = dir.join(this.app.clip_name(extension));
+            std::fs::write(&path, bytes).ok()?;
+            Some(path.to_string_lossy().to_string())
+        };
+        let paths: Vec<String> = match super::clipboard::read_for_shelf(images_only) {
+            Clip::Files(paths) => paths,
+            Clip::Image(png) => made(self, "png", &png).into_iter().collect(),
+            Clip::Text(text) => made(self, "txt", text.as_bytes()).into_iter().collect(),
+            Clip::Nothing => Vec::new(),
+        };
+        if !paths.is_empty() {
+            self.app.add_to_shelf(&paths);
+            self.after();
+        }
+    }
+
     /// Explorer restarted: its tray is empty again, so add ours back.
     fn restore_tray(&mut self) {
         self.tray = None;
@@ -969,6 +1004,15 @@ impl Runtime {
                     self.after();
                 }
             }
+            // Something new is on the clipboard: a picture goes on the shelf by itself, if the person switched that on.
+            // Not at once: the program that copied may still be handing out the data, and reading it now would make its copy fail.
+            WM_CLIPBOARDUPDATE => {
+                if !self.control && self.app.shelf_takes_copied_images() {
+                    unsafe {
+                        SetTimer(Some(self.hwnd), TIMER_CLIPBOARD, CLIPBOARD_SETTLE_MS, None);
+                    }
+                }
+            }
             WM_TIMER => match wparam.0 {
                 TIMER_WAKE => {
                     unsafe {
@@ -980,6 +1024,14 @@ impl Runtime {
                 TIMER_QUIT => unsafe { PostQuitMessage(0) },
                 TIMER_POLL => self.refresh_fullscreen(),
                 TIMER_POINTER => self.check_pointer(),
+                TIMER_CLIPBOARD => {
+                    unsafe {
+                        let _ = KillTimer(Some(self.hwnd), TIMER_CLIPBOARD);
+                    }
+                    if self.app.shelf_takes_copied_images() {
+                        self.clipboard_to_shelf(true);
+                    }
+                }
                 TIMER_KEYS => {
                     unsafe {
                         let _ = KillTimer(Some(self.hwnd), TIMER_KEYS);
@@ -1298,6 +1350,7 @@ pub fn run(opts: Options) -> Result<(), String> {
     let mut app = App::new(clock, settings, tz, scale, &system_language(), modules)?;
     app.configure_modules(&crate::host::parse_modules(store.get_json("host").ok().flatten().as_ref()));
     app.set_look(crate::look::parse(store.get_json("host").ok().flatten().as_ref()));
+    app.set_gestures(crate::host::parse_gestures(store.get_json("host").ok().flatten().as_ref()));
     // The bars follow the real sound only in a real run: scripted runs move them on a plain beat.
     if real_media {
         app.set_spectrum(super::spectrum::start());
@@ -1391,6 +1444,12 @@ pub fn run(opts: Options) -> Result<(), String> {
         let _ = &rt.store;
     });
     unsafe { SetTimer(Some(hwnd), TIMER_POLL, POLL_MS, None) };
+    // Copied pictures can go on the shelf by themselves (if switched on): hear about every change of the clipboard, in real runs only.
+    if !control {
+        unsafe {
+            let _ = windows::Win32::System::DataExchange::AddClipboardFormatListener(hwnd);
+        }
+    }
     if let Some(name) = &opts.control {
         control::start(name, hwnd);
     }

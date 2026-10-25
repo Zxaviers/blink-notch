@@ -128,3 +128,20 @@ fn opening_again_returns_to_the_page_that_was_open_last() {
     open_by_hover(&mut app);
     assert_eq!(app.active_module(), "controls", "not the clock it opened on at first");
 }
+
+#[test]
+fn each_gesture_can_be_switched_off() {
+    let (mut app, controls, media) = rig();
+    app.set_gestures(blink_native::host::parse_gestures(Some(&serde_json::json!({ "gestures": { "wheel": false, "middle": false, "pageWheel": false, "swipe": false } }))));
+    assert!(!app.quick_wheel(1.0, false), "the wheel over the pill is not taken");
+    assert!(controls.take_log().is_empty());
+    assert!(!app.middle_click());
+    assert!(media.take_log().is_empty());
+    open_by_hover(&mut app);
+    assert!(!app.wheel_page(-1.0));
+    app.swipe(1.0);
+    assert_eq!(app.active_module(), "clock", "neither Shift+wheel nor a swipe turns a page");
+    app.set_gestures(blink_native::host::parse_gestures(None));
+    assert!(app.wheel_page(-1.0));
+    assert_eq!(app.active_module(), "deadlines", "all on by default");
+}

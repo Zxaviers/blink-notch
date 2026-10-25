@@ -49,6 +49,9 @@ pub const WM_POWERBROADCAST: u32 = 0x0218;
 pub const PBT_POWERSETTINGCHANGE: usize = 0x8013;
 
 static TARGET: AtomicIsize = AtomicIsize::new(0);
+/// The volume the notch shows is SteelSeries Sonar's master (its virtual output is the default one): Windows' own volume events are
+/// then about one channel of Sonar and are not news.
+static SONAR_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 /// Which sources came up (a desktop PC has no battery or Wi-Fi, a service may be off).
 #[derive(Clone, Copy, Debug, Default)]
@@ -73,10 +76,52 @@ fn post(event: SystemEvent) {
 
 pub fn start(hwnd: HWND) -> Sources {
     TARGET.store(hwnd.0 as isize, Ordering::Relaxed);
+    start_sonar();
     Sources { power: start_power(hwnd), wifi: start_wifi(), audio: start_audio(), bluetooth: start_bluetooth(), keys: start_keys(hwnd) }
 }
 
 // ------------------------------------------------------------------- power
+
+/// Sonar's master has no Windows event: while it is the volume the notch controls, ask Sonar about once a second and post a volume
+/// event when it moved (so a change made with Sonar's own shortcuts shows on the notch). Idle (every few seconds, one small file
+/// read) when there is no Sonar or it is not the default output.
+fn start_sonar() {
+    let _ = std::thread::Builder::new().name("blink-sonar".into()).spawn(|| {
+        use std::time::{Duration, Instant};
+        unsafe {
+            let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+        }
+        let mut sonar: Option<blink_core::sonar::Sonar> = None;
+        let mut looked: Option<Instant> = None;
+        let mut last: Option<(u8, bool)> = None;
+        loop {
+            if sonar.is_none() && looked.is_none_or(|t| t.elapsed() > Duration::from_secs(5)) {
+                looked = Some(Instant::now());
+                sonar = blink_core::sonar::Sonar::discover().filter(blink_core::sonar::Sonar::is_classic);
+            }
+            let on = sonar.is_some() && super::winctl::default_output_name().is_some_and(|n| n.contains("Sonar"));
+            SONAR_ACTIVE.store(on, Ordering::Relaxed);
+            if on {
+                match sonar.as_ref().and_then(blink_core::sonar::Sonar::master) {
+                    Some(now) => {
+                        if last.is_some_and(|l| l != now) {
+                            post(SystemEvent::Volume { percent: now.0, muted: now.1 });
+                        }
+                        last = Some(now);
+                    }
+                    // Gone (GG closed): look again later.
+                    None => {
+                        sonar = None;
+                        last = None;
+                    }
+                }
+            } else {
+                last = None;
+            }
+            std::thread::sleep(Duration::from_millis(if on { 800 } else { 5000 }));
+        }
+    });
+}
 
 fn start_power(hwnd: HWND) -> bool {
     unsafe {
@@ -199,7 +244,7 @@ struct VolumeWatcher;
 
 impl IAudioEndpointVolumeCallback_Impl for VolumeWatcher_Impl {
     fn OnNotify(&self, data: *mut AUDIO_VOLUME_NOTIFICATION_DATA) -> windows::core::Result<()> {
-        if let Some(d) = unsafe { data.as_ref() } {
+        if let Some(d) = unsafe { data.as_ref() }.filter(|_| !SONAR_ACTIVE.load(Ordering::Relaxed)) {
             post(SystemEvent::Volume { percent: (d.fMasterVolume * 100.0).round().clamp(0.0, 100.0) as u8, muted: d.bMuted.as_bool() });
         }
         Ok(())

@@ -14,13 +14,19 @@ $w.Write([Text.Encoding]::ASCII.GetBytes('data')); $w.Write([int]($n * 2))
 for ($i = 0; $i -lt $n; $i++) { $w.Write([int16](32767 * $Amplitude * [Math]::Sin(2 * [Math]::PI * $Hz * $i / $rate))) }
 [IO.File]::WriteAllBytes($wav, $ms.ToArray())
 $data = Join-Path $env:TEMP 'blink-spectrum-data'; if (Test-Path $data) { Remove-Item $data -Recurse -Force }; New-Item -ItemType Directory -Force $data | Out-Null
-$fake = Start-Process powershell -ArgumentList '-STA', '-NoProfile', '-File', "$PSScriptRoot\fake-player.ps1", '-Seconds', '40' -PassThru -WindowStyle Hidden
+$fake = Start-Process powershell -ArgumentList '-STA', '-NoProfile', '-File', "$PSScriptRoot\fake-player.ps1", '-Seconds', '60' -PassThru -WindowStyle Hidden
 Start-Sleep -Seconds 4
 $p = Start-Blink 'spectrumreal' @{ BLINK_REAL_SOURCES = '1'; BLINK_DATA_DIR = $data; BLINK_TZ = 'Asia/Jakarta'; BLINK_DEMO = '1' }
 try {
   $c = Connect-Blink 'spectrumreal'
   function State() { (Send-Blink $c @{cmd='state'}).state }
   Start-Sleep -Milliseconds 1500
+  $s = State
+  # What the listener costs while the bars show.
+  $pr0 = (Get-Process -Id $p.Id).TotalProcessorTime.TotalMilliseconds; $tm0 = Get-Date
+  Start-Sleep 10
+  $pr1 = (Get-Process -Id $p.Id).TotalProcessorTime.TotalMilliseconds; $tm1 = Get-Date
+  "10 s with the loopback listener running (bars showing): {0:N0} ms CPU = {1:N2}% of one core" -f ($pr1 - $pr0), (($pr1 - $pr0) / (($tm1 - $tm0).TotalMilliseconds) * 100)
   $s = State
   "before the tone: wanted=$($s.spectrum.wanted) working=$($s.spectrum.working) why=[$($s.spectrum.why)] levels=$(($s.spectrum.levels | ForEach-Object { [math]::Round($_, 2) }) -join ' ')"
   $player = New-Object System.Media.SoundPlayer $wav

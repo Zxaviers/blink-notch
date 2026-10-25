@@ -39,6 +39,8 @@ pub enum AppEffect {
     TourDone,
     /// Carry these files out of the notch with the mouse.
     StartDrag(Vec<String>),
+    /// Put what the clipboard holds on the shelf.
+    PasteClipboard,
     /// A system notification; `url` is what clicking it opens.
     Toast { title: String, body: String, url: Option<String> },
 }
@@ -89,6 +91,7 @@ pub struct App {
     /// The page that was showing the last time the panel was open, with the page that owned the pill then (modules by id): opening
     /// again returns to it, unless the pill has since been taken over by something else.
     last_page: Option<(&'static str, &'static str)>,
+    gestures: crate::host::Gestures,
     /// What the speakers are doing, for the bars (None in scripted runs: they move on a plain beat).
     spectrum: Option<std::sync::Arc<crate::platform::spectrum::Spectrum>>,
     /// Files are being dragged over the notch: it shows where they can be dropped, and which place is lit.
@@ -168,6 +171,7 @@ impl App {
             look: Look::default(),
             spectrum: None,
             last_page: None,
+            gestures: crate::host::Gestures::default(),
             dragging: false,
             drag_zone: DropZone::Projects,
             dragging_out: false,
@@ -204,6 +208,30 @@ impl App {
     /// The module of this type, whether or not it is on (tests and the window layer).
     pub fn module_mut<T: 'static>(&mut self) -> Option<&mut T> {
         self.slots.iter_mut().find_map(|s| s.module.as_any_mut().downcast_mut::<T>())
+    }
+
+    /// Where the shelf keeps the pictures and texts it makes from the clipboard (None without a shelf page).
+    pub fn shelf_files_dir(&mut self) -> Option<std::path::PathBuf> {
+        self.module_mut::<crate::modules::shelf::ShelfModule>().map(|m| m.files_dir())
+    }
+
+    /// Whether copied pictures go to the shelf by themselves (off unless the person switched it on, and only with a shelf).
+    pub fn shelf_takes_copied_images(&mut self) -> bool {
+        let on = self.slots.iter().any(|s| s.enabled && s.module.id() == "shelf");
+        on && self.module_mut::<crate::modules::shelf::ShelfModule>().is_some_and(|m| m.takes_copied_images())
+    }
+
+    /// A name for a file made now, from the date and the time (`clip-20261025-143007.png`).
+    pub fn clip_name(&self, extension: &str) -> String {
+        let when = jiff::Timestamp::from_millisecond(self.clock.wall_ms() as i64).unwrap_or_default().to_zoned(self.tz.clone());
+        format!("clip-{}.{extension}", when.strftime("%Y%m%d-%H%M%S"))
+    }
+
+    /// Put files on the shelf (made from the clipboard, say) and say so.
+    pub fn add_to_shelf(&mut self, paths: &[String]) {
+        let Some(i) = self.slots.iter().position(|s| s.enabled && s.module.id() == "shelf") else { return };
+        let effects = self.slots[i].module.drop_files(paths);
+        self.apply_module_effects(i, effects);
     }
 
     /// Something happened on the computer: tell every module that is on.
@@ -464,6 +492,7 @@ impl App {
                 Effect::ReleaseKeyboard => self.release_keyboard(),
                 Effect::OpenPath(p) => self.effects.push(AppEffect::OpenPath(p)),
                 Effect::StartDrag(paths) => self.effects.push(AppEffect::StartDrag(paths)),
+                Effect::PasteClipboard => self.effects.push(AppEffect::PasteClipboard),
                 Effect::RevealPath(p) => self.effects.push(AppEffect::RevealPath(p)),
                 Effect::ShowPeek(view) => peeks.push(view),
             }
@@ -972,7 +1001,14 @@ impl App {
     }
 
     /// The wheel over the notch while it is not open: the volume (with Ctrl, the brightness). True when it was taken.
+    pub fn set_gestures(&mut self, gestures: crate::host::Gestures) {
+        self.gestures = gestures;
+    }
+
     pub fn quick_wheel(&mut self, notches: f32, ctrl: bool) -> bool {
+        if !self.gestures.wheel {
+            return false;
+        }
         if self.shell.mode() == Mode::Open || notches == 0.0 || self.tour.is_some() {
             return false;
         }
@@ -991,6 +1027,9 @@ impl App {
 
     /// A middle click on the notch while it is not open: play or pause what is playing. True when something was.
     pub fn middle_click(&mut self) -> bool {
+        if !self.gestures.middle {
+            return false;
+        }
         if self.shell.mode() == Mode::Open {
             return false;
         }
@@ -1001,7 +1040,7 @@ impl App {
     /// The wheel with Shift held over the open notch turns the page: down is the next one, up the previous. Every notch of a mouse
     /// wheel is a page (a touchpad's small steps add up to one). False when the notch is not open, where Shift+wheel does nothing.
     pub fn wheel_page(&mut self, notches: f32) -> bool {
-        if self.shell.mode() != Mode::Open || self.tour.is_some() {
+        if self.shell.mode() != Mode::Open || self.tour.is_some() || !self.gestures.page_wheel {
             self.wheel_page = 0.0;
             return false;
         }
@@ -1017,7 +1056,7 @@ impl App {
     /// Sideways scroll (a two-finger swipe on a touchpad) over the open notch turns the page, once per swipe.
     pub fn swipe(&mut self, delta: f32) {
         let now = self.clock.now_ms();
-        if self.shell.mode() != Mode::Open || self.tour.is_some() {
+        if self.shell.mode() != Mode::Open || self.tour.is_some() || !self.gestures.swipe {
             self.swipe = 0.0;
             return;
         }
@@ -1428,7 +1467,8 @@ impl App {
         }
         // While a song plays, bars that move with it sit to the left of the button.
         if self.music_playing() {
-            self.draw_bars(mx - 22.0, cy, theme.fg, alpha * 0.9, env.now_ms);
+            let color = self.bars_color(theme.fg);
+            self.draw_bars(mx - 22.0, cy, color, alpha * 0.9, env.now_ms);
         }
         let _ = right;
     }
@@ -1532,6 +1572,11 @@ impl App {
         self.slots.iter().any(|s| s.enabled && s.module.playing())
     }
 
+    /// The colour of the bars while a song plays: the colour of its cover (what the Music page takes as its accent).
+    fn bars_color(&self, fallback: Rgb) -> Rgb {
+        self.slots.iter().find(|s| s.enabled && s.module.playing()).map_or(fallback, |s| s.module.accent())
+    }
+
     /// Four small bars: flat when `now_ms` is `u64::MAX`, otherwise rising and falling with the time.
     fn draw_bars(&mut self, x: f32, cy: f32, color: Rgb, alpha: f32, now_ms: u64) {
         let levels = self.bar_levels(now_ms);
@@ -1562,7 +1607,8 @@ impl App {
         self.canvas.arc(left, cy, 5.8, 2.2, -90.0, 359.0, theme.line.0, faint);
         self.canvas.arc(left, cy, 5.8, 2.2, -90.0, 360.0 * fraction.max(0.03), color, alpha);
         let playing = self.music_playing();
-        self.draw_bars(right - 12.0, cy, theme.fg, alpha * if playing { 0.9 } else { 0.6 }, if playing { env.now_ms } else { u64::MAX });
+        let bars = if playing { self.bars_color(theme.fg) } else { theme.fg };
+        self.draw_bars(right - 12.0, cy, bars, alpha * if playing { 0.9 } else { 0.6 }, if playing { env.now_ms } else { u64::MAX });
 
         let room = right - left - 40.0;
         let label = self.fonts.ellipsize(Face::Mono, &rv.label, 11.5 * s, 0.0, (room - 50.0).max(30.0).min(96.0) * s);

@@ -4,9 +4,11 @@
 # Touches, for a few seconds each: a Start Menu folder "Blink", an Uninstall key "Blink" and,
 # briefly, a fake "Deadline Notch" Uninstall key. All are removed again. Autostart goes to a scratch key.
 #   powershell -File scripts\native\installer-test.ps1
+param([string]$BinDir = '')
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\blink-ctl.ps1"
 $root = Resolve-Path "$PSScriptRoot\..\.."
+$bin = if ($BinDir) { (Resolve-Path $BinDir).Path } else { "$root\target\release" }
 $nsis = Join-Path $env:LOCALAPPDATA 'tauri\NSIS\makensis.exe'
 $setup = Join-Path $root 'scripts\out\Blink-0.2.0-setup.exe'
 New-Item -ItemType Directory -Force (Split-Path $setup) | Out-Null
@@ -18,7 +20,7 @@ function Check([string]$what, [bool]$ok, [string]$detail = '') {
 function Wait-For([scriptblock]$cond, [int]$ms = 15000) { $sw = [System.Diagnostics.Stopwatch]::StartNew(); while ($sw.ElapsedMilliseconds -lt $ms) { if (& $cond) { return $true }; Start-Sleep -Milliseconds 100 }; $false }
 
 'building the installer'
-& $nsis -V1 /DVERSION=0.2.0 "/DBINDIR=$root\target\release" "/DOUT=$setup" "$root\installer\blink.nsi" | Out-Null
+& $nsis -V1 /DVERSION=0.2.0 "/DBINDIR=$bin" "/DOUT=$setup" "$root\installer\blink.nsi" | Out-Null
 Check 'makensis produced the installer' (Test-Path $setup)
 "        ($([math]::Round((Get-Item $setup).Length / 1KB)) KB)"
 

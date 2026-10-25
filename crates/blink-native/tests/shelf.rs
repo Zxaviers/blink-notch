@@ -224,3 +224,51 @@ fn the_cross_on_a_row_takes_the_file_off_the_shelf_and_does_not_open_it() {
     assert_eq!(shelf(&mut r.app).len(), 1, "one file is off the shelf");
     assert!(std::path::Path::new(&a).exists() && std::path::Path::new(&b).exists(), "and nothing is deleted");
 }
+
+#[test]
+fn the_plus_asks_for_the_clipboard() {
+    let mut r = rig("paste");
+    open_shelf(&mut r);
+    let (x, y) = hit(&mut r.app, "Paste");
+    r.app.take_effects();
+    r.app.pointer(PointerKind::Move, x, y);
+    r.app.pointer(PointerKind::Down, x, y);
+    r.app.pointer(PointerKind::Up, x, y);
+    assert_eq!(r.app.take_effects(), vec![AppEffect::PasteClipboard]);
+}
+
+#[test]
+fn what_the_notch_made_from_the_clipboard_goes_when_it_leaves_the_shelf_and_nothing_else_does() {
+    let mut r = rig("made");
+    let dir = r.app.shelf_files_dir().unwrap();
+    std::fs::create_dir_all(&dir).unwrap();
+    let made = dir.join("clip-20261025-143007.png");
+    std::fs::write(&made, b"png").unwrap();
+    let mine = file(&r.dir, "notes.txt");
+    r.app.add_to_shelf(&[made.to_string_lossy().to_string(), mine.clone()]);
+    assert_eq!(shelf(&mut r.app).len(), 2);
+    r.app.module_mut::<ShelfModule>().unwrap().remove(&made.to_string_lossy());
+    assert!(!made.exists(), "the copy made from the clipboard is deleted with its entry");
+    r.app.module_mut::<ShelfModule>().unwrap().remove(&mine);
+    assert!(std::path::Path::new(&mine).exists(), "a file of the person's own never is");
+}
+
+#[test]
+fn copied_pictures_are_taken_only_when_asked_and_only_with_a_shelf() {
+    let mut r = rig("copied");
+    assert!(!r.app.shelf_takes_copied_images(), "off by default");
+    let on = |enabled: bool| {
+        vec![blink_native::host::ModuleConfig { id: "shelf".into(), enabled, options: serde_json::json!({ "clipboardImages": true }) }]
+    };
+    r.app.configure_modules(&on(true));
+    assert!(r.app.shelf_takes_copied_images());
+    r.app.configure_modules(&on(false));
+    assert!(!r.app.shelf_takes_copied_images(), "a shelf that is switched off takes nothing");
+}
+
+#[test]
+fn clip_names_carry_the_date_and_time() {
+    let r = rig("name");
+    let name = r.app.clip_name("png");
+    assert!(name.starts_with("clip-") && name.ends_with(".png") && name.len() == "clip-20261025-143007.png".len(), "{name}");
+}

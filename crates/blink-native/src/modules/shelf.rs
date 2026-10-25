@@ -1,6 +1,7 @@
 //! The shelf: a place to leave files for a moment. Drag files onto the notch and drop them on the shelf, then drag them out again
 //! onto another app (Discord, a mail, a folder). Only the paths are kept (in `shelf.json`); nothing is copied, and taking a file off the
-//! shelf never touches the file.
+//! shelf never touches the file. The one exception is what comes from the clipboard (a screenshot, copied text): that has no file, so
+//! the notch makes one in its own `shelf-files` folder, and forgets it after a day once it is off the shelf.
 
 use blink_core::i18n::Lang;
 use blink_core::store::Store;
@@ -15,6 +16,10 @@ use crate::ui::theme::Rgb;
 const CYAN: Rgb = Rgb(0x38, 0xd6, 0xe8);
 const FILE: &str = "shelf.json";
 const MAX_ITEMS: usize = 60;
+/// Where the files made from the clipboard live (in Blink's data folder).
+const FILES_DIR: &str = "shelf-files";
+/// Such a file that is no longer on the shelf is deleted after this long.
+const KEEP_MADE_FILES_SECS: u64 = 24 * 3600;
 const LEFT_W: f32 = 130.0;
 const LEFT_GAP: f32 = 20.0;
 const ROW_H: f32 = 34.0;
@@ -28,6 +33,8 @@ pub enum ShelfAction {
     Open(String),
     Remove(String),
     Clear,
+    /// Put what the clipboard holds on the shelf.
+    Paste,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -36,6 +43,7 @@ enum Target {
     Remove(String),
     DragAll,
     Clear,
+    Paste,
 }
 
 #[derive(Clone, Debug)]
@@ -57,6 +65,8 @@ pub struct ShelfModule {
     press: Option<(f32, f32, Target)>,
     /// Take a file off the shelf once it has been dragged out and somebody took it (`autoClear`, on by default).
     auto_clear: bool,
+    /// Pictures that are copied (a Win+Shift+S screenshot, say) go on the shelf by themselves (`clipboardImages`, off by default).
+    copied_images: bool,
 }
 
 fn word(lang: Lang, key: &str) -> &'static str {
@@ -67,9 +77,11 @@ fn word(lang: Lang, key: &str) -> &'static str {
         "drag_all" => if id { "Seret semua" } else { "Drag all" },
         "clear" => if id { "Kosongkan" } else { "Clear" },
         "empty" => if id { "Rak masih kosong" } else { "The shelf is empty" },
-        "hint" => if id { "Seret file ke notch, lepas di Rak, lalu seret keluar ke aplikasi lain." } else { "Drag files onto the notch, drop them on the shelf, then drag them out to another app." },
+        "hint" => if id { "Seret file ke notch, lepas di Rak, lalu seret keluar. Tombol + menempel screenshot atau file yang disalin." } else { "Drag files onto the notch, drop them on the shelf, then drag them out. The + pastes a screenshot or copied files." },
         "open" => if id { "Buka" } else { "Open" },
         "remove" => if id { "Hapus dari rak" } else { "Take off the shelf" },
+        "paste" => if id { "Tempel dari clipboard" } else { "Paste from the clipboard" },
+        "pasted_image" => if id { "Gambar masuk ke rak" } else { "Picture added to the shelf" },
         "now" => if id { "Rak" } else { "Shelf" },
         _ => "",
     }
@@ -113,7 +125,35 @@ impl ShelfModule {
             // A file that has gone since last time is not on the shelf any more.
             .filter(|p| std::path::Path::new(p).exists())
             .collect();
-        ShelfModule { store, items, scroll: 0.0, hits: Vec::new(), pointer: None, press: None, auto_clear: true }
+        let me = ShelfModule { store, items, scroll: 0.0, hits: Vec::new(), pointer: None, press: None, auto_clear: true, copied_images: false };
+        me.prune_made_files();
+        me
+    }
+
+    /// The folder of the files made from the clipboard.
+    pub fn files_dir(&self) -> std::path::PathBuf {
+        self.store.dir().join(FILES_DIR)
+    }
+
+    pub fn takes_copied_images(&self) -> bool {
+        self.copied_images
+    }
+
+    fn is_made_file(&self, path: &str) -> bool {
+        std::path::Path::new(path).starts_with(self.files_dir())
+    }
+
+    /// Delete the made files that are not on the shelf and are a day old (they were only ever copies of the clipboard).
+    fn prune_made_files(&self) {
+        let Ok(entries) = std::fs::read_dir(self.files_dir()) else { return };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let on_shelf = self.items.iter().any(|i| std::path::Path::new(i) == path);
+            let old = entry.metadata().and_then(|m| m.modified()).ok().and_then(|t| t.elapsed().ok()).is_some_and(|age| age.as_secs() > KEEP_MADE_FILES_SECS);
+            if !on_shelf && old {
+                let _ = std::fs::remove_file(&path);
+            }
+        }
     }
 
     pub fn items(&self) -> &[String] {
@@ -145,6 +185,9 @@ impl ShelfModule {
     }
 
     pub fn remove(&mut self, path: &str) {
+        if self.is_made_file(path) {
+            let _ = std::fs::remove_file(path);
+        }
         self.items.retain(|i| i != path);
         self.clamp_scroll();
         self.save();
@@ -166,7 +209,11 @@ impl ShelfModule {
                 self.remove(path);
                 vec![Effect::Redraw]
             }
+            ShelfAction::Paste => vec![Effect::PasteClipboard],
             ShelfAction::Clear => {
+                for p in self.items.clone().iter().filter(|p| self.is_made_file(p)) {
+                    let _ = std::fs::remove_file(p);
+                }
                 self.items.clear();
                 self.scroll = 0.0;
                 self.save();
@@ -185,6 +232,12 @@ impl ShelfModule {
         let base = y0 + 6.0 + kit.fonts.baseline(Face::SansLight, 44.0, 52.0);
         kit.canvas.text(kit.fonts, Face::SansLight, 44.0, x - 1.0, base, &text, if n > 0 { theme.fg } else { theme.dim }, frame.alpha, 0.0);
         put(kit, Face::Sans, 12.0, x, y0 + 60.0, 16.0, LEFT_W, word(lang, "on_shelf"), theme.dim, frame.alpha);
+        // A small + at the top of the column: put what is on the clipboard (a screenshot, copied files, text) on the shelf.
+        let (px, py) = (x + LEFT_W - 12.0, y0 + 22.0);
+        let over_paste = self.over(px - 14.0, py - 14.0, 28.0, 28.0);
+        kit.canvas.circle(px, py, 13.0, CYAN, frame.alpha * if over_paste { 0.38 } else { 0.18 });
+        kit.canvas.icon(Icon::Plus, px, py, 12.0, CYAN, frame.alpha);
+        self.hits.push(Hit { x: px - 14.0, y: py - 14.0, w: 28.0, h: 28.0, target: Target::Paste });
         if n == 0 {
             return;
         }
@@ -278,6 +331,7 @@ impl Module for ShelfModule {
 
     fn set_options(&mut self, options: &Value) {
         self.auto_clear = options.get("autoClear").and_then(Value::as_bool).unwrap_or(true);
+        self.copied_images = options.get("clipboardImages").and_then(Value::as_bool).unwrap_or(false);
     }
 
     fn rest_priority(&mut self, _env: &Env, _settings: &blink_core::settings::Settings) -> u8 {
@@ -340,6 +394,7 @@ impl Module for ShelfModule {
                 match hit.target {
                     Target::Remove(path) => self.do_action(&ShelfAction::Remove(path)),
                     Target::Clear => self.do_action(&ShelfAction::Clear),
+                    Target::Paste => self.do_action(&ShelfAction::Paste),
                     target @ (Target::Item(_) | Target::DragAll) => {
                         self.press = Some((x, y, target));
                         vec![Effect::Redraw]
@@ -416,6 +471,9 @@ impl Module for ShelfModule {
             return Vec::new();
         }
         let mut out = vec![Node::new(600, ROOT, Role::Text, format!("{}: {}", word(lang, "now"), self.items.len()))];
+        let mut paste = Node::new(598, ROOT, Role::Button, word(lang, "paste").to_string());
+        paste.action = Some(NodeAction::Module(Action::Shelf(ShelfAction::Paste)));
+        out.push(paste);
         for (i, path) in self.items.iter().enumerate() {
             let key = 610 + i as i32 * 3;
             out.push(Node::new(key, ROOT, Role::Text, file_name(path)));

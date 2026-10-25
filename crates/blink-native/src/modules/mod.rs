@@ -135,6 +135,8 @@ pub enum Effect {
     StartDrag(Vec<String>),
     /// Show a file in its folder.
     RevealPath(String),
+    /// Put what the clipboard holds (copied files, a picture, text) on the shelf.
+    PasteClipboard,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

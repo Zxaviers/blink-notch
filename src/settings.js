@@ -19,7 +19,7 @@ const BRONE_EXPORT_URL = 'https://brone.ub.ac.id/calendar/export.php'
 
 const SCOPES = {
   deadlines: ['feeds', 'notifications', 'events', 'pill'],
-  app: ['display', 'pages', 'weather', 'music', 'general']
+  app: ['display', 'pages', 'weather', 'music', 'shelf', 'gestures', 'general']
 }
 /** The pages Blink knows, in the order they turn by default. */
 const PAGE_IDS = ['clock', 'deadlines', 'controls', 'music', 'projects', 'shelf', 'system']
@@ -568,6 +568,40 @@ function weatherSection () {
       options.pane === 'calendar' ? 'calendar' : 'weather', (v) => setOptions('clock', { pane: v }))))
 }
 
+/** The shelf: what it takes by itself and what it lets go of. */
+function shelfSection () {
+  const options = optionsOf('shelf')
+  return h('section', {},
+    h('h1', {}, t('shelf.title')),
+    h('p', {}, t('shelf.intro')),
+    h('label', { class: 'check' },
+      h('input', { type: 'checkbox', checked: options.autoClear !== false, onchange: (e) => setOptions('shelf', { autoClear: e.target.checked }) }),
+      t('shelf.autoClear')),
+    h('p', { class: 'hint' }, t('shelf.autoClear.hint')),
+    h('label', { class: 'check' },
+      h('input', { type: 'checkbox', checked: options.clipboardImages === true, onchange: (e) => setOptions('shelf', { clipboardImages: e.target.checked }) }),
+      t('shelf.clipboardImages')),
+    h('p', { class: 'hint' }, t('shelf.clipboardImages.hint')))
+}
+
+/** The mouse and touchpad gestures, each of which can be switched off (kept in host.json under `gestures`). */
+function gesturesSection () {
+  const gestures = host.gestures && typeof host.gestures === 'object' ? host.gestures : {}
+  const row = (key) => [
+    h('label', { class: 'check' },
+      h('input', {
+        type: 'checkbox', checked: gestures[key] !== false,
+        onchange: (e) => saveHost(hostModules(), { gestures: { ...gestures, [key]: e.target.checked } })
+      }),
+      t(`gestures.${key}`)),
+    h('p', { class: 'hint' }, t(`gestures.${key}.hint`))
+  ]
+  return h('section', {},
+    h('h1', {}, t('gestures.title')),
+    h('p', {}, t('gestures.intro')),
+    ...['wheel', 'middle', 'pageWheel', 'swipe'].flatMap(row))
+}
+
 function musicSection () {
   const options = optionsOf('music')
   return h('section', {},
@@ -763,6 +797,8 @@ const BUILDERS = {
   pages: pagesSection,
   weather: weatherSection,
   music: musicSection,
+  shelf: shelfSection,
+  gestures: gesturesSection,
   general: generalSection
 }
 
