@@ -98,6 +98,8 @@ pub enum Action {
     Restore(String),
     ToggleSnooze(String),
     Snooze(String, &'static str),
+    /// End a snooze early: the reminders of this deadline come back.
+    Unsnooze(String),
     ToggleDone,
     Refresh,
     OpenSettings,

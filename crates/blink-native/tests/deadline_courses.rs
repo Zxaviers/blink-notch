@@ -129,3 +129,50 @@ fn without_the_projects_page_it_says_so_instead_of_doing_nothing() {
     assert_eq!(app.active_module(), "deadlines");
     assert!(app.state_json()["queuedPeeks"].as_u64().unwrap_or(0) + u64::from(!app.state_json()["peek"].is_null()) >= 1, "it says the page is off");
 }
+
+/// Put the pointer on the first row, so its buttons show.
+fn hover_first_row(app: &mut App) {
+    let row = app.state_json()["module"]["hits"].as_array().unwrap().iter().find(|h| h["row"].as_str().is_some_and(|r| r.starts_with("t1::")) && h["w"].as_f64().unwrap() > 60.0).cloned().unwrap();
+    app.pointer(PointerKind::Move, row["x"].as_f64().unwrap() as f32 + 140.0, row["y"].as_f64().unwrap() as f32 + 10.0);
+    app.render();
+}
+
+fn snoozed_count(app: &mut App) -> usize {
+    app.module_mut::<DeadlinesModule>().unwrap().source_mut().snoozed().len()
+}
+
+#[test]
+fn a_snoozed_deadline_can_have_its_reminders_back_and_cancel_only_closes_the_choices() {
+    let (mut app, _dir) = rig("unsnooze");
+    open_deadlines(&mut app);
+    // Not snoozed yet: the choices have no Resume.
+    hover_first_row(&mut app);
+    click_on(&mut app, "ToggleSnooze:t1::");
+    assert!(hits(&mut app).iter().all(|h| !h["action"].as_str().unwrap_or("").starts_with("Unsnooze")), "nothing to resume yet");
+    click_on(&mut app, "Snooze:t1::");
+    assert_eq!(snoozed_count(&mut app), 1, "snoozed");
+    // Choosing again while it is snoozed: Resume is there, and Cancel leaves the snooze as it is.
+    hover_first_row(&mut app);
+    click_on(&mut app, "ToggleSnooze:t1::");
+    assert!(hits(&mut app).iter().any(|h| h["action"].as_str().unwrap_or("").starts_with("Unsnooze:t1::")), "Resume is offered");
+    let cancel = hits(&mut app).iter().filter(|h| h["action"].as_str().unwrap_or("").starts_with("ToggleSnooze:t1::")).last().cloned().unwrap();
+    click(&mut app, (cancel["x"].as_f64().unwrap() as f32 + 5.0, cancel["y"].as_f64().unwrap() as f32 + 5.0));
+    assert_eq!(snoozed_count(&mut app), 1, "Cancel only closes the choices");
+    // Resume ends it.
+    hover_first_row(&mut app);
+    click_on(&mut app, "ToggleSnooze:t1::");
+    click_on(&mut app, "Unsnooze:t1::");
+    assert_eq!(snoozed_count(&mut app), 0, "the reminders are back");
+}
+
+#[test]
+fn with_a_course_showing_its_name_is_in_the_chip_and_the_title_stands_alone_below_the_countdown() {
+    let (mut app, _dir) = rig("chip");
+    open_deadlines(&mut app);
+    click_on(&mut app, "FilterCourse:CS101");
+    let chip = hits(&mut app).iter().find(|h| h["action"].as_str() == Some("FilterCourse:") && h["row"].is_null()).cloned().expect("the chip with the cross");
+    dump(&mut app, "deadline-course-chip");
+    // It sits at the top of the left column, where the caption "Next deadline" was, not under the title.
+    assert!(chip["y"].as_f64().unwrap() < 50.0, "{chip:?}");
+    assert!(chip["x"].as_f64().unwrap() < 200.0);
+}

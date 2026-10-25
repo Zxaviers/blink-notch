@@ -139,6 +139,8 @@ pub fn word(lang: blink_core::i18n::Lang, key: &str) -> &'static str {
         "marked_done" => if id { "Ditandai selesai" } else { "Marked done" },
         "restored" => if id { "Dipulihkan" } else { "Restored" },
         "snoozed" => if id { "Ditunda" } else { "Snoozed" },
+        "unsnooze" => if id { "Lanjutkan pengingat" } else { "Resume reminders" },
+        "unsnoozed" => if id { "Pengingat aktif lagi" } else { "Reminders back on" },
         _ => "",
     }
 }

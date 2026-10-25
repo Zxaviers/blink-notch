@@ -349,6 +349,17 @@ impl DeadlineSource for LiveSource {
         }
     }
 
+    fn unsnooze(&mut self, id: &str) {
+        let mut g = lock(&self.inner);
+        if g.snoozed.remove(id).is_some() {
+            // As when a snooze runs out: its reminders may be announced again.
+            g.fired.remove(id);
+            write_map(&self.store, "snoozed", &g.snoozed);
+            write_map(&self.store, "fired", &g.fired);
+            g.dirty = true;
+        }
+    }
+
     /// Fetch every enabled feed now, ignoring the 15 minute floor.
     fn refresh(&mut self) {
         let ids: Vec<String> = lock(&self.inner).enabled().map(|m| m.id.clone()).collect();

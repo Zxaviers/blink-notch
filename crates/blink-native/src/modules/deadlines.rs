@@ -39,6 +39,8 @@ pub trait DeadlineSource {
     fn mark_done(&mut self, id: &str, wall_ms: i64);
     fn restore(&mut self, id: &str);
     fn snooze(&mut self, id: &str, kind: &str, wall_ms: i64, tz: &jiff::tz::TimeZone);
+    /// End a snooze early.
+    fn unsnooze(&mut self, id: &str);
     fn refresh(&mut self);
 
     // The rest is for real sources; the demo has nothing to fetch or announce.
@@ -155,6 +157,9 @@ impl DeadlineSource for DemoSource {
         if let Some(until) = snooze_until(kind, wall_ms, tz) {
             self.snoozed.insert(id.to_string(), until as f64);
         }
+    }
+    fn unsnooze(&mut self, id: &str) {
+        self.snoozed.remove(id);
     }
     fn refresh(&mut self) {
         self.refreshes += 1;
@@ -413,6 +418,11 @@ impl DeadlinesModule {
                 let text = env.t.t(&format!("snooze.{kind}"), &[]);
                 cx += self.chip(kit, frame, cx, cy, &text, Action::Snooze(task.id.clone(), kind), &task.id) + 6.0;
             }
+            // A deadline that is snoozed already can have its reminders back at once; Cancel only closes this.
+            if Self::is_snoozed(env, model, task) {
+                let text = env.t.t("snooze.resume", &[]);
+                cx += self.chip(kit, frame, cx, cy, &text, Action::Unsnooze(task.id.clone()), &task.id) + 6.0;
+            }
             let text = env.t.t("snooze.cancel", &[]);
             self.chip(kit, frame, cx, cy, &text, Action::ToggleSnooze(task.id.clone()), &task.id);
             return;
@@ -478,9 +488,23 @@ impl DeadlinesModule {
             Some(hero) => {
                 let urgency = urgency_of(hero.due_ms, env.wall_ms);
                 let color = tone(frame, urgency);
-                let caption = access::word(lang, "next");
-                let base = y0 + Self::base(kit, Face::Sans, 11.0, 14.0);
-                kit.canvas.text(kit.fonts, Face::Sans, 11.0, x, base, caption, theme.dim, frame.alpha, 0.0);
+                let filter = self.state.course.clone().filter(|_| !frame.keyboard);
+                if let Some(course) = &filter {
+                    // Showing one course: its name, with a cross to show them all again, where the caption would be.
+                    let name = kit.fonts.ellipsize(Face::SansBold, course, 10.5 * scale, 0.0, (LEFT_W - 34.0) * scale);
+                    let nw = kit.canvas.measure(kit.fonts, Face::SansBold, 10.5, &name, 0.0);
+                    let rect = Rect { x, y: y0 - 2.0, w: nw + 32.0, h: 18.0 };
+                    let over = self.state.pointer.is_some_and(|(px, py)| rect.contains(px, py));
+                    kit.canvas.rrect(rect.x, rect.y, rect.w, rect.h, 9.0, AMBER, frame.alpha * if over { 0.34 } else { 0.2 });
+                    let base = rect.y + Self::base(kit, Face::SansBold, 10.5, 18.0);
+                    kit.canvas.text(kit.fonts, Face::SansBold, 10.5, x + 9.0, base, &name, AMBER, frame.alpha, 0.0);
+                    kit.canvas.icon(Icon::Close, x + 9.0 + nw + 10.0, rect.y + 9.0, 8.0, AMBER, frame.alpha);
+                    self.hits.push(Hit { rect, action: Some(Action::FilterCourse(None)), row: None });
+                } else {
+                    let caption = access::word(lang, "next");
+                    let base = y0 + Self::base(kit, Face::Sans, 11.0, 14.0);
+                    kit.canvas.text(kit.fonts, Face::Sans, 11.0, x, base, caption, theme.dim, frame.alpha, 0.0);
+                }
                 let count = compact_countdown(hero.due_ms, env.wall_ms, &env.t, true);
                 let mut size = 34.0;
                 while size > 20.0 && kit.canvas.measure(kit.fonts, Face::SansLight, size, &count, 0.0) > LEFT_W {
@@ -489,7 +513,8 @@ impl DeadlinesModule {
                 let base = y0 + 14.0 + Self::base(kit, Face::SansLight, size, 42.0);
                 kit.canvas.text(kit.fonts, Face::SansLight, size, x - 1.0, base, &count, color, frame.alpha, 0.0);
                 if !frame.keyboard {
-                    let line = hero.course.clone().filter(|c| !c.is_empty()).map_or_else(|| hero.title.clone(), |c| format!("{c} \u{00B7} {}", hero.title));
+                    // With one course showing, its name is in the chip above: the title is enough here.
+                    let line = hero.course.clone().filter(|c| !c.is_empty() && filter.is_none()).map_or_else(|| hero.title.clone(), |c| format!("{c} \u{00B7} {}", hero.title));
                     let line = kit.fonts.ellipsize(Face::Sans, &line, 12.0 * scale, 0.0, LEFT_W * scale);
                     let base = y0 + 58.0 + Self::base(kit, Face::Sans, 12.0, 16.0);
                     kit.canvas.text(kit.fonts, Face::Sans, 12.0, x, base, &line, theme.fg, frame.alpha, 0.0);
@@ -512,23 +537,9 @@ impl DeadlinesModule {
         };
         let lines = kit.fonts.wrap(Face::Sans, &text, 10.0 * scale, LEFT_W * scale, if frame.keyboard { 3 } else { 1 });
         let top = if frame.keyboard { y0 + 58.0 } else { y0 + 78.0 };
-        if let Some(course) = self.state.course.clone().filter(|_| !frame.keyboard) {
-            // Showing one course: its name and a way back to all of them, where the sync state was.
-            let name = kit.fonts.ellipsize(Face::SansBold, &course, 10.5 * scale, 0.0, (LEFT_W - 40.0) * scale);
-            let nw = kit.canvas.measure(kit.fonts, Face::SansBold, 10.5, &name, 0.0);
-            let cw = nw + 34.0;
-            let rect = Rect { x, y: top - 3.0, w: cw, h: 20.0 };
-            let over = self.state.pointer.is_some_and(|(px, py)| rect.contains(px, py));
-            kit.canvas.rrect(rect.x, rect.y, rect.w, rect.h, 10.0, AMBER, frame.alpha * if over { 0.34 } else { 0.2 });
-            let base = rect.y + Self::base(kit, Face::SansBold, 10.5, 20.0);
-            kit.canvas.text(kit.fonts, Face::SansBold, 10.5, x + 9.0, base, &name, AMBER, frame.alpha, 0.0);
-            kit.canvas.icon(Icon::Close, x + 9.0 + nw + 10.0, rect.y + 10.0, 8.0, AMBER, frame.alpha);
-            self.hits.push(Hit { rect, action: Some(Action::FilterCourse(None)), row: None });
-        } else {
-            for (i, l) in lines.iter().enumerate() {
-                let base = top + i as f32 * 12.5 + Self::base(kit, Face::Sans, 10.0, 12.5);
-                kit.canvas.text(kit.fonts, Face::Sans, 10.0, x, base, l, color, frame.alpha, 0.0);
-            }
+        for (i, l) in lines.iter().enumerate() {
+            let base = top + i as f32 * 12.5 + Self::base(kit, Face::Sans, 10.0, 12.5);
+            kit.canvas.text(kit.fonts, Face::Sans, 10.0, x, base, l, color, frame.alpha, 0.0);
         }
 
         // The buttons.
@@ -651,6 +662,12 @@ impl DeadlinesModule {
             Action::Snooze(id, kind) => {
                 let said = self.said(env, "snoozed", &id);
                 self.source.snooze(&id, kind, env.wall_ms, env.tz);
+                self.state.snooze_for = None;
+                vec![Effect::Redraw, Effect::Announce(said)]
+            }
+            Action::Unsnooze(id) => {
+                let said = self.said(env, "unsnoozed", &id);
+                self.source.unsnooze(&id);
                 self.state.snooze_for = None;
                 vec![Effect::Redraw, Effect::Announce(said)]
             }
@@ -788,6 +805,7 @@ impl Module for DeadlinesModule {
             Some(Action::Restore(id)) => format!("Restore:{id}"),
             Some(Action::ToggleSnooze(id)) => format!("ToggleSnooze:{id}"),
             Some(Action::Snooze(id, k)) => format!("Snooze:{id}:{k}"),
+            Some(Action::Unsnooze(id)) => format!("Unsnooze:{id}"),
             Some(Action::ToggleDone) => "ToggleDone".to_string(),
             Some(Action::Refresh) => "Refresh".to_string(),
             Some(Action::OpenSettings) => "OpenSettings".to_string(),
@@ -915,6 +933,7 @@ impl Module for DeadlinesModule {
                 Key::Char('1') => Some("30m"),
                 Key::Char('2') => Some("2h"),
                 Key::Char('3') => Some("tomorrow"),
+                Key::Char('0') => return handled(self.act(Action::Unsnooze(id), env)),
                 _ => None,
             };
             return match kind {
@@ -1025,6 +1044,9 @@ impl Module for DeadlinesModule {
                     out.push(button(2, w("snooze_30m"), Action::Snooze(task.id.clone(), "30m")));
                     out.push(button(3, w("snooze_2h"), Action::Snooze(task.id.clone(), "2h")));
                     out.push(button(4, w("snooze_tomorrow"), Action::Snooze(task.id.clone(), "tomorrow")));
+                    if Self::is_snoozed(env, &model, task) {
+                        out.push(button(9, w("unsnooze"), Action::Unsnooze(task.id.clone())));
+                    }
                 }
             }
         };
