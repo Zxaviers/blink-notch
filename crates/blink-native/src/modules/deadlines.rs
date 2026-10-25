@@ -206,6 +206,8 @@ struct PanelState {
     snooze_for: Option<String>,
     done_open: bool,
     keyboard: bool,
+    /// Only the deadlines of this course are shown (clicking a course chip sets it).
+    course: Option<String>,
 }
 
 pub struct DeadlinesModule {
@@ -300,29 +302,28 @@ impl DeadlinesModule {
     }
 
     /// Rows the keyboard can select, in display order: upcoming (hero first), then overdue.
-    fn selectable(model: &Model) -> Vec<String> {
-        model
-            .view
-            .upcoming
-            .iter()
-            .take(MAX_UPCOMING_ROWS)
-            .chain(model.view.overdue.iter().take(MAX_OVERDUE_ROWS))
-            .map(|t| t.id.clone())
-            .collect()
+    fn selectable(&self, model: &Model) -> Vec<String> {
+        self.entries(model).into_iter().filter(|(_, k)| *k != Kind::Done).map(|(t, _)| t.id.clone()).collect()
+    }
+
+    /// Whether a deadline passes the course filter.
+    fn shown(&self, task: &Task) -> bool {
+        self.state.course.as_deref().is_none_or(|c| task.course.as_deref() == Some(c))
     }
 
     /// What the list shows: upcoming then overdue, or the done ones while they are open.
     fn entries<'a>(&self, model: &'a Model) -> Vec<(&'a Task, Kind)> {
         if self.state.done_open {
-            return model.view.done_list.iter().map(|t| (t, Kind::Done)).collect();
+            return model.view.done_list.iter().filter(|t| self.shown(t)).map(|t| (t, Kind::Done)).collect();
         }
         model
             .view
             .upcoming
             .iter()
+            .filter(|t| self.shown(t))
             .take(MAX_UPCOMING_ROWS)
             .map(|t| (t, Kind::Upcoming))
-            .chain(model.view.overdue.iter().take(MAX_OVERDUE_ROWS).map(|t| (t, Kind::Overdue)))
+            .chain(model.view.overdue.iter().filter(|t| self.shown(t)).take(MAX_OVERDUE_ROWS).map(|t| (t, Kind::Overdue)))
             .collect()
     }
 
@@ -365,6 +366,8 @@ impl DeadlinesModule {
     fn row_actions(&mut self, kit: &mut Kit, frame: &PanelFrame, task: &Task, right: f32, y: f32, urgency: &str, tint: Rgb) {
         let mut x = right - BTN;
         self.icon_button(kit, frame, x, y, Icon::Check, Action::MarkDone(task.id.clone()), Some(&task.id), tint);
+        x -= BTN + 4.0;
+        self.icon_button(kit, frame, x, y, Icon::Folder, Action::BreakDown(task.id.clone()), Some(&task.id), tint);
         if urgency != "overdue" {
             x -= BTN + 4.0;
             self.icon_button(kit, frame, x, y, Icon::Alarm, Action::ToggleSnooze(task.id.clone()), Some(&task.id), tint);
@@ -420,6 +423,10 @@ impl DeadlinesModule {
         let label = kit.fonts.ellipsize(Face::SansBold, &label, 10.0 * scale, 0.0, 56.0 * scale);
         let chip_w = kit.canvas.measure(kit.fonts, Face::SansBold, 10.0, &label, 0.0) + 14.0;
         kit.canvas.rrect(x + 12.0, y + (h - 18.0) / 2.0, chip_w, 18.0, 6.0, color, frame.alpha * 0.2);
+        // A click on the course filters the list to it.
+        if let Some(course) = task.course.clone().filter(|c| !c.is_empty() && task.source.as_deref() != Some("local")) {
+            self.hits.push(Hit { rect: Rect { x: x + 12.0, y: y + (h - 18.0) / 2.0, w: chip_w, h: 18.0 }, action: Some(Action::FilterCourse(Some(course))), row: Some(task.id.clone()) });
+        }
         let base = y + (h - 18.0) / 2.0 + Self::base(kit, Face::SansBold, 10.0, 18.0);
         kit.canvas.text(kit.fonts, Face::SansBold, 10.0, x + 19.0, base, &label, color, frame.alpha, 0.0);
 
@@ -428,7 +435,7 @@ impl DeadlinesModule {
         let show_actions = selected || hovered;
         let text_right;
         if show_actions && kind != Kind::Done {
-            let count = 1 + usize::from(task.url.is_some()) + usize::from(urgency != "overdue");
+            let count = 2 + usize::from(task.url.is_some()) + usize::from(urgency != "overdue");
             self.row_actions(kit, frame, task, right, y + (h - BTN) / 2.0, urgency, theme.fg);
             text_right = right - count as f32 * (BTN + 4.0);
         } else if kind == Kind::Done {
@@ -466,7 +473,8 @@ impl DeadlinesModule {
         let scale = kit.canvas.scale;
         let lang = env.t.lang();
 
-        match &model.view.hero {
+        let hero = if self.state.course.is_some() { model.view.upcoming.iter().find(|t| self.shown(t)) } else { model.view.hero.as_ref() };
+        match hero {
             Some(hero) => {
                 let urgency = urgency_of(hero.due_ms, env.wall_ms);
                 let color = tone(frame, urgency);
@@ -504,9 +512,23 @@ impl DeadlinesModule {
         };
         let lines = kit.fonts.wrap(Face::Sans, &text, 10.0 * scale, LEFT_W * scale, if frame.keyboard { 3 } else { 1 });
         let top = if frame.keyboard { y0 + 58.0 } else { y0 + 78.0 };
-        for (i, l) in lines.iter().enumerate() {
-            let base = top + i as f32 * 12.5 + Self::base(kit, Face::Sans, 10.0, 12.5);
-            kit.canvas.text(kit.fonts, Face::Sans, 10.0, x, base, l, color, frame.alpha, 0.0);
+        if let Some(course) = self.state.course.clone().filter(|_| !frame.keyboard) {
+            // Showing one course: its name and a way back to all of them, where the sync state was.
+            let name = kit.fonts.ellipsize(Face::SansBold, &course, 10.5 * scale, 0.0, (LEFT_W - 40.0) * scale);
+            let nw = kit.canvas.measure(kit.fonts, Face::SansBold, 10.5, &name, 0.0);
+            let cw = nw + 34.0;
+            let rect = Rect { x, y: top - 3.0, w: cw, h: 20.0 };
+            let over = self.state.pointer.is_some_and(|(px, py)| rect.contains(px, py));
+            kit.canvas.rrect(rect.x, rect.y, rect.w, rect.h, 10.0, AMBER, frame.alpha * if over { 0.34 } else { 0.2 });
+            let base = rect.y + Self::base(kit, Face::SansBold, 10.5, 20.0);
+            kit.canvas.text(kit.fonts, Face::SansBold, 10.5, x + 9.0, base, &name, AMBER, frame.alpha, 0.0);
+            kit.canvas.icon(Icon::Close, x + 9.0 + nw + 10.0, rect.y + 10.0, 8.0, AMBER, frame.alpha);
+            self.hits.push(Hit { rect, action: Some(Action::FilterCourse(None)), row: None });
+        } else {
+            for (i, l) in lines.iter().enumerate() {
+                let base = top + i as f32 * 12.5 + Self::base(kit, Face::Sans, 10.0, 12.5);
+                kit.canvas.text(kit.fonts, Face::Sans, 10.0, x, base, l, color, frame.alpha, 0.0);
+            }
         }
 
         // The buttons.
@@ -642,6 +664,21 @@ impl DeadlinesModule {
                 vec![Effect::RefreshFeeds]
             }
             Action::OpenSettings => vec![Effect::OpenSettings],
+            Action::FilterCourse(course) => {
+                self.state.course = course;
+                self.state.scroll = 0.0;
+                self.state.selected = None;
+                vec![Effect::Redraw]
+            }
+            Action::BreakDown(id) => {
+                let view = self.model(env).view;
+                let Some(task) = view.upcoming.iter().chain(&view.overdue).chain(&view.done_list).find(|t| t.id == id) else { return Vec::new() };
+                let name = match task.course.as_deref().filter(|c| !c.is_empty()) {
+                    Some(course) => format!("{course} \u{00B7} {}", task.title),
+                    None => task.title.clone(),
+                };
+                vec![Effect::MakeProject { name, task: task.title.clone(), due_ms: task.due_ms }]
+            }
             Action::Control(_) | Action::Music(_) | Action::Project(_) | Action::Shelf(_) => Vec::new(),
         }
     }
@@ -758,6 +795,8 @@ impl Module for DeadlinesModule {
             Some(Action::Music(_)) => "Music".to_string(),
             Some(Action::Project(_)) => "Project".to_string(),
             Some(Action::Shelf(_)) => "Shelf".to_string(),
+            Some(Action::FilterCourse(c)) => format!("FilterCourse:{}", c.clone().unwrap_or_default()),
+            Some(Action::BreakDown(id)) => format!("BreakDown:{id}"),
             None => String::new(),
         };
         serde_json::json!({
@@ -857,7 +896,7 @@ impl Module for DeadlinesModule {
 
     fn key(&mut self, key: Key, env: &Env) -> KeyResult {
         let model = self.model(env);
-        let ids = Self::selectable(&model);
+        let ids = self.selectable(&model);
         let current = self.state.selected.clone().filter(|s| ids.contains(s));
         let handled = |effects: Vec<Effect>| KeyResult { handled: true, close: false, effects };
 
@@ -865,6 +904,9 @@ impl Module for DeadlinesModule {
             if self.state.snooze_for.is_some() {
                 self.state.snooze_for = None;
                 return handled(vec![Effect::Redraw]);
+            }
+            if self.state.course.is_some() {
+                return handled(self.act(Action::FilterCourse(None), env));
             }
             return KeyResult { handled: true, close: true, effects: Vec::new() };
         }
@@ -905,6 +947,10 @@ impl Module for DeadlinesModule {
                 self.state.selected = at.and_then(|i| ids.get(i + 1).or_else(|| i.checked_sub(1).and_then(|p| ids.get(p)))).cloned();
                 handled(self.act(Action::MarkDone(id), env))
             }
+            Key::Char('p') | Key::Char('P') => match current {
+                Some(id) => handled(self.act(Action::BreakDown(id), env)),
+                None => handled(Vec::new()),
+            },
             Key::Char('s') | Key::Char('S') => {
                 let Some(id) = current else { return handled(Vec::new()) };
                 if model.view.overdue.iter().any(|t| t.id == id) {
@@ -920,7 +966,7 @@ impl Module for DeadlinesModule {
     fn keyboard_mode(&mut self, on: bool, env: &Env) {
         self.state.keyboard = on;
         self.state.snooze_for = None;
-        self.state.selected = if on { Self::selectable(&self.model(env)).first().cloned() } else { None };
+        self.state.selected = if on { self.selectable(&self.model(env)).first().cloned() } else { None };
     }
 
     fn configure(&mut self, settings: &Settings) {
@@ -972,6 +1018,10 @@ impl Module for DeadlinesModule {
                     out.push(button(5, w("restore"), Action::Restore(task.id.clone())));
                 } else {
                     out.push(button(1, w("mark_done"), Action::MarkDone(task.id.clone())));
+                    out.push(button(6, w("break_down"), Action::BreakDown(task.id.clone())));
+                    if let Some(course) = task.course.clone().filter(|c| !c.is_empty()) {
+                        out.push(button(7, &format!("{} {course}", w("show_only")), Action::FilterCourse(Some(course))));
+                    }
                     out.push(button(2, w("snooze_30m"), Action::Snooze(task.id.clone(), "30m")));
                     out.push(button(3, w("snooze_2h"), Action::Snooze(task.id.clone(), "2h")));
                     out.push(button(4, w("snooze_tomorrow"), Action::Snooze(task.id.clone(), "tomorrow")));
@@ -979,9 +1029,14 @@ impl Module for DeadlinesModule {
             }
         };
 
-        let upcoming: Vec<&Task> = model.view.upcoming.iter().take(MAX_UPCOMING_ROWS).collect();
+        if self.state.course.is_some() {
+            let mut all = Node::new(8, ROOT, Role::Button, w("show_all"));
+            all.action = Some(NodeAction::Module(Action::FilterCourse(None)));
+            out.push(all);
+        }
+        let upcoming: Vec<&Task> = model.view.upcoming.iter().filter(|t| self.shown(t)).take(MAX_UPCOMING_ROWS).collect();
         push_rows(&mut out, 2, w("upcoming"), upcoming, false, self);
-        let overdue: Vec<&Task> = model.view.overdue.iter().take(MAX_OVERDUE_ROWS).collect();
+        let overdue: Vec<&Task> = model.view.overdue.iter().filter(|t| self.shown(t)).take(MAX_OVERDUE_ROWS).collect();
         push_rows(&mut out, 3, w("overdue"), overdue, false, self);
         if !model.view.done_list.is_empty() {
             let mut toggle = Node::new(5, ROOT, Role::Button, format!("{} ({})", w("show_done"), model.view.done_list.len()));

@@ -17,6 +17,7 @@ export const api = {
 
   notify: (title, body) => invoke('notify', { title, body }),
   openUrl: (url) => invoke('open_url', { url }),
+  checkUpdate: (url) => invoke('check_update', { url }),
   openSettings: () => invoke('open_settings'),
   diagnostics: () => invoke('diagnostics'),
   showTour: () => invoke('show_tour'),
@@ -31,6 +32,7 @@ export const api = {
   debugFlags: () => invoke('debug_flags'),
 
   setHotkey: (accelerator) => invoke('set_hotkey', { accelerator }),
+  setShelfHotkey: (accelerator) => invoke('set_shelf_hotkey', { accelerator }),
   enterKeyboardMode: () => invoke('enter_keyboard_mode'),
   exitKeyboardMode: () => invoke('exit_keyboard_mode'),
 

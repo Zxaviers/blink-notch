@@ -209,6 +209,22 @@ impl ProjectsModule {
         &self.data
     }
 
+    /// A project made from a deadline: named for it, with the deadline itself as its first task (due when it is). A project that
+    /// already has the name is shown instead of a second one. True when a new one was made.
+    pub fn project_for_deadline(&mut self, name: &str, task: &str, due_ms: i64, now_ms: i64) -> bool {
+        self.view = View::Tasks;
+        if let Some(id) = self.data.projects.iter().find(|p| p.name == name).map(|p| p.id.clone()) {
+            self.data.select(&id);
+            self.save();
+            return false;
+        }
+        let id = self.data.add_project(name, now_ms);
+        self.data.add_task(&id, task, Some(due_ms), now_ms);
+        self.data.select(&id);
+        self.save();
+        true
+    }
+
     /// Files are being dragged over the notch (highlight the drop zone).
     pub fn set_drag_over(&mut self, over: bool) {
         self.drag_over = over;

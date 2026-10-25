@@ -39,6 +39,12 @@ function buildIcs () {
 let requests = 0
 http.createServer((req, res) => {
   requests += 1
+  // The update file the settings check is tried against.
+  if (req.url === '/latest.json') {
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ version: '9.9.9', url: 'https://example.org/Blink-9.9.9-setup.exe', notes: 'A test release.' }))
+    return
+  }
   const body = buildIcs()
   // Stable per hour so "not modified" is reachable.
   const etag = `"${crypto.createHash('md5').update(body.replace(/DTSTART:\d{8}T\d{6}Z/g, '')).digest('hex')}"`

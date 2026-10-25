@@ -117,6 +117,24 @@ async fn set_hotkey(accelerator: String) -> Result<(), String> {
     .map_err(|_| "HOTKEY_INVALID".to_string())?
 }
 
+/// Rebind the shelf's shortcut (the one that puts the clipboard on the shelf): the notch answers as it does for the main one.
+#[tauri::command]
+async fn set_shelf_hotkey(accelerator: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || match ipc::request(&json!({ "cmd": "set_shelf_hotkey", "accelerator": accelerator })) {
+        Ok(_) => Ok(()),
+        Err(IpcError::NotRunning) => {
+            if accelerator.trim().is_empty() || parse_accelerator(&accelerator).is_some() {
+                Ok(())
+            } else {
+                Err("HOTKEY_INVALID".to_string())
+            }
+        }
+        Err(IpcError::Failed(code)) => Err(code),
+    })
+    .await
+    .map_err(|_| "HOTKEY_INVALID".to_string())?
+}
+
 #[derive(Serialize)]
 struct MonitorInfo {
     index: usize,
@@ -149,6 +167,18 @@ fn open_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
         return Err("URL_PROTOCOL".to_string());
     }
     app.opener().open_url(url, None::<&str>).map_err(|_| "OPEN".to_string())
+}
+
+/// Is there a newer Blink? Asks the update file at `url` (https, or this computer), only because the person pressed the button.
+/// The answer says what is newest and where to get it; nothing is downloaded or installed.
+#[tauri::command]
+async fn check_update(url: String) -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(move || match blink_core::update::check(&url, env!("CARGO_PKG_VERSION"))? {
+        blink_core::update::Checked::UpToDate { latest } => Ok(json!({ "state": "uptodate", "version": latest })),
+        blink_core::update::Checked::Newer(r) => Ok(json!({ "state": "newer", "version": r.version, "url": r.url, "notes": r.notes })),
+    })
+    .await
+    .map_err(|_| "UPDATE_OFFLINE".to_string())?
 }
 
 /// Ask the running notch to show its welcome tour again.
@@ -302,6 +332,7 @@ fn main() {
             feed_remove,
             feed_has_secret,
             set_hotkey,
+            set_shelf_hotkey,
             list_monitors,
             open_url,
             autostart_is_enabled,
@@ -310,6 +341,7 @@ fn main() {
             diagnostics,
             weather_find,
             show_tour,
+            check_update,
             clipboard_text,
         ])
         // Closing the window ends the program, so no web engine stays behind.

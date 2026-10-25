@@ -5,7 +5,7 @@
 # the later ones as conditional requests answered 304).
 # Uses the control pipe only: no cursor, no keyboard.
 #   powershell -File scripts\native\soak.ps1 [-Minutes 35] [-Exe path\to\blink.exe]
-param([int]$Minutes = 35, [string]$Exe = "$PSScriptRoot\..\..\target\release\blink.exe", [int]$Port = 8794)
+param([int]$Minutes = 35, [string]$Exe = "$PSScriptRoot\..\..\target\release\blink.exe", [int]$Port = 8794, [switch]$RealSources)
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot\blink-ctl.ps1"
 $env:BLINK_EXE = (Resolve-Path $Exe).Path
@@ -33,7 +33,10 @@ function Sample($proc) {
   }
 }
 
-$proc = Start-Blink 'soak' @{ BLINK_DATA_DIR = $data; BLINK_TZ = 'Asia/Jakarta'; BLINK_TEST_FEEDS = "ics-soak=http://127.0.0.1:$Port/cal.ics" }
+$env = @{ BLINK_DATA_DIR = $data; BLINK_TZ = 'Asia/Jakarta'; BLINK_TEST_FEEDS = "ics-soak=http://127.0.0.1:$Port/cal.ics" }
+# With -RealSources the notch also listens to the real system (volume, media, Sonar, the speakers): what a person's copy does.
+if ($RealSources) { $env.BLINK_REAL_SOURCES = '1' }
+$proc = Start-Blink 'soak' $env
 $samples = New-Object System.Collections.Generic.List[object]
 $problems = New-Object System.Collections.Generic.List[string]
 try {

@@ -26,6 +26,7 @@ pub mod projects;
 pub mod secret;
 pub mod settings;
 pub mod sonar;
+pub mod update;
 pub mod store;
 pub mod weather;
 pub mod thresholds;

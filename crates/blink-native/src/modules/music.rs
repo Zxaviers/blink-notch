@@ -266,6 +266,8 @@ pub struct MusicModule {
     /// The first look at the player is not news.
     started: bool,
     seen_track: Option<u64>,
+    /// The song whose peek was shown last, when, and the cover it showed (the cover can turn out to be a stand-in).
+    peeked_art: Option<(u64, u64, std::sync::Arc<Art>)>,
     hits: Vec<Hit>,
     pointer: Option<(f32, f32)>,
     /// A seek in progress: where the pointer is, in milliseconds.
@@ -281,6 +283,23 @@ pub struct MusicModule {
 }
 
 impl MusicModule {
+    /// The peek that says a new song started.
+    fn track_peek(&self, st: &MediaState) -> PeekView {
+        PeekView {
+            code: st.artist.clone(),
+            title: st.title.clone(),
+            count: String::new(),
+            urgency: "later",
+            priority: 1,
+            ttl_ms: Some(3200),
+            key: Some("music:track".into()),
+            progress: None,
+            icon: Some(Icon::Music),
+            accent: Some(st.art.as_ref().map_or(VIOLET, |a| a.accent)),
+            cover: st.art.clone().map(super::Cover),
+        }
+    }
+
     pub fn new(backend: Arc<dyn MediaBackend>, source: Arc<dyn LyricsSource>, wake: Arc<dyn Fn() + Send + Sync>) -> Self {
         let (results_tx, results_rx) = channel();
         MusicModule {
@@ -297,6 +316,7 @@ impl MusicModule {
             keep_open: false,
             started: false,
             seen_track: None,
+            peeked_art: None,
             hits: Vec::new(),
             pointer: None,
             drag_ms: None,
@@ -810,22 +830,20 @@ impl Module for MusicModule {
         let st = self.backend.state();
         if st.active {
             self.ensure_lyrics(&st);
+            // The cover that came with the first look at a song can be a stand-in (the player's logo): when the real one arrives
+            // while the peek is up, show the peek again with it (the same peek, so it is replaced, not added).
+            if let (Some((track, at, held)), Some(art)) = (self.peeked_art.as_ref(), st.art.as_ref()) {
+                if *track == st.track && env.now_ms.saturating_sub(*at) < 3_000 && !std::sync::Arc::ptr_eq(held, art) {
+                    let peek = self.track_peek(&st);
+                    self.peeked_art = Some((st.track, *at, art.clone()));
+                    effects.push(Effect::ShowPeek(peek));
+                }
+            }
             if self.seen_track != Some(st.track) {
                 // A new song: say so (not for the one already playing when the notch started).
                 if self.started && self.peek_on_change && st.playing {
-                    effects.push(Effect::ShowPeek(PeekView {
-                        code: st.artist.clone(),
-                        title: st.title.clone(),
-                        count: String::new(),
-                        urgency: "later",
-                        priority: 1,
-                        ttl_ms: Some(3200),
-                        key: Some("music:track".into()),
-                        progress: None,
-                        icon: Some(Icon::Music),
-                        accent: Some(st.art.as_ref().map_or(VIOLET, |a| a.accent)),
-                        cover: st.art.clone().map(super::Cover),
-                    }));
+                    effects.push(Effect::ShowPeek(self.track_peek(&st)));
+                    self.peeked_art = st.art.clone().map(|a| (st.track, env.now_ms, a));
                 }
                 self.seen_track = Some(st.track);
                 self.plain_scroll = 0.0;

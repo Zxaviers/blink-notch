@@ -210,6 +210,61 @@ impl App {
         self.slots.iter_mut().find_map(|s| s.module.as_any_mut().downcast_mut::<T>())
     }
 
+    /// The shelf's shortcut was pressed with nothing on the clipboard that the shelf can keep: say so, so it is not a silent no.
+    pub fn shelf_says_nothing_to_paste(&mut self) {
+        let Some(i) = self.slots.iter().position(|s| s.enabled && s.module.id() == "shelf") else { return };
+        let title = if self.lang == Lang::Id { "Tidak ada yang bisa ditaruh di rak dari clipboard" } else { "Nothing on the clipboard the shelf can keep" };
+        let view = PeekView {
+            code: String::new(),
+            title: title.to_string(),
+            count: String::new(),
+            urgency: "later",
+            priority: 1,
+            ttl_ms: Some(2400),
+            key: Some("shelf:nothing".into()),
+            progress: None,
+            icon: Some(Icon::Download),
+            accent: None,
+            cover: None,
+        };
+        self.apply_module_effects(i, vec![Effect::ShowPeek(view)]);
+    }
+
+    /// A project made from a deadline, and the Projects page shown on it. A peek says so (or why not).
+    fn make_project(&mut self, name: &str, task: &str, due_ms: i64) -> Option<PeekView> {
+        let now = self.clock.wall_ms();
+        let lang = self.lang;
+        let say = |title: String, urgency: &'static str| PeekView {
+            code: String::new(),
+            title,
+            count: String::new(),
+            urgency,
+            priority: 1,
+            ttl_ms: Some(2800),
+            key: Some("deadline:project".into()),
+            progress: None,
+            icon: Some(Icon::Folder),
+            accent: None,
+            cover: None,
+        };
+        let id = lang == Lang::Id;
+        let Some(i) = self.slots.iter().position(|s| s.enabled && s.module.id() == "projects") else {
+            return Some(say((if id { "Halaman Proyek mati: nyalakan di pengaturan Blink" } else { "The Projects page is off: turn it on in Blink settings" }).to_string(), "soon"));
+        };
+        let made = self.slots[i].module.as_any_mut().downcast_mut::<crate::modules::projects::ProjectsModule>()?.project_for_deadline(name, task, due_ms, now);
+        self.switch_to(i);
+        Some(say(
+            match (made, id) {
+                (true, true) => "Proyek dibuat dari tenggat ini",
+                (true, false) => "Project made from this deadline",
+                (false, true) => "Proyek ini sudah ada",
+                (false, false) => "That project already exists",
+            }
+            .to_string(),
+            "later",
+        ))
+    }
+
     /// Where the shelf keeps the pictures and texts it makes from the clipboard (None without a shelf page).
     pub fn shelf_files_dir(&mut self) -> Option<std::path::PathBuf> {
         self.module_mut::<crate::modules::shelf::ShelfModule>().map(|m| m.files_dir())
@@ -495,6 +550,11 @@ impl App {
                 Effect::PasteClipboard => self.effects.push(AppEffect::PasteClipboard),
                 Effect::RevealPath(p) => self.effects.push(AppEffect::RevealPath(p)),
                 Effect::ShowPeek(view) => peeks.push(view),
+                Effect::MakeProject { name, task, due_ms } => {
+                    if let Some(view) = self.make_project(&name, &task, due_ms) {
+                        peeks.push(view);
+                    }
+                }
             }
         }
         if self.shell.mode() == Mode::Open {
@@ -1689,6 +1749,31 @@ impl App {
 
     // ---------------------------------------------------------------- state
 
+    /// Why the notch is open (or not), in one line: what a person looks at when it will not close.
+    pub fn why_open(&self) -> String {
+        let id = |i: usize| self.slots.get(i).map_or("?", |s| s.module.id());
+        format!(
+            "mode={:?} hovering={} pointer={} captured={} hold={} keyboard={} pinned={} closing={} live={} tour={} dragging={} dragging_out={} desktop={} playing={} page={} pill={} last_page={:?}",
+            self.shell.mode(),
+            self.shell.hovering(),
+            self.pointer_inside(),
+            self.pointer_captured(),
+            self.shell.held(),
+            self.shell.keyboard(),
+            self.shell.pinned(),
+            self.shell.closing(),
+            self.live_on,
+            self.tour.is_some(),
+            self.dragging,
+            self.dragging_out,
+            self.desktop,
+            self.music_playing(),
+            id(self.active),
+            id(self.rest_owner),
+            self.last_page.map(|(page, owner)| format!("{page}/{owner}")),
+        )
+    }
+
     pub fn state_json(&mut self) -> Value {
         let now = self.clock.now_ms();
         let shape = self.shell.shape(now);
@@ -1710,6 +1795,7 @@ impl App {
             "animating": self.shell.is_animating(now),
             "hovering": self.shell.hovering(),
             "keyboard": self.shell.keyboard(),
+            "whyOpen": self.why_open(),
             "nowMs": now,
             "wallMs": self.clock.wall_ms(),
             "manualClock": self.clock.is_manual(),

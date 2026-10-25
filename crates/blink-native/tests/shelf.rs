@@ -272,3 +272,16 @@ fn clip_names_carry_the_date_and_time() {
     let name = r.app.clip_name("png");
     assert!(name.starts_with("clip-") && name.ends_with(".png") && name.len() == "clip-20261025-143007.png".len(), "{name}");
 }
+
+#[test]
+fn the_notch_says_why_it_is_open() {
+    let mut r = rig("why");
+    assert!(r.app.why_open().contains("hold=false") && r.app.why_open().contains("dragging=false"), "{}", r.app.why_open());
+    r.app.drag_files(true);
+    let open = r.app.why_open();
+    assert!(open.contains("hold=true") && open.contains("dragging=true"), "a drag over the notch is why it stays open: {open}");
+    r.app.drag_files(false);
+    advance(&mut r.app, 2_000);
+    assert!(r.app.why_open().contains("hold=false"));
+    assert!(r.app.state_json()["whyOpen"].as_str().is_some_and(|w| w.contains("mode=")));
+}

@@ -397,3 +397,39 @@ fn the_peek_for_a_new_song_shows_its_cover_and_not_a_music_note() {
     assert!(px.red() > 150 && px.green() < 90, "the cover is drawn: {px:?}");
     dump(&mut r.app, "peek-cover");
 }
+
+#[test]
+fn a_stand_in_cover_is_replaced_by_the_real_one_while_the_peek_is_still_up() {
+    let mut r = rig(None);
+    r.app.configure_modules(&[]);
+    r.app.pointer(PointerKind::Leave, 0.0, 0.0);
+    advance(&mut r.app, 600);
+    settle(&mut r.app);
+    let art = |rgb: (u8, u8, u8)| {
+        let mut pixmap = tiny_skia::Pixmap::new(48, 48).unwrap();
+        pixmap.fill(tiny_skia::Color::from_rgba8(rgb.0, rgb.1, rgb.2, 255));
+        Arc::new(blink_native::modules::music::Art { pixmap, accent: blink_native::ui::theme::Rgb(rgb.0, rgb.1, rgb.2) })
+    };
+    // The player first hands out its own logo.
+    r.media.set(|s| {
+        s.title = "Oceans & Engines".into();
+        s.artist = "NIKI".into();
+        s.track += 1;
+        s.art = Some(art((240, 120, 20)));
+    });
+    r.app.data_changed();
+    let first = r.app.current_peek().expect("a new song peeks").clone();
+    assert_eq!(first.accent, Some(blink_native::ui::theme::Rgb(240, 120, 20)));
+    // A moment later the real cover arrives: the peek shows it.
+    advance(&mut r.app, 1_200);
+    r.media.set(|s| s.art = Some(art((40, 90, 230))));
+    r.app.data_changed();
+    let again = r.app.current_peek().expect("still a peek").clone();
+    assert_eq!(again.accent, Some(blink_native::ui::theme::Rgb(40, 90, 230)), "with the real cover");
+    // Much later a different picture changes nothing about a peek that is gone.
+    advance(&mut r.app, 8_000);
+    settle(&mut r.app);
+    r.media.set(|s| s.art = Some(art((10, 200, 60))));
+    r.app.data_changed();
+    assert!(r.app.current_peek().is_none(), "no peek comes back for a late change");
+}

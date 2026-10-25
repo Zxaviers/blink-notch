@@ -23,6 +23,17 @@ pub fn parse_visibility_hotkey(value: Option<&Value>) -> String {
     }
 }
 
+/// The shortcut that puts what is on the clipboard on the shelf, without opening the notch (`shelfHotkey` in `host.json`).
+/// Empty turns it off.
+pub const DEFAULT_SHELF_HOTKEY: &str = "Ctrl+Alt+V";
+
+pub fn parse_shelf_hotkey(value: Option<&Value>) -> String {
+    match value.and_then(|v| v.get("shelfHotkey")).and_then(Value::as_str) {
+        Some(s) => s.trim().to_string(),
+        None => DEFAULT_SHELF_HOTKEY.to_string(),
+    }
+}
+
 /// When the notch steps aside for a fullscreen app (`hideInFullscreen` in `host.json`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FullscreenMode {
@@ -129,6 +140,13 @@ mod tests {
         assert!(parse_modules(None).is_empty());
         assert!(parse_modules(Some(&json!({ "modules": "no" }))).is_empty());
         assert!(parse_modules(Some(&json!([]))).is_empty());
+    }
+
+    #[test]
+    fn the_shelf_shortcut_has_a_default_and_can_be_turned_off() {
+        assert_eq!(parse_shelf_hotkey(None), "Ctrl+Alt+V");
+        assert_eq!(parse_shelf_hotkey(Some(&json!({ "shelfHotkey": " Ctrl+Shift+S " }))), "Ctrl+Shift+S");
+        assert_eq!(parse_shelf_hotkey(Some(&json!({ "shelfHotkey": "" }))), "", "empty means off");
     }
 
     #[test]

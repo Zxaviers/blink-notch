@@ -298,6 +298,15 @@ impl Shell {
         self.hold
     }
 
+    pub fn pinned(&self) -> bool {
+        self.pinned
+    }
+
+    /// Whether a close is waiting out its grace time.
+    pub fn closing(&self) -> bool {
+        self.grace_at.is_some()
+    }
+
     /// A click on the pill opens it straight away.
     pub fn click(&mut self, now: u64) {
         if self.mode != Mode::Open {

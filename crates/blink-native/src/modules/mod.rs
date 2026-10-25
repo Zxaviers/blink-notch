@@ -105,6 +105,10 @@ pub enum Action {
     Music(music::MusicAction),
     Project(projects::ProjectAction),
     Shelf(shelf::ShelfAction),
+    /// Show only the deadlines of one course (None: all of them again).
+    FilterCourse(Option<String>),
+    /// Make a project (with the deadline as its first task) from this deadline.
+    BreakDown(String),
 }
 
 /// What the host must do for a module.
@@ -137,6 +141,8 @@ pub enum Effect {
     RevealPath(String),
     /// Put what the clipboard holds (copied files, a picture, text) on the shelf.
     PasteClipboard,
+    /// Make a project named so, with this task due then, from a deadline; the Projects page opens on it.
+    MakeProject { name: String, task: String, due_ms: i64 },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

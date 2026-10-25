@@ -68,6 +68,10 @@ impl Runtime {
         if status != "ok" {
             self.effects_log.push(format!("hotkey:visibility:{status}"));
         }
+        let status = self.register_shelf_hotkey(&crate::host::parse_shelf_hotkey(file.as_ref()));
+        if status != "ok" {
+            self.effects_log.push(format!("hotkey:shelf:{status}"));
+        }
     }
 
     /// Redacted facts about the running notch, appended to the settings program's report.
@@ -75,7 +79,7 @@ impl Runtime {
         let state = self.app.state_json();
         let module = &state["module"];
         format!(
-            "Notch: running, version {}, scale {:.2}\n  mode={} resting={} hidden={} paused={} fullscreen={}\n  hotkey={} tray={}\n  deadlines: {} upcoming, {} overdue, sync={}\n  frames drawn: {}\n",
+            "Notch: running, version {}, scale {:.2}\n  mode={} resting={} hidden={} paused={} fullscreen={}\n  shell: {}\n  hotkey={} tray={}\n  deadlines: {} upcoming, {} overdue, sync={}\n  frames drawn: {}\n",
             env!("CARGO_PKG_VERSION"),
             self.scale(),
             state["mode"].as_str().unwrap_or("?"),
@@ -83,6 +87,7 @@ impl Runtime {
             self.hidden,
             self.paused,
             self.fullscreen,
+            self.app.why_open(),
             if self.hotkey.is_empty() { "off" } else { self.hotkey.as_str() },
             self.tray.is_some(),
             module["upcoming"].as_array().map_or(0, Vec::len),
@@ -111,6 +116,10 @@ impl Runtime {
                     Ok(json!({}))
                 }
                 "set_hotkey" => match self.register_hotkey(v["accelerator"].as_str().unwrap_or("")) {
+                    "ok" => Ok(json!({})),
+                    code => Err(code.to_string()),
+                },
+                "set_shelf_hotkey" => match self.register_shelf_hotkey(v["accelerator"].as_str().unwrap_or("")) {
                     "ok" => Ok(json!({})),
                     code => Err(code.to_string()),
                 },

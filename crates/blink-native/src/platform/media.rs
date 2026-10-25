@@ -25,7 +25,29 @@ const EPOCH_GAP_MS: i64 = 11_644_473_600_000;
 
 enum Msg {
     Refresh,
+    /// The player says the song's properties (its cover too) changed.
+    Properties,
     Command(MediaCommand),
+}
+
+/// When the cover is looked at again. A player often hands out a stand-in (its own logo) at the moment a song changes and the real
+/// cover a little later, so for a few seconds after a change the cover is read again, and again whenever the player says it changed.
+struct ArtWatch {
+    track_since: std::time::Instant,
+    last_read: std::time::Instant,
+    force: bool,
+}
+
+impl ArtWatch {
+    fn new() -> ArtWatch {
+        let long_ago = std::time::Instant::now().checked_sub(Duration::from_secs(60)).unwrap_or_else(std::time::Instant::now);
+        ArtWatch { track_since: long_ago, last_read: long_ago, force: false }
+    }
+
+    /// Whether the cover should be read now (`has_art`: there is one already).
+    fn due(&self, has_art: bool) -> bool {
+        !has_art || self.force || (self.track_since.elapsed() < Duration::from_secs(8) && self.last_read.elapsed() >= Duration::from_millis(700))
+    }
 }
 
 pub struct WinMedia {
@@ -78,6 +100,7 @@ fn worker(rx: Receiver<Msg>, tx: Sender<Msg>, shared: Arc<Mutex<MediaState>>, wa
     let mut track = 0u64;
     let mut last_key = String::new();
     let mut art: Option<Arc<Art>> = None;
+    let mut watch = ArtWatch::new();
     let _ = tx.send(Msg::Refresh);
 
     while let Ok(first) = rx.recv() {
@@ -87,6 +110,9 @@ fn worker(rx: Receiver<Msg>, tx: Sender<Msg>, shared: Arc<Mutex<MediaState>>, wa
             messages.push(next);
         }
         let session = manager.GetCurrentSession().ok();
+        if messages.iter().any(|m| matches!(m, Msg::Properties)) {
+            watch.force = true;
+        }
         for m in &messages {
             if let (Msg::Command(c), Some(s)) = (m, &session) {
                 run(c, s);
@@ -106,7 +132,7 @@ fn worker(rx: Receiver<Msg>, tx: Sender<Msg>, shared: Arc<Mutex<MediaState>>, wa
                     let (a, b, c) = (tx.clone(), tx.clone(), tx.clone());
                     let tokens = [
                         s.MediaPropertiesChanged(&TypedEventHandler::new(move |_, _| {
-                            let _ = a.send(Msg::Refresh);
+                            let _ = a.send(Msg::Properties);
                             Ok(())
                         }))
                         .unwrap_or(0),
@@ -130,7 +156,7 @@ fn worker(rx: Receiver<Msg>, tx: Sender<Msg>, shared: Arc<Mutex<MediaState>>, wa
         }
 
         let next = match &session {
-            Some(s) => read(s, &mut track, &mut last_key, &mut art),
+            Some(s) => read(s, &mut track, &mut last_key, &mut art, &mut watch),
             None => MediaState { track, ..MediaState::default() },
         };
         *shared.lock().unwrap_or_else(|p| p.into_inner()) = next;
@@ -164,7 +190,7 @@ fn run(command: &MediaCommand, session: &Session) {
 }
 
 /// Everything about the current song, read fresh.
-fn read(session: &Session, track: &mut u64, last_key: &mut String, art: &mut Option<Arc<Art>>) -> MediaState {
+fn read(session: &Session, track: &mut u64, last_key: &mut String, art: &mut Option<Arc<Art>>, watch: &mut ArtWatch) -> MediaState {
     let mut st = MediaState { active: true, rate: 1.0, ..MediaState::default() };
     st.app = session.SourceAppUserModelId().map(|h| app_name(&h.to_string())).unwrap_or_default();
     let props = session.TryGetMediaPropertiesAsync().ok().and_then(|op| op.join().ok());
@@ -178,12 +204,20 @@ fn read(session: &Session, track: &mut u64, last_key: &mut String, art: &mut Opt
         *last_key = key;
         *track += 1;
         *art = None;
+        watch.track_since = std::time::Instant::now();
     }
     st.track = *track;
-    // The cover can arrive a moment after the words: keep asking until there is one.
-    if art.is_none() {
+    // The cover can arrive a moment after the words, and a stand-in can come before it: keep asking until there is one, and for a
+    // few seconds after a change, and whenever the player says it changed; a different picture replaces the one held.
+    if watch.due(art.is_some()) {
+        watch.force = false;
+        watch.last_read = std::time::Instant::now();
         if let Some(p) = &props {
-            *art = trace("get the thumbnail", p.Thumbnail()).and_then(|t| read_art(&t));
+            if let Some(fresh) = trace("get the thumbnail", p.Thumbnail()).and_then(|t| read_art(&t)) {
+                if art.as_ref().is_none_or(|old| old.pixmap.data() != fresh.pixmap.data()) {
+                    *art = Some(fresh);
+                }
+            }
         }
     }
     st.art = art.clone();

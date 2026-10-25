@@ -59,6 +59,17 @@ The beta installer is **unsigned**; Windows SmartScreen will say "Windows protec
 
 When ready to sign (not needed for the beta): an OV or EV code-signing certificate (or Azure Trusted Signing), `signtool sign /fd SHA256 /tr <timestamp-url> /td SHA256` over `blink.exe`, `blink-settings.exe` and then the installer, in that order (the installer embeds the signed programs). EV or a signing service with reputation removes the SmartScreen warning fastest. Keep the build deterministic enough that the published SHA-256 matches what testers download.
 
+## Releasing to other people
+
+A checklist for the day Blink goes to someone else's PC (nothing here is automated yet):
+
+1. **Build** from a clean checkout: `scripts\native\build-release.ps1` (makes `blink.exe`, `blink-settings.exe` and `scripts\out\Blink-<version>-setup.exe`). Bump the version in the workspace `Cargo.toml` first; the installer takes it from there.
+2. **Check**: `cargo test -p blink-native -p blink-core`, every `gate-*.ps1`, `settings-e2e.mjs` and `installer-test.ps1 -BinDir <release folder>`; then a day of use by the people who are to get it, with the list under "What has not been checked" in hand.
+3. **Sign** (when there is a certificate; see the signing plan above): the two programs first, then the installer, and check with `signtool verify /pa`.
+4. **Publish** the installer and its SHA-256 on a page that says what is in this version and that an unsigned installer shows SmartScreen's warning (More info, Run anyway).
+5. **Update file** (so "Check for updates" in Blink settings can tell people): a small JSON file at a fixed https link, for example next to the installer: `{"version": "0.3.0", "url": "https://.../Blink-0.3.0-setup.exe", "notes": "What changed, in a sentence or two."}`. `url` must be a web page or file link (https). Blink only asks it when the person presses the button, shows the version and notes, and opens the link; it never downloads or installs anything by itself. People get the link to paste from the page in step 4. A link that is not https is refused, and so is an update file whose `url` is not https.
+6. **After**: keep the old installer for a while, so a bad release can be rolled back (installing the older one over the newer one keeps the data).
+
 ## What has been verified
 
 Scripted, with no mouse or keyboard (all in `scripts/native/`):

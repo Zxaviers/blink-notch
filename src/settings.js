@@ -17,6 +17,8 @@ import { acceleratorFromEvent, DEFAULT_HOTKEY } from './lib/hotkey.js'
 
 const BRONE_EXPORT_URL = 'https://brone.ub.ac.id/calendar/export.php'
 
+/** The shelf's shortcut by default (Ctrl+Alt+V puts what you copied on the shelf). */
+const DEFAULT_SHELF_HOTKEY = 'Ctrl+Alt+V'
 const SCOPES = {
   deadlines: ['feeds', 'notifications', 'events', 'pill'],
   app: ['display', 'pages', 'weather', 'music', 'shelf', 'gestures', 'general']
@@ -321,10 +323,18 @@ function notificationsSection () {
 }
 
 /** Press-to-record field for the global hotkey. Tries to register before saving. */
-function hotkeyControl () {
+function hotkeyControl (own = {}) {
+  const {
+    current = () => settings.hotkey,
+    labelKey = 'hotkey.label',
+    hintKey = 'hotkey.hint',
+    defaultValue = DEFAULT_HOTKEY,
+    set = (accelerator) => api.setHotkey(accelerator),
+    keep = (accelerator) => save({ hotkey: accelerator })
+  } = own
   const out = status()
-  const label = () => settings.hotkey || t('hotkey.off')
-  const shown = h('input', { type: 'text', readonly: true, class: 'hotkey-input', value: label(), 'aria-label': t('hotkey.label') })
+  const label = () => current() || t('hotkey.off')
+  const shown = h('input', { type: 'text', readonly: true, class: 'hotkey-input', value: label(), 'aria-label': t(labelKey) })
   let capturing = false
 
   const stop = () => {
@@ -333,13 +343,13 @@ function hotkeyControl () {
   }
   const apply = async (accelerator) => {
     try {
-      await api.setHotkey(accelerator)
+      await set(accelerator)
     } catch (e) {
       out.set('error', errorText(e))
       stop()
       return
     }
-    const saved = await save({ hotkey: accelerator })
+    const saved = await keep(accelerator)
     out.set(saved ? 'ok' : 'error', saved ? t('hotkey.saved') : t('error.STORE'))
     stop()
   }
@@ -371,13 +381,13 @@ function hotkeyControl () {
   }, t('hotkey.change'))
 
   return h('div', { class: 'field' },
-    h('span', { class: 'label' }, t('hotkey.label')),
+    h('span', { class: 'label' }, t(labelKey)),
     h('div', { class: 'inline' },
       shown,
       change,
       h('button', { class: 'btn', type: 'button', onclick: () => apply('') }, t('hotkey.turnOff')),
-      h('button', { class: 'btn', type: 'button', onclick: () => apply(DEFAULT_HOTKEY) }, t('hotkey.reset'))),
-    h('span', { class: 'hint' }, t('hotkey.hint')),
+      h('button', { class: 'btn', type: 'button', onclick: () => apply(defaultValue) }, t('hotkey.reset'))),
+    h('span', { class: 'hint' }, t(hintKey)),
     out)
 }
 
@@ -581,7 +591,15 @@ function shelfSection () {
     h('label', { class: 'check' },
       h('input', { type: 'checkbox', checked: options.clipboardImages === true, onchange: (e) => setOptions('shelf', { clipboardImages: e.target.checked }) }),
       t('shelf.clipboardImages')),
-    h('p', { class: 'hint' }, t('shelf.clipboardImages.hint')))
+    h('p', { class: 'hint' }, t('shelf.clipboardImages.hint')),
+    hotkeyControl({
+      current: () => (typeof host.shelfHotkey === 'string' ? host.shelfHotkey : DEFAULT_SHELF_HOTKEY),
+      labelKey: 'shelf.hotkey',
+      hintKey: 'shelf.hotkey.hint',
+      defaultValue: DEFAULT_SHELF_HOTKEY,
+      set: (accelerator) => api.setShelfHotkey(accelerator),
+      keep: (accelerator) => saveHost(hostModules(), { shelfHotkey: accelerator })
+    }))
 }
 
 /** The mouse and touchpad gestures, each of which can be switched off (kept in host.json under `gestures`). */
@@ -700,6 +718,9 @@ function generalSection () {
   }
 
   const diagOut = status()
+  const updateOut = status()
+  const updateBox = h('input', { type: 'text', class: 'wide', placeholder: 'https://example.org/blink/latest.json', spellcheck: 'false', value: typeof host.updateUrl === 'string' ? host.updateUrl : '' })
+  const updateLink = h('p', { class: 'hint', hidden: true })
   const tourOut = status()
   const exportOut = status()
   const importOut = status()
@@ -710,6 +731,37 @@ function generalSection () {
   return h('section', {},
     h('h1', {}, t('general.title')),
     h('label', { class: 'check' }, autostart, t('general.autostart')),
+
+    h('h2', {}, t('general.update')),
+    h('p', {}, t('general.update.hint')),
+    h('div', { class: 'field' }, updateBox),
+    h('button', {
+      class: 'btn', type: 'button',
+      onclick: async () => {
+        const url = updateBox.value.trim()
+        updateLink.hidden = true
+        if (!url) {
+          updateOut.set('error', t('general.update.nolink'))
+          return
+        }
+        await saveHost(hostModules(), { updateUrl: url })
+        try {
+          updateOut.set('ok', t('general.update.checking'))
+          const answer = await api.checkUpdate(url)
+          if (answer.state === 'newer') {
+            updateOut.set('ok', t('general.update.newer', { v: answer.version }))
+            clear(updateLink).append(answer.notes ? `${answer.notes} ` : '', h('button', { class: 'btn', type: 'button', onclick: () => api.openUrl(answer.url).catch(() => {}) }, t('general.update.open')))
+            updateLink.hidden = false
+          } else {
+            updateOut.set('ok', t('general.update.current', { v: answer.version }))
+          }
+        } catch (e) {
+          updateOut.set('error', t(`error.${typeof e === 'string' ? e : 'UPDATE_OFFLINE'}`))
+        }
+      }
+    }, t('general.update.check')),
+    updateOut,
+    updateLink,
 
     h('h2', {}, t('general.tour')),
     h('p', {}, t('general.tour.hint')),

@@ -86,6 +86,7 @@ const WM_FOREGROUND: u32 = 0x8000 + 4;
 const HOTKEY_ID: i32 = 1;
 /// Shows or hides the whole notch.
 const HOTKEY_VISIBILITY_ID: i32 = 2;
+const HOTKEY_SHELF_ID: i32 = 3;
 /// Posted by a feed worker when it has new data.
 const WM_DATA: u32 = 0x8000 + 5;
 const WM_POWERBROADCAST: u32 = 0x0218;
@@ -288,6 +289,7 @@ struct Runtime {
     hotkey: String,
     /// The shortcut that shows or hides the notch, as registered ("" when off).
     vis_hotkey: String,
+    shelf_hotkey: String,
     /// The user showed the notch while a fullscreen app is in front: stays until that app is gone.
     fullscreen_override: bool,
     /// Time between consecutive animation frames (ms), for the pacing check.
@@ -764,6 +766,35 @@ impl Runtime {
         "ok"
     }
 
+    /// Same again, for the shortcut that puts the clipboard on the shelf.
+    pub(super) fn register_shelf_hotkey(&mut self, accelerator: &str) -> &'static str {
+        let wanted = accelerator.trim();
+        if wanted == self.shelf_hotkey {
+            return "ok";
+        }
+        let parsed = if wanted.is_empty() {
+            None
+        } else {
+            match blink_core::hotkey::parse_accelerator(wanted) {
+                Some(p) => Some(p),
+                None => return "HOTKEY_INVALID",
+            }
+        };
+        unsafe {
+            let _ = UnregisterHotKey(Some(self.hwnd), HOTKEY_SHELF_ID);
+            if let Some((mods, vk)) = parsed {
+                if RegisterHotKey(Some(self.hwnd), HOTKEY_SHELF_ID, HOT_KEY_MODIFIERS(mods | 0x4000), vk).is_err() {
+                    if let Some((m, k)) = blink_core::hotkey::parse_accelerator(&self.shelf_hotkey) {
+                        let _ = RegisterHotKey(Some(self.hwnd), HOTKEY_SHELF_ID, HOT_KEY_MODIFIERS(m | 0x4000), k);
+                    }
+                    return "HOTKEY_IN_USE";
+                }
+            }
+        }
+        self.shelf_hotkey = wanted.to_string();
+        "ok"
+    }
+
     fn menu_labels(&self) -> MenuLabels {
         let t = self.app.translator();
         MenuLabels { pause: t.t("tray.pause", &[]), refresh: t.t("tray.refresh", &[]), settings: t.t("tray.settings", &[]), quit: t.t("tray.quit", &[]) }
@@ -861,9 +892,9 @@ impl Runtime {
 
     /// Put what the clipboard holds on the shelf: copied files by their paths, a picture or text as a file the notch makes in its own
     /// folder. `images_only` is the listener that takes copied pictures by themselves.
-    fn clipboard_to_shelf(&mut self, images_only: bool) {
+    fn clipboard_to_shelf(&mut self, images_only: bool) -> bool {
         use super::clipboard::Clip;
-        let Some(dir) = self.app.shelf_files_dir() else { return };
+        let Some(dir) = self.app.shelf_files_dir() else { return true };
         let made = |this: &mut Runtime, extension: &str, bytes: &[u8]| -> Option<String> {
             std::fs::create_dir_all(&dir).ok()?;
             let path = dir.join(this.app.clip_name(extension));
@@ -876,10 +907,12 @@ impl Runtime {
             Clip::Text(text) => made(self, "txt", text.as_bytes()).into_iter().collect(),
             Clip::Nothing => Vec::new(),
         };
-        if !paths.is_empty() {
-            self.app.add_to_shelf(&paths);
-            self.after();
+        if paths.is_empty() {
+            return false;
         }
+        self.app.add_to_shelf(&paths);
+        self.after();
+        true
     }
 
     /// Explorer restarted: its tray is empty again, so add ours back.
@@ -1047,6 +1080,15 @@ impl Runtime {
                 _ => {}
             },
             WM_HOTKEY if wparam.0 as i32 == HOTKEY_VISIBILITY_ID => self.toggle_visibility(),
+            // The shelf's shortcut works with the notch hidden or closed: it only puts the clipboard on the shelf.
+            WM_HOTKEY if wparam.0 as i32 == HOTKEY_SHELF_ID => {
+                if self.control {
+                    self.effects_log.push("paste_clipboard".to_string());
+                } else if !self.clipboard_to_shelf(false) {
+                    self.app.shelf_says_nothing_to_paste();
+                    self.after();
+                }
+            }
             WM_HOTKEY => {
                 if !self.hidden {
                     self.app.hotkey();
@@ -1396,6 +1438,7 @@ pub fn run(opts: Options) -> Result<(), String> {
             taskbar_created: unsafe { RegisterWindowMessageW(w!("TaskbarCreated")) },
             hotkey: String::new(),
             vis_hotkey: String::new(),
+            shelf_hotkey: String::new(),
             fullscreen_override: false,
             frame_times: Vec::new(),
             cost: (0.0, 0.0, 0.0, 0),
@@ -1435,6 +1478,10 @@ pub fn run(opts: Options) -> Result<(), String> {
         let status = rt.register_visibility_hotkey(&crate::host::parse_visibility_hotkey(file.as_ref()));
         if status != "ok" {
             rt.effects_log.push(format!("hotkey:visibility:{status}"));
+        }
+        let status = rt.register_shelf_hotkey(&crate::host::parse_shelf_hotkey(file.as_ref()));
+        if status != "ok" {
+            rt.effects_log.push(format!("hotkey:shelf:{status}"));
         }
         rt.refresh_fullscreen();
         // Scripted runs inject their own events; real sources would add real ones to the test.

@@ -76,7 +76,7 @@ try {
   Check 'items explain the keys in their help text' ($rows[0].Current.HelpText -match 'Enter') $rows[0].Current.HelpText
   $itemKids = Kids $rows[0]
   $buttonNames = $itemKids | ForEach-Object { ElName $_ }
-  Check 'each deadline has Mark done and three snooze buttons' (($buttonNames -join '|') -match 'Mark done: Problem Set 4\|Snooze 30 minutes.*\|Snooze 2 hours.*\|Snooze until tomorrow') ($buttonNames -join ' | ')
+  Check 'each deadline has Mark done and three snooze buttons' (($buttonNames -join '|') -match 'Mark done: Problem Set 4\|Make a project from.*\|Show only the course.*\|Snooze 30 minutes.*\|Snooze 2 hours.*\|Snooze until tomorrow') ($buttonNames -join ' | ')
   Check 'the selected row has keyboard focus' ($rows[0].Current.HasKeyboardFocus)
   Check 'the others do not' (-not $rows[1].Current.HasKeyboardFocus)
   Check 'a deadline with a page can be invoked' ($rows[0].GetSupportedPatterns().Count -ge 1)
