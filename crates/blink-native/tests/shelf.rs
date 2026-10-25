@@ -204,3 +204,23 @@ fn with_the_shelf_off_only_projects_is_offered() {
     r.app.drag_point(250.0, 10.0);
     assert_eq!(r.app.drag_zone(), Some(DropZone::Projects), "nothing else to light");
 }
+
+#[test]
+fn the_cross_on_a_row_takes_the_file_off_the_shelf_and_does_not_open_it() {
+    let mut r = rig("cross");
+    let (a, b) = (file(&r.dir, "keep.txt"), file(&r.dir, "drop.txt"));
+    r.app.module_mut::<ShelfModule>().unwrap().add(&[a.clone(), b.clone()]);
+    open_shelf(&mut r);
+    // The cross shows while the pointer is on the row: move there, draw, then press on it.
+    let (rx, ry) = hit(&mut r.app, "Item(");
+    r.app.pointer(PointerKind::Move, rx, ry);
+    r.app.render();
+    let (cx, cy) = hit(&mut r.app, "Remove(");
+    r.app.take_effects();
+    r.app.pointer(PointerKind::Move, cx, cy);
+    r.app.pointer(PointerKind::Down, cx, cy);
+    r.app.pointer(PointerKind::Up, cx, cy);
+    assert!(r.app.take_effects().iter().all(|e| !matches!(e, AppEffect::OpenPath(_))), "the file is not opened");
+    assert_eq!(shelf(&mut r.app).len(), 1, "one file is off the shelf");
+    assert!(std::path::Path::new(&a).exists() && std::path::Path::new(&b).exists(), "and nothing is deleted");
+}

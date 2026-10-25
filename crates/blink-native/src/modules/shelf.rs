@@ -241,13 +241,14 @@ impl ShelfModule {
             let right = lx + lw - if hover { 28.0 } else { 10.0 };
             put(kit, Face::SansSemibold, 12.0, tx, y + 3.0, 16.0, right - tx, &file_name(path), theme.fg, frame.alpha);
             put(kit, Face::Sans, 10.5, tx, y + 18.0, 14.0, right - tx, &parent_name(path), theme.dim, frame.alpha);
+            // The row first, the × after it: the last hit under the pointer wins, and the × lies on the row.
+            self.hits.push(Hit { x: lx, y, w: lw, h: ROW_H, target: Target::Item(path.clone()) });
             if hover {
                 let (rx, ry) = (lx + lw - 20.0, y + ROW_H / 2.0 - 8.0);
                 let over = self.over(rx - 4.0, ry - 4.0, 24.0, 24.0);
                 kit.canvas.icon(Icon::Close, rx + 8.0, ry + 8.0, 9.0, if over { theme.fg } else { theme.dim }, frame.alpha);
                 self.hits.push(Hit { x: rx - 4.0, y: ry - 4.0, w: 24.0, h: 24.0, target: Target::Remove(path.clone()) });
             }
-            self.hits.push(Hit { x: lx, y, w: lw, h: ROW_H, target: Target::Item(path.clone()) });
         }
         kit.canvas.pop_clip();
     }
