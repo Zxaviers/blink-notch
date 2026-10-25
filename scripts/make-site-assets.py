@@ -6,7 +6,7 @@ Run scripts/make-icon.py and scripts/native/shots-site.ps1 first (the icon and t
 """
 import os
 import shutil
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ICON = os.path.join(ROOT, 'assets', 'icon')
@@ -28,30 +28,30 @@ def main():
         shutil.copy(os.path.join(ICON, f'blink-{size}.png'), os.path.join(IMG, f'blink-{size}.png'))
     shutil.copy(os.path.join(ICON, 'icon.ico'), os.path.join(IMG, 'favicon.ico'))
 
-    og = Image.new('RGB', (1200, 630), (11, 13, 20))
-    # The two soft lights of the page, then the picture of the notch on its stage.
+    og = Image.new('RGBA', (1200, 630), (11, 13, 20, 255))
+    # The two soft lights of the page, blurred, then the picture of the notch on its stage.
     glow = Image.new('RGBA', (1200, 630), (0, 0, 0, 0))
-    d = ImageDraw.Draw(glow)
-    d.ellipse((-200, -250, 700, 350), fill=(58, 155, 255, 70))
-    d.ellipse((600, -200, 1400, 400), fill=(139, 92, 246, 64))
-    og = Image.alpha_composite(og.convert('RGBA'), glow)
+    gd = ImageDraw.Draw(glow)
+    gd.ellipse((-260, -300, 640, 300), fill=(58, 155, 255, 120))
+    gd.ellipse((620, -260, 1420, 340), fill=(139, 92, 246, 110))
+    og = Image.alpha_composite(og, glow.filter(ImageFilter.GaussianBlur(110)))
     d = ImageDraw.Draw(og)
-    icon = Image.open(os.path.join(ICON, 'blink-256.png')).convert('RGBA').resize((120, 120), Image.LANCZOS)
-    og.alpha_composite(icon, (80, 70))
-    d.text((222, 78), 'Blink', font=font(76, True), fill=(255, 255, 255))
-    d.text((222, 165), 'for Windows', font=font(34), fill=(152, 160, 184))
-    d.text((80, 250), 'A little notch for your', font=font(54, True), fill=(232, 235, 245))
-    d.text((80, 318), 'deadlines, music and files.', font=font(54, True), fill=(232, 235, 245))
-    d.text((80, 410), 'Free and open source. No account, no tracking.', font=font(30), fill=(152, 160, 184))
+    icon = Image.open(os.path.join(ICON, 'blink-256.png')).convert('RGBA').resize((104, 104), Image.LANCZOS)
+    og.alpha_composite(icon, (72, 48))
+    d.text((196, 46), 'Blink', font=font(68, True), fill=(255, 255, 255))
+    d.text((198, 122), 'for Windows', font=font(30), fill=(152, 160, 184))
+    d.text((72, 196), 'A little notch for your', font=font(50, True), fill=(232, 235, 245))
+    d.text((72, 254), 'deadlines, music and files.', font=font(50, True), fill=(232, 235, 245))
+    d.text((72, 326), 'Free and open source. No account, no tracking.', font=font(26), fill=(152, 160, 184))
     shot_path = os.path.join(IMG, 'page-deadlines.png')
     if os.path.exists(shot_path):
-        stage = Image.new('RGBA', (1060, 300), (0, 0, 0, 0))
+        stage = Image.new('RGBA', (1056, 250), (0, 0, 0, 0))
         sd = ImageDraw.Draw(stage)
-        sd.rounded_rectangle((0, 0, 1060, 300), radius=28, fill=(48, 56, 110, 255))
+        sd.rounded_rectangle((0, 0, 1056, 300), radius=28, fill=(44, 52, 108, 255))
         shot = Image.open(shot_path).convert('RGBA')
-        shot = shot.resize((int(shot.width * 0.78), int(shot.height * 0.78)), Image.LANCZOS)
-        stage.alpha_composite(shot, ((1060 - shot.width) // 2, 40))
-        og.alpha_composite(stage, (70, 470 + 40 - 40))
+        shot = shot.resize((int(shot.width * 0.52), int(shot.height * 0.52)), Image.LANCZOS)
+        stage.alpha_composite(shot, ((1056 - shot.width) // 2, 24))
+        og.alpha_composite(stage, (72, 384))
     og.convert('RGB').save(os.path.join(IMG, 'og.png'), optimize=True)
     print('site assets written to', IMG)
 
