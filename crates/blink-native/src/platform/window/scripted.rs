@@ -339,6 +339,10 @@ impl Runtime {
                 self.effects_log.push(format!("middle:{taken}"));
             }
             "swipe" => self.app.swipe(v["delta"].as_f64().unwrap_or(1.0) as f32),
+            "wheel_page" => {
+                let taken = self.app.wheel_page(v["notches"].as_f64().unwrap_or(-1.0) as f32);
+                self.effects_log.push(format!("wheel_page:{taken}"));
+            }
             "context_menu" => self.context_menu(),
             "tour" => {
                 // The first-run tour, on demand (it starts by itself only the first time, and not in scripted runs).

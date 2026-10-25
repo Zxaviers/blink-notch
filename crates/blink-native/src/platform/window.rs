@@ -903,7 +903,11 @@ impl Runtime {
                 let y = (hi(lparam.0) - self.origin.1) as f32 / scale;
                 // Over a notch that is not open the wheel is a gesture (volume; with Ctrl, brightness).
                 let ctrl = lo(wparam.0 as isize) & 0x0008 != 0;
-                if !self.app.quick_wheel(notches, ctrl) {
+                // With Shift the wheel turns the pages (and does nothing over a notch that is not open, rather than the volume).
+                let shift = lo(wparam.0 as isize) & 0x0004 != 0;
+                if shift {
+                    let _ = self.app.wheel_page(notches);
+                } else if !self.app.quick_wheel(notches, ctrl) {
                     self.app.pointer(PointerKind::Wheel(notches * WHEEL_STEP), x, y);
                 }
                 self.after();

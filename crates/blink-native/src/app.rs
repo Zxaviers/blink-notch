@@ -86,6 +86,9 @@ pub struct App {
     last_panel_h: f32,
     /// Palette, accent and pill shape (Blink settings, Display).
     look: Look,
+    /// The page that was showing the last time the panel was open, with the page that owned the pill then (modules by id): opening
+    /// again returns to it, unless the pill has since been taken over by something else.
+    last_page: Option<(&'static str, &'static str)>,
     /// What the speakers are doing, for the bars (None in scripted runs: they move on a plain beat).
     spectrum: Option<std::sync::Arc<crate::platform::spectrum::Spectrum>>,
     /// Files are being dragged over the notch: it shows where they can be dropped, and which place is lit.
@@ -100,6 +103,8 @@ pub struct App {
     /// Sideways scroll gathered so far, and when a page may be turned again (a touchpad swipe sends many small steps).
     swipe: f32,
     swipe_locked_until: u64,
+    /// Wheel notches (Shift held) not yet enough for a page.
+    wheel_page: f32,
     /// No window is in front: the desktop (or the taskbar) is.
     desktop: bool,
     /// When the desktop came to the front (the notch waits a moment before opening for it).
@@ -162,6 +167,7 @@ impl App {
             last_panel_h: 0.0,
             look: Look::default(),
             spectrum: None,
+            last_page: None,
             dragging: false,
             drag_zone: DropZone::Projects,
             dragging_out: false,
@@ -169,6 +175,7 @@ impl App {
             tour_hits: Vec::new(),
             swipe: 0.0,
             swipe_locked_until: 0,
+            wheel_page: 0.0,
             desktop: false,
             desktop_since: 0,
             live_on: false,
@@ -298,7 +305,15 @@ impl App {
         }
         self.active = slot;
         if self.shell.mode() == Mode::Open {
+            self.remember_page();
             self.refresh_panel_height();
+        }
+    }
+
+    /// Note the page being shown, for the next time the panel opens.
+    fn remember_page(&mut self) {
+        if let (Some(page), Some(owner)) = (self.slots.get(self.active), self.slots.get(self.rest_owner)) {
+            self.last_page = Some((page.module.id(), owner.module.id()));
         }
     }
 
@@ -370,12 +385,22 @@ impl App {
     /// opening it shows the thing you were looking at. `force` also does it mid-animation.
     fn sync_active(&mut self, force: bool) {
         if self.shell.mode() == Mode::Open {
+            self.remember_page();
             return;
         }
         if !force && self.shell.is_animating(self.clock.now_ms()) {
             return;
         }
-        let want = if self.shell.mode() == Mode::Peek { self.peek_from.unwrap_or(self.rest_owner) } else { self.rest_owner };
+        let want = if self.shell.mode() == Mode::Peek {
+            self.peek_from.unwrap_or(self.rest_owner)
+        } else {
+            // Opened by hand: the page that was open last, as long as the pill still shows what it showed then.
+            let owner = self.slots.get(self.rest_owner).map(|s| s.module.id());
+            self.last_page
+                .filter(|(_, was)| Some(*was) == owner)
+                .and_then(|(page, _)| self.slots.iter().position(|s| s.module.id() == page && s.enabled && s.module.has_panel()))
+                .unwrap_or(self.rest_owner)
+        };
         // A module that only peeks has no panel to open: fall back to the one on the pill.
         let want = if want < self.slots.len() && self.slots[want].module.has_panel() { want } else { self.rest_owner };
         if want < self.slots.len() && self.slots[want].enabled {
@@ -971,6 +996,22 @@ impl App {
         }
         let wall = self.clock.wall_ms();
         self.module_mut::<crate::modules::music::MusicModule>().is_some_and(|m| m.quick_play_pause(wall))
+    }
+
+    /// The wheel with Shift held over the open notch turns the page: down is the next one, up the previous. Every notch of a mouse
+    /// wheel is a page (a touchpad's small steps add up to one). False when the notch is not open, where Shift+wheel does nothing.
+    pub fn wheel_page(&mut self, notches: f32) -> bool {
+        if self.shell.mode() != Mode::Open || self.tour.is_some() {
+            self.wheel_page = 0.0;
+            return false;
+        }
+        self.wheel_page += notches;
+        if self.wheel_page.abs() >= 1.0 {
+            let direction = if self.wheel_page < 0.0 { 1 } else { -1 };
+            self.wheel_page = 0.0;
+            self.switch_by(direction);
+        }
+        true
     }
 
     /// Sideways scroll (a two-finger swipe on a touchpad) over the open notch turns the page, once per swipe.

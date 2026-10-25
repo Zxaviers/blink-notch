@@ -90,3 +90,41 @@ fn a_swipe_turns_one_page_at_a_time_and_small_steps_add_up() {
     app.swipe(-1.0);
     assert_eq!(app.active_module(), "clock", "the other way, a new swipe");
 }
+
+#[test]
+fn shift_and_the_wheel_turns_a_page_per_notch_and_does_nothing_when_closed() {
+    let (mut app, controls, _) = rig();
+    // Closed: it is not the volume either.
+    assert!(!app.wheel_page(-1.0));
+    assert!(controls.take_log().is_empty());
+    open_by_hover(&mut app);
+    assert_eq!(app.active_module(), "clock");
+    assert!(app.wheel_page(-1.0));
+    assert_eq!(app.active_module(), "deadlines", "down: the next page");
+    assert!(app.wheel_page(-1.0));
+    assert_eq!(app.active_module(), "controls", "the next notch right away is the next page");
+    assert!(app.wheel_page(1.0));
+    assert_eq!(app.active_module(), "deadlines", "up: the previous page");
+    for _ in 0..3 {
+        app.wheel_page(-0.3);
+    }
+    assert_eq!(app.active_module(), "deadlines", "small steps add up before they turn a page");
+    app.wheel_page(-0.3);
+    assert_eq!(app.active_module(), "controls");
+}
+
+#[test]
+fn opening_again_returns_to_the_page_that_was_open_last() {
+    let (mut app, _, _) = rig();
+    open_by_hover(&mut app);
+    app.switch_by(1);
+    app.switch_by(1);
+    assert_eq!(app.active_module(), "controls");
+    // Leave: it closes.
+    app.pointer(PointerKind::Leave, 0.0, 0.0);
+    advance(&mut app, 2_000);
+    settle(&mut app);
+    assert_eq!(app.state_json()["mode"], "rest");
+    open_by_hover(&mut app);
+    assert_eq!(app.active_module(), "controls", "not the clock it opened on at first");
+}
