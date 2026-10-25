@@ -49,12 +49,16 @@ pub const PILLS: [(&str, Shape); 4] = [
 pub struct Look {
     pub palette: usize,
     pub accent: Option<Rgb>,
+    /// The accent follows the cover of the song that is playing (`"accent": "cover"`); a fixed accent is used when nothing plays.
+    pub accent_cover: bool,
     pub pill: usize,
+    /// The bars move with the sound itself (a loopback listen to the speakers, only while a song plays and the bars show).
+    pub visualizer: bool,
 }
 
 impl Default for Look {
     fn default() -> Look {
-        Look { palette: 0, accent: None, pill: 0 }
+        Look { palette: 0, accent: None, accent_cover: false, pill: 0, visualizer: true }
     }
 }
 
@@ -88,7 +92,9 @@ pub fn parse(host: Option<&Value>) -> Look {
     Look {
         palette: word("palette").and_then(|w| PALETTES.iter().position(|p| p.id == w)).unwrap_or(0),
         accent: word("accent").and_then(|w| ACCENTS.iter().find(|(n, _)| *n == w).map(|(_, c)| *c).or_else(|| hex(w))),
+        accent_cover: word("accent") == Some("cover"),
         pill: word("pill").and_then(|w| PILLS.iter().position(|(n, _)| *n == w)).unwrap_or(0),
+        visualizer: look.and_then(|l| l.get("visualizer")).and_then(Value::as_bool).unwrap_or(true),
     }
 }
 
@@ -106,6 +112,9 @@ mod tests {
         assert_eq!(custom.accent, Some(Rgb(0x10, 0xff, 0x80)));
         let bad = parse(Some(&json!({ "look": { "palette": "nope", "accent": "#12", "pill": 5 } })));
         assert_eq!(bad, Look::default());
+        let cover = parse(Some(&json!({ "look": { "accent": "cover", "visualizer": false } })));
+        assert!(cover.accent_cover && cover.accent.is_none() && !cover.visualizer);
+        assert!(Look::default().visualizer && !Look::default().accent_cover);
     }
 
     #[test]

@@ -7,6 +7,7 @@ pub mod dropper;
 pub mod focus;
 pub mod media;
 pub mod mediakeys;
+pub mod spectrum;
 pub mod sysevents;
 pub mod system;
 pub mod uia;

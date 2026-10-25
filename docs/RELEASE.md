@@ -69,7 +69,7 @@ Scripted, with no mouse or keyboard (all in `scripts/native/`):
 | Window behavior | `gate-g2.ps1`: click-through by Windows' own hit testing, no focus theft, fullscreen and pause hiding, DPI 1.25/1.5/2.0, reduced motion, hotkey errors, single instance | 47 checks |
 | Real data | `gate-g3.ps1`: feed fetch, offline and recovery, done, snooze, reminders once, personal events, Credential Manager | 26 checks |
 | Settings | `settings-e2e.mjs`: the real page and the real pipe: wizard, test link, save, hotkey in-use error, language, events, the two scopes, pages, weather, music and fullscreen options reaching the notch, paste-and-add, export/import, diagnostics, autostart, remove, no web engine left | 50 checks |
-| Pages | `gate-host.ps1` (34, including the tour), `gate-system.ps1` (27), `gate-controls.ps1` (22), `gate-music.ps1` (19, including the empty desktop), `gate-projects.ps1` (15), `gate-agents.ps1` (16: the real `blinkctl.exe` and the real pipe), `gate-draw.ps1` (8) | passing |
+| Pages | `gate-host.ps1` (39, including the tour and gestures), `gate-system.ps1` (27), `gate-controls.ps1` (22), `gate-music.ps1` (19, including the empty desktop), `gate-projects.ps1` (15), `gate-agents.ps1` (16: the real `blinkctl.exe` and the real pipe), `gate-draw.ps1` (8) | passing |
 | Accessibility | `gate-a11y.ps1`: a real UI Automation client walks the tree, invokes buttons, receives focus events | 27 checks |
 | Installer | `installer-test.ps1`: silent install, installed notch runs, upgrade over a running copy, uninstall keeps data, `/PURGE`, WebView2-build removal | 20 checks |
 | Real input (with the cursor and keys, supervised) | `real-input.ps1`: real click opens and keeps focus elsewhere, click-through reaches the app below, real hotkey takes and returns focus | 13 checks |
@@ -77,7 +77,7 @@ Scripted, with no mouse or keyboard (all in `scripts/native/`):
 
 ## What has not been checked (please try)
 
-0. **Newer than the list below:** the weather from the real service on a normal network (this machine's HTTPS is inspected, and what comes back for a test song is not real lyrics); real lyrics for a song playing in Brave or YouTube Music (a pretend player was used); a real BRONE link with Paste and add; the empty-desktop detection and the fullscreen rule on every kind of game (the checks pretend the state); typing into a Projects field with the real keyboard and dragging files from Explorer (stand-ins were used); the installer with the latest build (not re-run: it installs over the running copy).
+0. **Newest (gestures, Shelf, visualizer):** dragging a file out of the shelf into another app with a real mouse (the data object that carries the files is built and checked, the real drag was not run); the wheel, middle click and swipe with a real mouse and touchpad (they are driven by the control pipe); the bars with real music (a 1 kHz test tone was heard in the right band on this PC, quiet, through the Windows sound API; music from a browser or a router such as Sonar was not tried). **Newer than the list below:** the weather from the real service on a normal network (this machine's HTTPS is inspected, and what comes back for a test song is not real lyrics); real lyrics for a song playing in Brave or YouTube Music (a pretend player was used); a real BRONE link with Paste and add; the empty-desktop detection and the fullscreen rule on every kind of game (the checks pretend the state); typing into a Projects field with the real keyboard and dragging files from Explorer (stand-ins were used); the installer with the latest build (not re-run: it installs over the running copy).
 
 1. **A notification actually appearing**, and clicking it opening the page (the capture was taken while a fullscreen app was in front).
 2. **A real fullscreen game or video** hiding the notch and showing it again.
@@ -112,6 +112,14 @@ The Clock page shows the weather. Blink asks [open-meteo.com](https://open-meteo
 ## AI agents
 
 Programs (an AI agent, a build, a script) can report what they are doing with `blinkctl.exe`, which sits next to `blink.exe`: running, waiting for you, finished or failed. The reports travel only over the notch's private pipe on this PC (only programs running as you can use it), live in memory, and are never written to disk or sent anywhere. Blink settings, Agents turns them off. See `docs/AGENTS.md`.
+
+## Listening to the speakers
+
+While a song plays and the bars are on screen, Blink listens to what the speakers play (the Windows loopback of the sound that is already going out) so the bars can move with it. It only turns the sound into eight levels, many times a second, in memory: nothing is recorded, stored or sent, and it stops when the song stops or the bars are hidden. Blink settings, Display, "Bars move with the sound" turns it off.
+
+## Shelf
+
+Files dropped on the shelf are remembered by path only, in `shelf.json`; nothing is copied or read. Dragging one out hands the real file to the other app. Clear forgets the paths and never deletes a file.
 
 ## Projects
 

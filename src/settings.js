@@ -456,12 +456,20 @@ function lookControls () {
           type: 'button', class: 'swatch auto', title: t('look.accent.auto'), 'aria-label': t('look.accent.auto'), 'aria-pressed': String(accent === ''),
           onclick: () => choose({ accent: '' })
         }, t('look.accent.auto')),
+        h('button', {
+          type: 'button', class: 'swatch auto', title: t('look.accent.cover.hint'), 'aria-label': t('look.accent.cover'), 'aria-pressed': String(accent === 'cover'),
+          onclick: () => choose({ accent: 'cover' })
+        }, t('look.accent.cover')),
         ACCENTS.map(([id, color]) => h('button', {
           type: 'button', class: 'swatch accent', title: t(`look.accent.${id}`), 'aria-label': t(`look.accent.${id}`), 'aria-pressed': String(id === accent),
           style: `background: ${color}`, onclick: () => choose({ accent: id })
         })),
         h('input', { type: 'color', class: 'swatch custom', value: customHex, title: t('look.accent.custom'), 'aria-label': t('look.accent.custom'), onchange: (e) => choose({ accent: e.target.value }) }))),
-    field(t('look.pill'), select(PILLS.map((id) => [id, t(`look.pill.${id}`)]), pill, (v) => choose({ pill: v }))))
+    field(t('look.pill'), select(PILLS.map((id) => [id, t(`look.pill.${id}`)]), pill, (v) => choose({ pill: v }))),
+    h('label', { class: 'check' },
+      h('input', { type: 'checkbox', checked: look.visualizer !== false, onchange: (e) => choose({ visualizer: e.target.checked }) }),
+      t('look.visualizer')),
+    h('p', { class: 'hint' }, t('look.visualizer.hint')))
 }
 
 /** The pill: what it shows at rest, and when a deadline takes it from the clock. */

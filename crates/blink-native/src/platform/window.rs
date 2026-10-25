@@ -1246,6 +1246,10 @@ pub fn run(opts: Options) -> Result<(), String> {
     let mut app = App::new(clock, settings, tz, scale, &system_language(), modules)?;
     app.configure_modules(&crate::host::parse_modules(store.get_json("host").ok().flatten().as_ref()));
     app.set_look(crate::look::parse(store.get_json("host").ok().flatten().as_ref()));
+    // The bars follow the real sound only in a real run: scripted runs move them on a plain beat.
+    if real_media {
+        app.set_spectrum(super::spectrum::start());
+    }
     app.set_reduced_motion(!animations_enabled());
     app.set_windows_light_theme(apps_use_light_theme());
     if opts.pin_open {

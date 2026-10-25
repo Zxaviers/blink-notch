@@ -800,6 +800,10 @@ impl Module for MusicModule {
 
     fn tick(&mut self, env: &Env) -> Vec<Effect> {
         let mut effects = Vec::new();
+        // The cover's colour is known even while the page is not drawn: the chrome may follow it.
+        if let Some(art) = self.backend.state().art {
+            self.accent = art.accent;
+        }
         if self.drain_lyrics() {
             effects.push(Effect::Redraw);
         }

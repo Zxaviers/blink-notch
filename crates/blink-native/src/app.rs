@@ -86,6 +86,8 @@ pub struct App {
     last_panel_h: f32,
     /// Palette, accent and pill shape (Blink settings, Display).
     look: Look,
+    /// What the speakers are doing, for the bars (None in scripted runs: they move on a plain beat).
+    spectrum: Option<std::sync::Arc<crate::platform::spectrum::Spectrum>>,
     /// Files are being dragged over the notch: it shows where they can be dropped, and which place is lit.
     dragging: bool,
     drag_zone: DropZone,
@@ -159,6 +161,7 @@ impl App {
             effects: Vec::new(),
             last_panel_h: 0.0,
             look: Look::default(),
+            spectrum: None,
             dragging: false,
             drag_zone: DropZone::Projects,
             dragging_out: false,
@@ -847,6 +850,7 @@ impl App {
         }
         self.next_queued_peek();
         self.update_live();
+        self.sync_spectrum();
         changed
     }
 
@@ -867,9 +871,53 @@ impl App {
         self.run_module_tick();
         self.update_rest_style();
         self.update_live();
+        self.sync_spectrum();
         if self.shell.mode() == Mode::Open {
             self.refresh_panel_height();
         }
+    }
+
+    pub fn set_spectrum(&mut self, spectrum: std::sync::Arc<crate::platform::spectrum::Spectrum>) {
+        self.spectrum = Some(spectrum);
+    }
+
+    /// Whether the bars that move with the music are on screen right now.
+    fn bars_showing(&self) -> bool {
+        self.music_playing() && (self.shell.mode() == Mode::Open || (self.shell.mode() == Mode::Rest && self.shell.rest_style() == RestStyle::Full))
+    }
+
+    /// Listen to the speakers only while the bars show (and the person has not turned the visualizer off).
+    fn sync_spectrum(&self) {
+        if let Some(s) = &self.spectrum {
+            s.want(self.look.visualizer && self.bars_showing());
+        }
+    }
+
+    /// How high each of the four bars stands, 0 to 1: the sound itself when it can be heard, else a plain beat.
+    pub fn bar_levels(&self, now_ms: u64) -> [f32; 4] {
+        if now_ms == u64::MAX {
+            return [0.0; 4];
+        }
+        if let Some(s) = self.spectrum.as_ref().filter(|s| self.look.visualizer && s.working()) {
+            let l = s.levels();
+            let pair = |a: usize, b: usize| (((l[a] + l[b]) / 2.0) * 1.15).clamp(0.0, 1.0).powf(0.85);
+            return [pair(0, 1), pair(2, 3), pair(4, 5), pair(6, 7)];
+        }
+        let mut out = [0.0; 4];
+        for (i, o) in out.iter_mut().enumerate() {
+            *o = (now_ms as f32 / 170.0 + i as f32 * 1.7).sin().abs();
+        }
+        out
+    }
+
+    /// The accent for the chrome: the person's choice, or the cover of the song that is playing when they chose that.
+    pub fn chrome_accent(&self) -> Option<Rgb> {
+        if self.look.accent_cover {
+            if let Some(slot) = self.slots.iter().find(|s| s.enabled && s.module.playing()) {
+                return Some(slot.module.accent());
+            }
+        }
+        self.look.accent
     }
 
     /// Take a new look (palette, accent, pill shape); the pill eases to its new shape.
@@ -1170,8 +1218,10 @@ impl App {
             wake = [wake, Some(self.desktop_since + DESKTOP_SETTLE_MS)].into_iter().flatten().min();
         }
         // The bars move with the music: redraw a few times a second, but only while it plays and the notch shows them.
-        if self.music_playing() && (self.shell.mode() == Mode::Open || (self.shell.mode() == Mode::Rest && self.shell.rest_style() == RestStyle::Full)) {
-            wake = [wake, Some(now + 150)].into_iter().flatten().min();
+        if self.bars_showing() {
+            // With the sound itself to show, often enough to look alive; with a plain beat, less often.
+            let every = if self.spectrum.as_ref().is_some_and(|s| self.look.visualizer && s.working()) { 80 } else { 150 };
+            wake = [wake, Some(now + every)].into_iter().flatten().min();
         }
         for i in self.enabled_indices() {
             let w = self.slots[i].module.next_wake(&env, showing && i == self.active);
@@ -1274,7 +1324,7 @@ impl App {
                 origin_y: HEADER_H,
                 width: OPEN_W,
                 keyboard: self.shell.keyboard(),
-                accent: self.look.accent,
+                accent: self.chrome_accent(),
             };
             if self.slots[self.active].module.id() == "clock" {
                 let marks: Vec<(i64, &'static str)> = self.slots.iter_mut().filter(|s| s.enabled).flat_map(|s| s.module.due_dates(&env)).collect();
@@ -1288,11 +1338,11 @@ impl App {
             }
             if self.dragging {
                 let (has_shelf, has_projects) = (self.zone_slot(DropZone::Shelf).is_some(), self.zone_slot(DropZone::Projects).is_some());
-                crate::dropzones::draw(&mut self.canvas, &mut self.fonts, &panel_theme, open_alpha, self.drag_zone, has_shelf, has_projects, self.lang, self.look.accent, frame.origin_x, frame.origin_y, frame.width);
+                crate::dropzones::draw(&mut self.canvas, &mut self.fonts, &panel_theme, open_alpha, self.drag_zone, has_shelf, has_projects, self.lang, frame.accent, frame.origin_x, frame.origin_y, frame.width);
                 self.tab_rects.clear();
                 self.draw_header(&panel_theme, open_alpha, &env);
             } else if let Some(step) = self.tour {
-                self.tour_hits = crate::tour::draw(&mut self.canvas, &mut self.fonts, &panel_theme, open_alpha, step, self.lang, self.pointer, self.look.accent, frame.origin_x, frame.origin_y, frame.width);
+                self.tour_hits = crate::tour::draw(&mut self.canvas, &mut self.fonts, &panel_theme, open_alpha, step, self.lang, self.pointer, frame.accent, frame.origin_x, frame.origin_y, frame.width);
                 self.tab_rects.clear();
                 self.draw_header(&panel_theme, open_alpha, &env);
             } else {
@@ -1323,7 +1373,7 @@ impl App {
         } else {
             self.slots[self.active].module.title_parts(lang)
         };
-        let accent = self.look.accent.unwrap_or_else(|| if self.tour.is_some() || self.dragging { Rgb(0x4e, 0xa8, 0xff) } else { self.slots[self.active].module.accent() });
+        let accent = self.chrome_accent().unwrap_or_else(|| if self.tour.is_some() || self.dragging { Rgb(0x4e, 0xa8, 0xff) } else { self.slots[self.active].module.accent() });
         let size = 15.0;
         let base = cy - 10.0 + self.fonts.baseline(Face::SansBold, size, 20.0);
         let adv = self.canvas.text(&mut self.fonts, Face::SansBold, size, left, base, &first, theme.fg, alpha, 0.0);
@@ -1466,8 +1516,9 @@ impl App {
 
     /// Four small bars: flat when `now_ms` is `u64::MAX`, otherwise rising and falling with the time.
     fn draw_bars(&mut self, x: f32, cy: f32, color: Rgb, alpha: f32, now_ms: u64) {
+        let levels = self.bar_levels(now_ms);
         for i in 0..4 {
-            let h = if now_ms == u64::MAX { 4.0 } else { 4.0 + 9.0 * ((now_ms as f32 / 170.0 + i as f32 * 1.7).sin().abs()) };
+            let h = 4.0 + 9.0 * levels[i];
             self.canvas.rrect(x + i as f32 * 4.0, cy - h / 2.0, 2.0, h, 1.0, color, alpha);
         }
     }
@@ -1487,7 +1538,7 @@ impl App {
         let left = (WINDOW_W - rest.w) / 2.0 + 17.0;
         let right = (WINDOW_W + rest.w) / 2.0 - 17.0;
         let cy = rest.h / 2.0;
-        let accent = self.look.accent.unwrap_or_else(|| self.slots[self.rest_owner].module.accent());
+        let accent = self.chrome_accent().unwrap_or_else(|| self.slots[self.rest_owner].module.accent());
         let (fraction, color) = self.ring_state(theme, env.wall_ms, accent);
         let faint = f32::from(theme.line.1) / 255.0 * alpha * 1.6;
         self.canvas.arc(left, cy, 5.8, 2.2, -90.0, 359.0, theme.line.0, faint);
@@ -1603,6 +1654,7 @@ impl App {
             "rest": { "label": rest.label, "count": rest.count, "urgency": rest.urgency },
             "panelHeight": self.last_panel_h,
             "tour": self.tour,
+            "spectrum": self.spectrum.as_ref().map(|s| json!({ "wanted": s.wanted(), "working": s.working(), "why": s.why(), "heard": s.heard(), "levels": s.levels() })),
             "look": { "palette": self.look.palette().id, "pill": self.look.pill_name(), "accent": self.look.accent.map(|c| format!("#{:02x}{:02x}{:02x}", c.0, c.1, c.2)) },
             "nextWake": self.next_wake(),
             "cachedGlyphs": self.fonts.cached_glyphs(),

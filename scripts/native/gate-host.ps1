@@ -117,6 +117,14 @@ try {
   $menu = Ctl @{cmd='context_menu'}
   Check 'a right click offers the menu' (@($menu.effects) -contains 'context_menu')
 
+  'dragging files out (the part that needs no mouse: the data object the other app would receive)'
+  $sample = Join-Path $data 'sample file.txt'; Set-Content $sample 'x'
+  $do = Ctl @{cmd='data_object'; paths=@($sample, $data)}
+  Check 'a real shell data object carries the files the way a file drop needs' (@($do.effects) -contains 'data_object:true') ($do | ConvertTo-Json -Compress)
+  $do = Ctl @{cmd='data_object'; paths=@('Z:
+o\suchile.txt')}
+  Check 'and files that are not there give nothing to carry' (@($do.effects) -contains 'data_object:false')
+
   'drawing'
   Ctl @{cmd='mouse'; kind='move'; x=320; y=10} | Out-Null; Ctl @{cmd='advance'; ms=800} | Out-Null
   $dib = Ctl @{cmd='dibcheck'}
