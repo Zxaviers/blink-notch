@@ -21,3 +21,4 @@ target-dev/
 
 # Scratch build folders
 /target-*/
+target*/

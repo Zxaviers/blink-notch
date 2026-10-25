@@ -569,6 +569,11 @@ impl App {
     }
 
     /// The open panel is in the middle of a drag (the window layer then captures the mouse).
+    /// Whether the app believes the pointer is on the notch (it has seen it enter and not yet leave).
+    pub fn pointer_inside(&self) -> bool {
+        self.pointer.is_some()
+    }
+
     pub fn pointer_captured(&self) -> bool {
         self.shell.mode() == Mode::Open && self.slots[self.active].module.captures_pointer()
     }

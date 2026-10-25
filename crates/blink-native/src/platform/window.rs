@@ -28,10 +28,10 @@ use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD};
 use windows::Win32::UI::HiDpi::{GetDpiForMonitor, SetProcessDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, MDT_EFFECTIVE_DPI};
 use windows::Win32::UI::Accessibility::{SetWinEventHook, HWINEVENTHOOK};
-use windows::Win32::UI::Input::KeyboardAndMouse::{ReleaseCapture, SetCapture, RegisterHotKey, TrackMouseEvent, UnregisterHotKey, HOT_KEY_MODIFIERS, TME_LEAVE, TRACKMOUSEEVENT};
+use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON, VK_RBUTTON, ReleaseCapture, SetCapture, RegisterHotKey, TrackMouseEvent, UnregisterHotKey, HOT_KEY_MODIFIERS, TME_LEAVE, TRACKMOUSEEVENT};
 use windows::Win32::UI::Shell::ShellExecuteW;
 use windows::Win32::UI::WindowsAndMessaging::{
-    SetWindowPos, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, RegisterWindowMessageW, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetClassNameW, GetForegroundWindow, GetMessageW, GetQueueStatus,
+    GetCursorPos, GetSystemMetrics, SM_SWAPBUTTON, SetWindowPos, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, RegisterWindowMessageW, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetClassNameW, GetForegroundWindow, GetMessageW, GetQueueStatus,
     GetWindowLongPtrW, GetWindowRect, IsWindowVisible, KillTimer, LoadCursorW, PeekMessageW, PostMessageW, PostQuitMessage,
     RegisterClassExW, SetTimer, ShowWindow, SystemParametersInfoW, TranslateMessage, UpdateLayeredWindow, WindowFromPoint, CS_HREDRAW,
     CS_VREDRAW, GWL_EXSTYLE, IDC_ARROW, MSG, PM_REMOVE, QS_ALLINPUT, SPI_GETCLIENTAREAANIMATION, SW_SHOWNOACTIVATE, SW_SHOWNORMAL,
@@ -69,6 +69,9 @@ const TIMER_QUIT: usize = 2;
 const TIMER_POLL: usize = 3;
 const TIMER_A11Y: usize = 4;
 const TIMER_KEYS: usize = 5;
+const TIMER_POINTER: usize = 6;
+/// How often the pointer is looked at while the notch thinks it is on it (Windows can lose a mouse-up or a mouse-leave).
+const POINTER_CHECK_MS: u32 = 250;
 /// Keep screen-reader snapshots at most this often (mouse moves arrive far faster).
 const A11Y_EVERY_MS: u128 = 100;
 /// Slow safety net for the fullscreen check (the foreground hook is the fast path).
@@ -451,6 +454,49 @@ impl Runtime {
         self.dirty = true;
         self.reschedule();
         self.publish_a11y_soon();
+        self.watch_pointer();
+    }
+
+    /// While the notch believes the pointer is on it (or a slider is being dragged), look at the real pointer now and then.
+    fn watch_pointer(&mut self) {
+        if self.control {
+            return;
+        }
+        unsafe {
+            if self.app.pointer_inside() || self.app.pointer_captured() {
+                SetTimer(Some(self.hwnd), TIMER_POINTER, POINTER_CHECK_MS, None);
+            } else {
+                let _ = KillTimer(Some(self.hwnd), TIMER_POINTER);
+            }
+        }
+    }
+
+    /// A mouse-up or a mouse-leave that Windows never delivered (another window took the mouse capture, a toast came up) would leave
+    /// a slider stuck mid-drag and the notch open for good: set things straight from the real pointer.
+    fn check_pointer(&mut self) {
+        let mut p = POINT::default();
+        if unsafe { GetCursorPos(&mut p) }.is_err() {
+            return;
+        }
+        let scale = self.scale();
+        let (x, y) = ((p.x - self.origin.0) as f32 / scale, (p.y - self.origin.1) as f32 / scale);
+        if self.app.pointer_captured() {
+            let button = if unsafe { GetSystemMetrics(SM_SWAPBUTTON) } != 0 { VK_RBUTTON } else { VK_LBUTTON };
+            if unsafe { GetAsyncKeyState(i32::from(button.0)) } >= 0 {
+                self.app.pointer(PointerKind::Up, x, y);
+                unsafe {
+                    let _ = ReleaseCapture();
+                }
+            }
+        }
+        if self.app.pointer_inside() && !self.app.pointer_captured() {
+            // The app judges the real position itself: still on the notch, or gone.
+            self.app.pointer(PointerKind::Move, x, y);
+            if !self.app.pointer_inside() {
+                self.tracking = false;
+            }
+        }
+        self.after();
     }
 
     /// Keep what a screen reader sees current. Costs nothing until one has asked.
@@ -929,6 +975,7 @@ impl Runtime {
                 }
                 TIMER_QUIT => unsafe { PostQuitMessage(0) },
                 TIMER_POLL => self.refresh_fullscreen(),
+                TIMER_POINTER => self.check_pointer(),
                 TIMER_KEYS => {
                     unsafe {
                         let _ = KillTimer(Some(self.hwnd), TIMER_KEYS);
