@@ -70,6 +70,24 @@ A checklist for the day Blink goes to someone else's PC (nothing here is automat
 5. **Update file** (so "Check for updates" in Blink settings can tell people): `latest.json`, made by `make-release.ps1`, uploaded to the release next to the installer: `{"version": "0.3.0", "url": "https://.../Blink-0.3.0-setup.exe", "sha256": "<64 hex digits>", "notes": "What changed, in a sentence or two."}`. GitHub gives the newest release a link that never changes, `https://github.com/<owner>/<repo>/releases/latest/download/latest.json`, which is what Blink asks by default. `url` must be a web page or file link (https). Blink only asks it when the person presses the button. It shows the version and notes and can open the page; with a `sha256` it also offers "Download and install": it downloads the installer to the temp folder, checks the SHA-256 is exactly the one in the file (a different file is deleted and never run), then runs it silently with `/S /RUN` (the installer closes Blink and its settings window, replaces the programs, keeps the install folder and the autostart choice, and starts Blink again). Without a `sha256` Blink never runs the file. Nothing happens by itself. People get the link to paste from the page in step 4. A link that is not https is refused, and so is an update file whose `url` is not https.
 6. **After**: keep the old installer for a while, so a bad release can be rolled back (installing the older one over the newer one keeps the data).
 
+### The automation (GitHub Actions, in `.github/workflows/`)
+
+- `ci.yml`: the Rust tests and a parse check of the settings page, on every push and pull request.
+- `release.yml`: pushing a tag `vX.Y.Z` (`git tag v0.3.0 && git push origin v0.3.0`) builds both programs, makes the installer, `SHA256SUMS.txt`, `Blink-setup.exe` (the same installer under a name that never changes, for the website's download button) and `latest.json`, and publishes them as a release whose notes are the changelog's section for that version. It refuses a tag that does not match the version in `Cargo.toml` and `tauri.conf.json`.
+- `pages.yml`: publishes `site/` with GitHub Pages when it changes on `main` (turn Pages on once: Settings, Pages, Source: GitHub Actions; a private repository needs a plan that has Pages).
+- **None of these has been run yet** (the repository has had no push): the first tag and the first Pages run are their test. The steps they run are the ones `make-release.ps1` and `cargo test` run here.
+
+### Signing, step by step (when there is a certificate)
+
+1. Open source and public: apply to **SignPath Foundation** (free). It gives a signing service and a GitHub Action; sign `blink.exe` and `blink-settings.exe` in `release.yml` before the installer is made (where the comment is), and the installer after. Otherwise **Azure Trusted Signing** (about US$10 a month, needs identity checks) or an OV certificate (US$100 to 300 a year).
+2. Check with `signtool verify /pa /v <file>` and by right-clicking the file, Properties, Digital Signatures.
+3. SmartScreen's reputation builds with downloads, even for signed files; the warning fades over weeks, faster with an EV certificate.
+4. Once signed, also check the signature of a downloaded update before running it (today only the SHA-256 is checked); the hash stays as well.
+
+### The pictures on the website
+
+`scripts/native/shots-site.ps1` draws them with the real program (demo data, at twice the size), `scripts/make-site-assets.py` makes the icon sizes and the social-preview picture. Run both again when the look changes. The page itself is `site/` (plain HTML, CSS and a little JavaScript; no external files).
+
 ## What has been verified
 
 Scripted, with no mouse or keyboard (all in `scripts/native/`):

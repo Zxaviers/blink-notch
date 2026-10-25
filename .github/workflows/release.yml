@@ -1,0 +1,71 @@
+name: Release
+
+# Pushing a tag such as v0.3.0 builds Blink, makes the installer, its SHA-256 and latest.json (the file "Check for updates" reads),
+# and publishes them as a GitHub release. The tag must match the version in Cargo.toml.
+#
+#   git tag v0.3.0 && git push origin v0.3.0
+#
+# Not yet run for real (there has been no release): the first one is the test. Signing is a comment below until there is a certificate.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The tag matches the version
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
+          if ("v$version" -ne "${{ github.ref_name }}") { throw "Cargo.toml says $version but the tag is ${{ github.ref_name }}" }
+          $tauri = (Get-Content crates/blink-settings/tauri.conf.json -Raw | ConvertFrom-Json).version
+          if ($tauri -ne $version) { throw "tauri.conf.json says $tauri but Cargo.toml says $version" }
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Tests
+        run: cargo test -p blink-native -p blink-core
+
+      - name: Build both programs
+        run: cargo build --release -p blink-native -p blink-settings
+
+      - name: Install NSIS
+        run: choco install nsis -y --no-progress
+
+      # To sign (once there is a certificate; see docs/RELEASE.md): sign target\release\blink.exe and blink-settings.exe here, before
+      # the installer is made, and the installer afterwards. SignPath (free for open source) or Azure Trusted Signing both have
+      # a GitHub Action.
+
+      - name: Pack the installer, its hash and latest.json
+        shell: pwsh
+        env:
+          MAKENSIS: C:\Program Files (x86)\NSIS\makensis.exe
+        run: ./scripts/native/make-release.ps1 -BinDir target/release -Repo "${{ github.repository }}"
+
+      - name: Publish the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          # The notes are the changelog's section for this version.
+          $lines = Get-Content CHANGELOG.md
+          $start = ($lines | Select-String -Pattern "^## $([regex]::Escape($version))\b" | Select-Object -First 1).LineNumber
+          $notes = 'See the changelog.'
+          if ($start) {
+            $rest = $lines[$start..($lines.Count - 1)]
+            $end = ($rest | Select-String -Pattern '^## ' | Select-Object -First 1).LineNumber
+            $section = if ($end) { $rest[0..($end - 2)] } else { $rest }
+            $notes = ($section -join "`n").Trim()
+          }
+          Set-Content -Path notes.md -Value $notes -Encoding utf8
+          $out = 'scripts/out/release'
+          gh release create "${{ github.ref_name }}" `
+            "$out/Blink-$version-setup.exe" "$out/Blink-setup.exe" "$out/SHA256SUMS.txt" "$out/latest.json" `
+            --title "Blink $version" --notes-file notes.md

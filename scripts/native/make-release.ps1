@@ -1,5 +1,6 @@
 # Makes everything a release needs, in scripts\out\release\:
 #   Blink-<version>-setup.exe   the installer
+#   Blink-setup.exe             the same file, under the name the website's download button uses
 #   SHA256SUMS.txt              its SHA-256 (what the release page shows)
 #   latest.json                 the update file ("Check for updates" in Blink settings reads it): version, link, hash, notes
 #
@@ -37,6 +38,8 @@ try {
   & $nsis -V1 "/DVERSION=$version" "/DBINDIR=$bin" "/DOUT=$setup" "/DURL=$url" "$root\installer\blink.nsi"
   if ($LASTEXITCODE -ne 0) { throw 'makensis failed' }
 
+  # The same file under a name without the version, so the website's download button can point at a link that never changes.
+  Copy-Item $setup "$out\Blink-setup.exe"
   $hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLower()
   $utf8 = New-Object System.Text.UTF8Encoding($false)
   [System.IO.File]::WriteAllText("$out\SHA256SUMS.txt", "$hash  Blink-$version-setup.exe`n", $utf8)
@@ -46,6 +49,6 @@ try {
 
   Get-ChildItem $out | ForEach-Object { '{0,-34} {1,8} KB' -f $_.Name, [math]::Round($_.Length / 1KB) }
   "SHA-256 $hash"
-  "Upload all three to the release tagged v$version; the link people paste into Blink is"
+  "Upload these files to the release tagged v$version; the link people paste into Blink is"
   "  $url/releases/latest/download/latest.json"
 } finally { Pop-Location }

@@ -1,0 +1,25 @@
+name: Tests
+
+# The unit and behaviour tests, on every push and pull request. The gates that drive the real windows (scripts/native/gate-*.ps1)
+# need an interactive desktop and are run by hand before a release.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: Rust tests
+        run: cargo test -p blink-native -p blink-core
+      - name: The settings page parses
+        run: |
+          node --check src/settings.js
+          node --check src/api.js
+          node --input-type=module -e "import('./src/lib/i18n.js').then(() => console.log('i18n ok'))"
