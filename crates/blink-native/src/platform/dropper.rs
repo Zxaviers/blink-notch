@@ -15,10 +15,28 @@ use windows::Win32::System::SystemServices::MODIFIERKEYS_FLAGS;
 use windows::Win32::UI::Shell::{DragQueryFileW, HDROP};
 use windows::Win32::UI::WindowsAndMessaging::PostMessageW;
 
-/// Posted to the window: `wparam` 1 when files come over it, 0 when they leave.
+/// Posted to the window: `wparam` 1 when files come over it, 2 while they move over it (`lparam` packs the screen point, see
+/// `unpack_point`), 0 when they leave.
 pub const WM_DRAG: u32 = 0x8000 + 20;
-/// Posted to the window when files are dropped: `lparam` is a `Box<Vec<String>>` (the window takes it back).
+/// Posted to the window when files are dropped: `lparam` is a `Box<Dropped>` (the window takes it back).
 pub const WM_DROPPED: u32 = 0x8000 + 21;
+
+/// What was dropped, and where (screen coordinates).
+pub struct Dropped {
+    pub paths: Vec<String>,
+    pub x: i32,
+    pub y: i32,
+}
+
+fn pack_point(pt: &POINTL) -> isize {
+    (((pt.y as i64) << 32) | (pt.x as u32 as i64)) as isize
+}
+
+/// The screen point `WM_DRAG` carries.
+pub fn unpack_point(lparam: isize) -> (i32, i32) {
+    let v = lparam as i64;
+    (v as i32, (v >> 32) as i32)
+}
 
 #[implement(IDropTarget)]
 struct Dropper {
@@ -43,22 +61,24 @@ impl Dropper {
 
 #[allow(non_snake_case)]
 impl IDropTarget_Impl for Dropper_Impl {
-    fn DragEnter(&self, pdataobj: Ref<'_, IDataObject>, _grfkeystate: MODIFIERKEYS_FLAGS, _pt: &POINTL, pdweffect: *mut DROPEFFECT) -> Result<()> {
+    fn DragEnter(&self, pdataobj: Ref<'_, IDataObject>, _grfkeystate: MODIFIERKEYS_FLAGS, pt: &POINTL, pdweffect: *mut DROPEFFECT) -> Result<()> {
         let accept = has_files(&pdataobj.as_ref());
         unsafe {
             *pdweffect = if accept { DROPEFFECT_LINK } else { DROPEFFECT_NONE };
         }
         if accept {
             self.post(WM_DRAG, 1, 0);
+            self.post(WM_DRAG, 2, pack_point(pt));
         }
         Ok(())
     }
 
-    fn DragOver(&self, _grfkeystate: MODIFIERKEYS_FLAGS, _pt: &POINTL, pdweffect: *mut DROPEFFECT) -> Result<()> {
+    fn DragOver(&self, _grfkeystate: MODIFIERKEYS_FLAGS, pt: &POINTL, pdweffect: *mut DROPEFFECT) -> Result<()> {
         unsafe {
             // Still the same drag: whatever DragEnter decided stays.
             if *pdweffect != DROPEFFECT_NONE {
                 *pdweffect = DROPEFFECT_LINK;
+                self.post(WM_DRAG, 2, pack_point(pt));
             }
         }
         Ok(())
@@ -69,7 +89,7 @@ impl IDropTarget_Impl for Dropper_Impl {
         Ok(())
     }
 
-    fn Drop(&self, pdataobj: Ref<'_, IDataObject>, _grfkeystate: MODIFIERKEYS_FLAGS, _pt: &POINTL, pdweffect: *mut DROPEFFECT) -> Result<()> {
+    fn Drop(&self, pdataobj: Ref<'_, IDataObject>, _grfkeystate: MODIFIERKEYS_FLAGS, pt: &POINTL, pdweffect: *mut DROPEFFECT) -> Result<()> {
         unsafe {
             *pdweffect = DROPEFFECT_NONE;
         }
@@ -92,7 +112,7 @@ impl IDropTarget_Impl for Dropper_Impl {
         if paths.is_empty() {
             self.post(WM_DRAG, 0, 0);
         } else {
-            self.post(WM_DROPPED, 0, Box::into_raw(Box::new(paths)) as isize);
+            self.post(WM_DROPPED, 0, Box::into_raw(Box::new(Dropped { paths, x: pt.x, y: pt.y })) as isize);
         }
         Ok(())
     }

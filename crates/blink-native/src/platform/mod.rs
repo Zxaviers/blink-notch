@@ -2,6 +2,7 @@
 
 pub mod clipboard;
 pub mod control;
+pub mod dragout;
 pub mod dropper;
 pub mod focus;
 pub mod media;

@@ -50,9 +50,9 @@ pub fn card(step: usize, lang: Lang) -> Card {
         2 => Card {
             title: if id { "Musik, file, dan lainnya" } else { "Music, files and more" },
             body: if id {
-                "Lagu yang diputar muncul di sini beserta liriknya; pin menahan notch tetap terbuka. Seret file atau folder ke notch untuk menyimpannya di Proyek. Baterai, Wi-Fi, dan volume muncul sebagai intip singkat."
+                "Lagu yang diputar muncul di sini beserta liriknya; pin menahan notch tetap terbuka. Seret file ke notch: lepas di Rak untuk menyimpannya sebentar lalu seret keluar ke aplikasi lain, atau di Proyek. Baterai, Wi-Fi, dan volume muncul sebagai intip singkat."
             } else {
-                "A song that plays shows up with its lyrics; the pin keeps the notch open. Drag a file or folder onto me to keep it in Projects. Battery, Wi-Fi and volume show up as short peeks."
+                "A song that plays shows up with its lyrics; the pin keeps the notch open. Drag a file onto me: drop it on the Shelf to keep it for a moment and drag it out to another app, or on Projects. Battery, Wi-Fi and volume show up as short peeks."
             },
             icon: Icon::Music,
         },

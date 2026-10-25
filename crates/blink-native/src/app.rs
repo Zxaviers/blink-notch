@@ -37,6 +37,8 @@ pub enum AppEffect {
     Announce(String),
     /// The first-run tour was finished or skipped: remember it.
     TourDone,
+    /// Carry these files out of the notch with the mouse.
+    StartDrag(Vec<String>),
     /// A system notification; `url` is what clicking it opens.
     Toast { title: String, body: String, url: Option<String> },
 }
@@ -84,6 +86,11 @@ pub struct App {
     last_panel_h: f32,
     /// Palette, accent and pill shape (Blink settings, Display).
     look: Look,
+    /// Files are being dragged over the notch: it shows where they can be dropped, and which place is lit.
+    dragging: bool,
+    drag_zone: DropZone,
+    /// Files are being carried out of the notch: its own drop target stays quiet meanwhile.
+    dragging_out: bool,
     /// The first-run tour, when it is showing: which card.
     tour: Option<usize>,
     /// Where the tour's buttons are (window coordinates), from the last frame.
@@ -99,6 +106,13 @@ pub struct App {
     live_on: bool,
     /// The person closed it while it was held open: leave it closed until the reason ends.
     live_dismissed: bool,
+}
+
+/// Where dragged files can be dropped on the notch.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DropZone {
+    Shelf,
+    Projects,
 }
 
 /// How long the empty desktop has to be in front before a song opens the notch.
@@ -145,6 +159,9 @@ impl App {
             effects: Vec::new(),
             last_panel_h: 0.0,
             look: Look::default(),
+            dragging: false,
+            drag_zone: DropZone::Projects,
+            dragging_out: false,
             tour: None,
             tour_hits: Vec::new(),
             swipe: 0.0,
@@ -222,7 +239,7 @@ impl App {
     }
 
     fn tabs_height(&self) -> f32 {
-        if self.tour.is_none() && self.panel_indices().len() > 1 { PAGER_H } else { 0.0 }
+        if self.tour.is_none() && !self.dragging && self.panel_indices().len() > 1 { PAGER_H } else { 0.0 }
     }
 
     /// Apply the user's choice of modules: order and on/off. Ids the app does not know are
@@ -369,7 +386,7 @@ impl App {
         let env = self.env(&tz);
         let tabs = self.tabs_height();
         let mut kit = Kit { canvas: &mut self.canvas, fonts: &mut self.fonts };
-        let content = if self.tour.is_some() { crate::modules::CONTENT_H } else { self.slots[self.active].module.panel_height(&env, &mut kit) };
+        let content = if self.tour.is_some() || self.dragging { crate::modules::CONTENT_H } else { self.slots[self.active].module.panel_height(&env, &mut kit) };
         let h = HEADER_H + content + tabs;
         self.last_panel_h = h;
         let now = self.clock.now_ms();
@@ -418,6 +435,7 @@ impl App {
                 Effect::TakeKeyboard => self.ensure_keyboard(),
                 Effect::ReleaseKeyboard => self.release_keyboard(),
                 Effect::OpenPath(p) => self.effects.push(AppEffect::OpenPath(p)),
+                Effect::StartDrag(paths) => self.effects.push(AppEffect::StartDrag(paths)),
                 Effect::RevealPath(p) => self.effects.push(AppEffect::RevealPath(p)),
                 Effect::ShowPeek(view) => peeks.push(view),
             }
@@ -633,37 +651,91 @@ impl App {
         self.apply_module_effects(self.active, effects);
     }
 
-    /// Files are being dragged over the notch (or have left): open it on the Projects page with its drop zone lit.
+    fn zone_slot(&self, zone: DropZone) -> Option<usize> {
+        let id = if zone == DropZone::Shelf { "shelf" } else { "projects" };
+        self.slots.iter().position(|s| s.enabled && s.module.id() == id)
+    }
+
+    /// Files are being dragged over the notch (or have left): it opens by itself on the places they can be dropped, and stays
+    /// open until they are dropped or taken away. With nothing to drop on (the shelf and Projects both off) it does nothing.
     pub fn drag_files(&mut self, over: bool) {
+        if self.dragging_out {
+            return;
+        }
         let now = self.clock.now_ms();
         self.last_activity = now;
-        let Some(i) = self.slots.iter().position(|s| s.enabled && s.module.id() == "projects") else { return };
-        if let Some(p) = self.module_mut::<crate::modules::projects::ProjectsModule>() {
-            p.set_drag_over(over);
-        }
         if over {
-            if self.shell.mode() != Mode::Open {
-                // Open first, then point the open panel at the Projects page (while closed, the page follows what
-                // the pill shows, which is not what a dragged file is for).
-                self.refresh_panel_height();
-                self.shell.click(now);
-                self.active = i;
-                self.refresh_panel_height();
-            } else {
-                self.switch_to(i);
+            let (shelf, projects) = (self.zone_slot(DropZone::Shelf).is_some(), self.zone_slot(DropZone::Projects).is_some());
+            if !shelf && !projects {
+                return;
             }
-        } else if !self.shell.keyboard() {
-            self.shell.pointer_leave(now);
+            self.dragging = true;
+            // Projects is the one lit first: it is where dragged files went before there was a shelf.
+            self.drag_zone = if projects { DropZone::Projects } else { DropZone::Shelf };
+            self.peek_queue.clear();
+            self.shell.set_hold(true, now);
+            self.refresh_panel_height();
+        } else if self.dragging {
+            self.dragging = false;
+            self.shell.set_hold(false, now);
+            self.refresh_panel_height();
+            if !self.shell.keyboard() {
+                self.shell.pointer_leave(now);
+            }
         }
     }
 
-    /// Files or folders dropped on the notch: the Projects page takes them (and shows them).
+    /// Where the dragged files are over the notch (window coordinates): the left half is the shelf, the right half Projects.
+    pub fn drag_point(&mut self, x: f32, _y: f32) {
+        if !self.dragging {
+            return;
+        }
+        let (shelf, projects) = (self.zone_slot(DropZone::Shelf).is_some(), self.zone_slot(DropZone::Projects).is_some());
+        if shelf && projects {
+            self.drag_zone = if x < WINDOW_W / 2.0 { DropZone::Shelf } else { DropZone::Projects };
+        }
+    }
+
+    pub fn drag_zone(&self) -> Option<DropZone> {
+        self.dragging.then_some(self.drag_zone)
+    }
+
+    /// Files or folders dropped on the notch: the place that was lit takes them, and its page shows them.
     pub fn drop_files(&mut self, paths: &[String]) {
-        let Some(i) = self.slots.iter().position(|s| s.enabled && s.module.id() == "projects") else { return };
+        if self.dragging_out {
+            return;
+        }
+        let now = self.clock.now_ms();
+        let zone = if self.dragging { self.drag_zone } else if self.zone_slot(DropZone::Projects).is_some() { DropZone::Projects } else { DropZone::Shelf };
+        if self.dragging {
+            self.dragging = false;
+            self.shell.set_hold(false, now);
+        }
+        let Some(i) = self.zone_slot(zone) else { return };
         let effects = self.slots[i].module.drop_files(paths);
         self.apply_module_effects(i, effects);
         if self.shell.mode() == Mode::Open {
             self.switch_to(i);
+        } else {
+            // Dropped while it was closed: open it on the page that took them, so they can be seen.
+            self.refresh_panel_height();
+            self.shell.click(now);
+            self.active = i;
+        }
+        self.refresh_panel_height();
+    }
+
+    /// The window is about to carry files out of the notch (its own drop target is then ignored).
+    pub fn drag_out_begin(&mut self) {
+        self.dragging_out = true;
+    }
+
+    /// The files were let go: taken (`accepted`) or not. The shelf lets accepted ones go.
+    pub fn drag_out_end(&mut self, paths: &[String], accepted: bool) {
+        self.dragging_out = false;
+        if let Some(i) = self.slots.iter().position(|s| s.module.id() == "shelf") {
+            let effects = self.slots[i].module.drag_finished(paths, accepted);
+            self.apply_module_effects(i, effects);
         }
     }
 
@@ -925,6 +997,10 @@ impl App {
     pub fn agent_update(&mut self, v: &Value) -> Result<Value, String> {
         let wall = self.clock.wall_ms();
         let Some(i) = self.slots.iter().position(|s| s.module.id() == "agents") else { return Err("NO_AGENTS_PAGE".to_string()) };
+        // With the page off, reports are taken and dropped: an agent that is connected must not be told off for it.
+        if !self.slots[i].enabled {
+            return Ok(serde_json::json!({ "ignored": true }));
+        }
         let module = self.slots[i].module.as_any_mut().downcast_mut::<crate::modules::agents::AgentsModule>().ok_or("NO_AGENTS_PAGE")?;
         let effects = module.apply_update(v, wall)?;
         self.apply_module_effects(i, effects);
@@ -962,8 +1038,8 @@ impl App {
     /// Hold the notch open on the page of a song that is playing, when the desktop is empty (and the page
     /// likes that) or when the person pinned it open. Let go when the reason ends or the song stops.
     fn update_live(&mut self) {
-        // The tour has the notch while it shows.
-        if self.tour.is_some() {
+        // The tour, and files being dragged over, have the notch while they show.
+        if self.tour.is_some() || self.dragging {
             return;
         }
         let now = self.clock.now_ms();
@@ -1210,7 +1286,12 @@ impl App {
             if let Some(glow) = palette.glow {
                 self.canvas.glow(frame.origin_x + 70.0, HEADER_H + 30.0, 210.0, glow, open_alpha * 0.20);
             }
-            if let Some(step) = self.tour {
+            if self.dragging {
+                let (has_shelf, has_projects) = (self.zone_slot(DropZone::Shelf).is_some(), self.zone_slot(DropZone::Projects).is_some());
+                crate::dropzones::draw(&mut self.canvas, &mut self.fonts, &panel_theme, open_alpha, self.drag_zone, has_shelf, has_projects, self.lang, self.look.accent, frame.origin_x, frame.origin_y, frame.width);
+                self.tab_rects.clear();
+                self.draw_header(&panel_theme, open_alpha, &env);
+            } else if let Some(step) = self.tour {
                 self.tour_hits = crate::tour::draw(&mut self.canvas, &mut self.fonts, &panel_theme, open_alpha, step, self.lang, self.pointer, self.look.accent, frame.origin_x, frame.origin_y, frame.width);
                 self.tab_rects.clear();
                 self.draw_header(&panel_theme, open_alpha, &env);
@@ -1233,13 +1314,16 @@ impl App {
         let right = (WINDOW_W + OPEN_W) / 2.0 - 24.0;
         let cy = 23.0;
         let lang = env.t.lang();
-        let (first, second) = if self.tour.is_some() {
+        let (first, second) = if self.dragging {
+            let (a, b) = crate::dropzones::title_parts(lang);
+            (a.to_string(), b.to_string())
+        } else if self.tour.is_some() {
             let (a, b) = crate::tour::title_parts(lang);
             (a.to_string(), b.to_string())
         } else {
             self.slots[self.active].module.title_parts(lang)
         };
-        let accent = self.look.accent.unwrap_or_else(|| if self.tour.is_some() { Rgb(0x4e, 0xa8, 0xff) } else { self.slots[self.active].module.accent() });
+        let accent = self.look.accent.unwrap_or_else(|| if self.tour.is_some() || self.dragging { Rgb(0x4e, 0xa8, 0xff) } else { self.slots[self.active].module.accent() });
         let size = 15.0;
         let base = cy - 10.0 + self.fonts.baseline(Face::SansBold, size, 20.0);
         let adv = self.canvas.text(&mut self.fonts, Face::SansBold, size, left, base, &first, theme.fg, alpha, 0.0);

@@ -512,6 +512,17 @@ impl Runtime {
                         let _ = self.toast(&title, &body, url);
                     }
                 }
+                AppEffect::StartDrag(paths) => {
+                    if self.control {
+                        self.effects_log.push(format!("drag_out:{}", paths.len()));
+                    } else {
+                        // Modal: the mouse carries the files until the button is let go. Messages for this window that arrive
+                        // meanwhile are ignored (the runtime is busy), including its own drop target seeing the drag.
+                        self.app.drag_out_begin();
+                        let accepted = super::dragout::drag_out(&paths);
+                        self.app.drag_out_end(&paths, accepted);
+                    }
+                }
                 AppEffect::TourDone => {
                     // Remembered, so the tour comes once (the settings can show it again).
                     let _ = self.store.write_atomic("tour.json", b"{\"done\":true}");
@@ -950,12 +961,19 @@ impl Runtime {
                 self.after();
             }
             super::dropper::WM_DRAG => {
-                self.app.drag_files(wparam.0 == 1);
+                if wparam.0 == 2 {
+                    // Where the files are over the notch, in window coordinates: which place is lit.
+                    let (sx, sy) = super::dropper::unpack_point(lparam.0);
+                    self.app.drag_point((sx - self.origin.0) as f32 / scale, (sy - self.origin.1) as f32 / scale);
+                } else {
+                    self.app.drag_files(wparam.0 == 1);
+                }
                 self.after();
             }
             super::dropper::WM_DROPPED => {
-                let paths = unsafe { Box::from_raw(lparam.0 as *mut Vec<String>) };
-                self.app.drop_files(&paths);
+                let dropped = unsafe { Box::from_raw(lparam.0 as *mut super::dropper::Dropped) };
+                self.app.drag_point((dropped.x - self.origin.0) as f32 / scale, (dropped.y - self.origin.1) as f32 / scale);
+                self.app.drop_files(&dropped.paths);
                 self.after();
             }
             WM_POWERBROADCAST if wparam.0 == sysevents::PBT_POWERSETTINGCHANGE => {
@@ -1221,6 +1239,7 @@ pub fn run(opts: Options) -> Result<(), String> {
         Box::new(ControlsModule::new(controls_backend)),
         Box::new(MusicModule::new(media_backend, lyrics_source, media_wake)),
         Box::new(ProjectsModule::new(Store::new(store.dir()), clock.wall_ms())),
+        Box::new(crate::modules::shelf::ShelfModule::new(Store::new(store.dir()))),
         Box::new(crate::modules::agents::AgentsModule::new()),
         Box::new(SystemModule::new()),
     ];

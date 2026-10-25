@@ -8,6 +8,7 @@ pub mod controls;
 pub mod deadlines;
 pub mod music;
 pub mod projects;
+pub mod shelf;
 pub mod system;
 
 use blink_core::i18n::Translator;
@@ -105,6 +106,7 @@ pub enum Action {
     Music(music::MusicAction),
     Project(projects::ProjectAction),
     Agent(agents::AgentAction),
+    Shelf(shelf::ShelfAction),
 }
 
 /// What the host must do for a module.
@@ -131,6 +133,8 @@ pub enum Effect {
     ReleaseKeyboard,
     /// Open a file or folder the way a double-click would.
     OpenPath(String),
+    /// Carry these files out of the notch with the mouse (drag them onto another app).
+    StartDrag(Vec<String>),
     /// Show a file in its folder.
     RevealPath(String),
 }
@@ -230,6 +234,11 @@ pub trait Module {
 
     /// Text pasted from the clipboard.
     fn paste(&mut self, _text: &str) -> Vec<Effect> {
+        Vec::new()
+    }
+
+    /// Files that were carried out of the notch are done with: somebody took them (or nobody did).
+    fn drag_finished(&mut self, _paths: &[String], _accepted: bool) -> Vec<Effect> {
         Vec::new()
     }
 

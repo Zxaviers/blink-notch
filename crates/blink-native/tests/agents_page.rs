@@ -17,7 +17,10 @@ fn rig() -> App {
         vec![Box::new(ClockModule::new()), Box::new(DeadlinesModule::new(Box::new(DemoSource::new(WALL_BASE)))), Box::new(AgentsModule::new())];
     let mut app = App::new(Clock::manual(WALL_BASE), normalize_settings(None), tz(), 1.0, "en", modules).expect("app");
     // The demo deadline is hours away: not close, so the clock owns the pill.
-    app.configure_modules(&[blink_native::host::ModuleConfig { id: "deadlines".into(), enabled: true, options: json!({ "urgentHours": 1.0 }) }]);
+    app.configure_modules(&[
+        blink_native::host::ModuleConfig { id: "deadlines".into(), enabled: true, options: json!({ "urgentHours": 1.0 }) },
+        blink_native::host::ModuleConfig { id: "agents".into(), enabled: true, options: serde_json::Value::Null },
+    ]);
     app.tick();
     app.pointer(PointerKind::Leave, 0.0, 0.0);
     advance(&mut app, 600);
@@ -32,7 +35,11 @@ fn names(app: &mut App) -> Vec<String> {
 
 fn open_agents(app: &mut App) {
     open_by_hover(app);
-    app.switch_to(2);
+    // The order the config gave: find the page rather than count to it.
+    assert!((0..8).any(|i| {
+        app.switch_to(i);
+        app.active_module() == "agents"
+    }));
     settle(app);
     app.render();
 }
@@ -145,4 +152,15 @@ fn a_screen_reader_can_remove_an_agent() {
     app.render();
     let node = app.accessibility().nodes.into_iter().find(|n| n.name == "Remove Claude Code").expect("a remove button");
     assert!(node.action.is_some());
+}
+
+#[test]
+fn the_page_is_off_until_it_is_switched_on_and_reports_to_a_page_that_is_off_are_taken_quietly() {
+    let modules: Vec<Box<dyn Module>> = vec![Box::new(ClockModule::new()), Box::new(AgentsModule::new())];
+    let mut app = App::new(Clock::manual(WALL_BASE), normalize_settings(None), tz(), 1.0, "en", modules).expect("app");
+    assert!(app.state_json()["modules"].as_array().unwrap().iter().any(|m| m["id"] == "agents" && m["enabled"] == false), "off by default");
+    // An agent that is connected still reports: it is not told off, and nothing shows.
+    assert!(app.agent_update(&json!({ "id": "a", "state": "input", "title": "Run the tests?" })).is_ok());
+    assert!(app.current_peek().is_none());
+    assert_eq!(app.rest_owner_module(), "clock");
 }

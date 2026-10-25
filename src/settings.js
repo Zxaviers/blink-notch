@@ -22,7 +22,9 @@ const SCOPES = {
   app: ['display', 'pages', 'weather', 'music', 'agents', 'general']
 }
 /** The pages Blink knows, in the order they turn by default. */
-const PAGE_IDS = ['clock', 'deadlines', 'controls', 'music', 'projects', 'agents', 'system']
+const PAGE_IDS = ['clock', 'deadlines', 'controls', 'music', 'projects', 'shelf', 'agents', 'system']
+/** Pages that start switched off (they appear once something needs them). */
+const OFF_BY_DEFAULT = ['agents']
 const scopeOf = (name) => (SCOPES.deadlines.includes(name) ? 'deadlines' : 'app')
 
 const nav = document.getElementById('nav')
@@ -60,7 +62,7 @@ function hostModules () {
     seen.add(m.id)
     list.push({ id: m.id, enabled: m.enabled !== false, options: m.options && typeof m.options === 'object' ? m.options : {} })
   }
-  for (const id of PAGE_IDS) if (!seen.has(id)) list.push({ id, enabled: true, options: {} })
+  for (const id of PAGE_IDS) if (!seen.has(id)) list.push({ id, enabled: !OFF_BY_DEFAULT.includes(id), options: {} })
   return list
 }
 
@@ -73,6 +75,11 @@ async function saveHost (modules, extra = {}) {
   }
   api.emit('host-changed')
   return true
+}
+
+/** Switch a page on (connecting an app is a reason to show the page that shows it). */
+function enablePage (id) {
+  return saveHost(hostModules().map((m) => (m.id === id ? { ...m, enabled: true } : m)))
 }
 
 const optionsOf = (id) => hostModules().find((m) => m.id === id)?.options ?? {}
@@ -644,6 +651,7 @@ function connectorsUi (out) {
       for (const c of todo) {
         try {
           await api.connectorSet(c.id, true)
+          await enablePage('agents')
         } catch (e) {
           out.set('error', `${c.name}: ${errorOf(e)}`)
         }
@@ -661,6 +669,7 @@ function connectorsUi (out) {
             try {
               out.set('ok', '')
               await api.connectorSet(c.id, !c.connected)
+              if (!c.connected) await enablePage('agents')
               out.set('ok', t(c.connected ? 'connectors.disconnected' : 'connectors.connected', { name: c.name }))
             } catch (e) {
               out.set('error', errorOf(e))

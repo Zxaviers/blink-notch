@@ -8,6 +8,7 @@ pub mod access;
 pub mod app;
 pub mod clock;
 pub mod events;
+pub mod dropzones;
 pub mod eyes;
 pub mod host;
 pub mod live;

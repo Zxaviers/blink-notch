@@ -370,6 +370,11 @@ impl Module for AgentsModule {
         TEAL
     }
 
+    /// Off until the person connects an app (Blink settings, Agents does that and switches it on): most people never use it.
+    fn default_enabled(&self) -> bool {
+        false
+    }
+
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }

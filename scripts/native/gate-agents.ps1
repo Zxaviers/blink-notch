@@ -18,9 +18,9 @@ try {
   function Run($argList) { $ErrorActionPreference = 'Continue'; $out = & $ctl @argList 2>&1; [pscustomobject]@{ Code = $LASTEXITCODE; Text = (($out | ForEach-Object { "$_" }) -join "`n") } }
 
   $m = Ctl @{cmd='modules'}
-  Check 'agents is one of the pages, after projects' (($m.modules | ForEach-Object { $_.id }) -join ',' -eq 'clock,deadlines,controls,music,projects,agents,system') (($m.modules | ForEach-Object { $_.id }) -join ',')
+  Check 'agents is one of the pages, after projects' (($m.modules | ForEach-Object { $_.id }) -join ',' -eq 'clock,deadlines,controls,music,projects,shelf,agents,system') (($m.modules | ForEach-Object { $_.id }) -join ',')
   # The 3 h 13 m demo deadline is not close once the pill's hours are 1.
-  Ctl @{cmd='host'; config=@{modules=@(@{id='clock'; enabled=$true}, @{id='deadlines'; enabled=$true; options=@{urgentHours=1}})}} | Out-Null
+  Ctl @{cmd='host'; config=@{modules=@(@{id='clock'; enabled=$true}, @{id='deadlines'; enabled=$true; options=@{urgentHours=1}}, @{id='agents'; enabled=$true})}} | Out-Null
 
   'the command reaches the notch'
   $r = Run @('ping'); Check 'ping answers with the version' ($r.Code -eq 0 -and $r.Text -match '^Blink ') $r.Text

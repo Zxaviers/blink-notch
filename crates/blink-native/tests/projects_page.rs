@@ -269,13 +269,14 @@ fn files_dragged_onto_a_resting_notch_open_it_on_the_projects_page() {
     app.drag_files(true);
     settle(&mut app);
     assert_eq!(app.state_json()["mode"], "open", "a drag over the pill opens the notch");
-    assert_eq!(app.active_module(), "projects", "straight onto the Projects page");
-    assert_eq!(app.state_json()["module"]["view"], "Files", "with the shelf showing");
+    assert_eq!(app.drag_zone(), Some(blink_native::app::DropZone::Projects), "with Projects lit: it is where dragged files go when there is no shelf");
     // Letting go on it attaches the file.
     let file = dir.join("notes.txt");
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(&file, b"x").unwrap();
     app.drop_files(&[file.to_string_lossy().to_string()]);
+    assert_eq!(app.active_module(), "projects", "and its page shows what was dropped");
+    assert_eq!(app.state_json()["module"]["view"], "Files");
     assert_eq!(app.state_json()["module"]["files"].as_array().unwrap().len(), 1);
     let _ = std::fs::remove_dir_all(&dir);
 }

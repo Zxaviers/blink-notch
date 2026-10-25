@@ -89,6 +89,7 @@ const en = {
   'pages.controls': 'Controls',
   'pages.music': 'Music and lyrics',
   'pages.projects': 'Projects',
+  'pages.shelf': 'Shelf (drop files, drag them out again)',
   'pages.agents': 'AI agents',
   'pages.system': 'System peeks (battery, Wi-Fi, volume\u2026)',
 
@@ -409,6 +410,7 @@ const id = {
   'pages.controls': 'Kontrol',
   'pages.music': 'Musik dan lirik',
   'pages.projects': 'Proyek',
+  'pages.shelf': 'Rak (taruh file, seret keluar lagi)',
   'pages.agents': 'Agen AI',
   'pages.system': 'Info sistem (baterai, Wi-Fi, volume\u2026)',
 

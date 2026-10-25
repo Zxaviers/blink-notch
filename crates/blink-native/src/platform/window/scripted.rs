@@ -307,6 +307,30 @@ impl Runtime {
             }
             "agent_update" | "agent_remove" | "agent_list" => return self.agent_command(&v),
             // The gestures, as the window messages would make them.
+            // Files dragged over the notch, and dropped, as the drop target would report them (screen x).
+            "drag" => {
+                self.app.drag_files(v["on"].as_bool().unwrap_or(true));
+                if let Some(x) = v["x"].as_f64() {
+                    self.app.drag_point(x as f32, 10.0);
+                }
+            }
+            "drop_at" => {
+                if let Some(x) = v["x"].as_f64() {
+                    self.app.drag_point(x as f32, 10.0);
+                }
+                let paths: Vec<String> = v["paths"].as_array().map(|a| a.iter().filter_map(|p| p.as_str().map(str::to_string)).collect()).unwrap_or_default();
+                self.app.drop_files(&paths);
+            }
+            "drag_done" => {
+                let paths: Vec<String> = v["paths"].as_array().map(|a| a.iter().filter_map(|p| p.as_str().map(str::to_string)).collect()).unwrap_or_default();
+                self.app.drag_out_end(&paths, v["accepted"].as_bool().unwrap_or(true));
+            }
+            "data_object" => {
+                // A real shell data object for these files: does it carry them the way a file drop needs?
+                let paths: Vec<String> = v["paths"].as_array().map(|a| a.iter().filter_map(|p| p.as_str().map(str::to_string)).collect()).unwrap_or_default();
+                let carries = crate::platform::dragout::data_object(&paths).is_some_and(|d| crate::platform::dragout::carries_files(&d));
+                self.effects_log.push(format!("data_object:{carries}"));
+            }
             "wheel_quick" => {
                 let taken = self.app.quick_wheel(v["notches"].as_f64().unwrap_or(1.0) as f32, v["ctrl"].as_bool().unwrap_or(false));
                 self.effects_log.push(format!("wheel_quick:{taken}"));
