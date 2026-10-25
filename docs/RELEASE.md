@@ -75,7 +75,7 @@ A checklist for the day Blink goes to someone else's PC (nothing here is automat
 - `ci.yml`: the Rust tests and a parse check of the settings page, on every push and pull request.
 - `release.yml`: pushing a tag `vX.Y.Z` (`git tag v0.3.0 && git push origin v0.3.0`) builds both programs, makes the installer, `SHA256SUMS.txt`, `Blink-setup.exe` (the same installer under a name that never changes, for the website's download button) and `latest.json`, and publishes them as a release whose notes are the changelog's section for that version. It refuses a tag that does not match the version in `Cargo.toml` and `tauri.conf.json`.
 - `pages.yml`: publishes `site/` with GitHub Pages when it changes on `main` (turn Pages on once: Settings, Pages, Source: GitHub Actions; a private repository needs a plan that has Pages).
-- **None of these has been run yet** (the repository has had no push): the first tag and the first Pages run are their test. The steps they run are the ones `make-release.ps1` and `cargo test` run here.
+- **Run for real on 2026-10-26:** `ci.yml` passed (5 minutes), `pages.yml` published the site after Pages was switched on (its first run failed because Pages was off), and `release.yml` made `v0.3.0` at the first try (7 minutes 48 seconds): the installer, `Blink-setup.exe`, `SHA256SUMS.txt` and `latest.json`. Checked afterwards from outside: the stable links (`releases/latest/download/latest.json` and `.../Blink-setup.exe`) answer, the downloaded installer's SHA-256 is the one in `latest.json`, and it installs, shows version 0.3.0 by Zxaviers in Installed apps, and uninstalls cleanly (it is not signed).
 
 ### Signing, step by step (when there is a certificate)
 
