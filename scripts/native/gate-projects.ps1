@@ -22,7 +22,7 @@ try {
   function TypeLine($text) { foreach ($ch in $text.ToCharArray()) { if ($ch -eq ' ') { Ctl @{cmd='key'; key='space'} | Out-Null } else { Ctl @{cmd='key'; key='char'; ch=[string]$ch} | Out-Null } }; Ctl @{cmd='key'; key='enter'} | Out-Null; Ctl @{cmd='advance'; ms=60} | Out-Null }
 
   $m = Ctl @{cmd='modules'}
-  Check 'projects is one of the pages (after music)' (($m.modules | ForEach-Object { $_.id }) -join ',' -eq 'clock,deadlines,controls,music,projects,shelf,agents,system') (($m.modules | ForEach-Object { $_.id }) -join ',')
+  Check 'projects is one of the pages (after music)' (($m.modules | ForEach-Object { $_.id }) -join ',' -eq 'clock,deadlines,controls,music,projects,shelf,system') (($m.modules | ForEach-Object { $_.id }) -join ',')
   Check 'the window is a drop target' ((Ctl @{cmd='state'}).window.sources.dropTarget -eq $true)
   Ctl @{cmd='mouse'; kind='move'; x=320; y=10} | Out-Null; Ctl @{cmd='advance'; ms=900} | Out-Null
   Ctl @{cmd='switch'; to='projects'} | Out-Null; Ctl @{cmd='advance'; ms=400} | Out-Null

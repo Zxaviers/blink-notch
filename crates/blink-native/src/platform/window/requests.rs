@@ -1,5 +1,5 @@
 //! What other programs ask of the running notch: the settings program (open it, reload what it changed), the
-//! installer (quit), `blinkctl` (agents) and the tour. They arrive on the notch's private pipe as one JSON line each.
+//! installer (quit) and the tour. They arrive on the notch's private pipe as one JSON line each.
 
 use super::*;
 
@@ -91,19 +91,6 @@ impl Runtime {
         )
     }
 
-    /// The agents requests (the notch pipe and the control pipe): an update, a removal, the list.
-    pub(super) fn agent_command(&mut self, v: &Value) -> Result<Value, String> {
-        let result = match v["cmd"].as_str().unwrap_or("") {
-            "agent_update" => self.app.agent_update(v),
-            "agent_remove" => self.app.agent_remove(v["id"].as_str().unwrap_or("")),
-            _ => self.app.agent_list(),
-        };
-        self.process_effects();
-        self.dirty = true;
-        self.reschedule();
-        result
-    }
-
     /// Requests from the settings program (the notch pipe). A small, fixed set.
     pub(super) fn ipc_command(&mut self, line: &str) -> String {
         let reply = match serde_json::from_str::<Value>(line) {
@@ -131,7 +118,6 @@ impl Runtime {
                     Ok(json!({}))
                 }
                 "diagnostics" => Ok(json!({ "text": self.diagnostics() })),
-                "agent_update" | "agent_remove" | "agent_list" => self.agent_command(&v),
                 "show_tour" => {
                     self.app.start_tour();
                     self.dirty = true;

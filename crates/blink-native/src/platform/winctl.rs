@@ -9,7 +9,9 @@
 
 use std::ffi::c_void;
 use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use windows::core::{Interface, GUID, HRESULT, PCWSTR};
 use windows::Devices::Radios::{Radio, RadioKind, RadioState};
@@ -36,6 +38,8 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{keybd_event, KEYEVENTF_KEYUP};
 use windows::Win32::System::Shutdown::LockWorkStation;
 use windows::Win32::UI::Shell::ShellExecuteW;
 use windows::Win32::UI::WindowsAndMessaging::{GetSystemMetrics, SM_CMONITORS, SW_SHOWNORMAL};
+
+use blink_core::sonar::Sonar;
 
 use crate::events::SystemEvent;
 use crate::modules::controls::{ControlCommand, ControlsBackend, ControlsState, Network, Output, ProjectMode};
@@ -68,6 +72,8 @@ const PKEY_DEVICE_FRIENDLY_NAME: PROPERTYKEY = PROPERTYKEY { fmtid: GUID::from_u
 pub struct WinControls {
     shared: Arc<Mutex<ControlsState>>,
     tx: Sender<ControlCommand>,
+    /// The volume the panel shows is Sonar's master (Windows' own volume events are then about one channel and are not it).
+    sonar: Arc<AtomicBool>,
 }
 
 impl WinControls {
@@ -75,8 +81,10 @@ impl WinControls {
         let shared = Arc::new(Mutex::new(ControlsState::default()));
         let (tx, rx) = channel();
         let worker_state = shared.clone();
-        let _ = std::thread::Builder::new().name("blink-controls".into()).spawn(move || worker(rx, worker_state));
-        let me = Arc::new(WinControls { shared, tx });
+        let sonar = Arc::new(AtomicBool::new(false));
+        let worker_sonar = sonar.clone();
+        let _ = std::thread::Builder::new().name("blink-controls".into()).spawn(move || worker(rx, worker_state, worker_sonar));
+        let me = Arc::new(WinControls { shared, tx, sonar });
         me.send(ControlCommand::Refresh);
         me
     }
@@ -86,8 +94,10 @@ impl WinControls {
         let mut s = self.shared.lock().unwrap_or_else(|p| p.into_inner());
         match event {
             SystemEvent::Volume { percent, muted } => {
-                s.volume = *percent;
-                s.muted = *muted;
+                if !self.sonar.load(Ordering::Relaxed) {
+                    s.volume = *percent;
+                    s.muted = *muted;
+                }
             }
             SystemEvent::Brightness { percent } => s.brightness = Some(*percent),
             SystemEvent::Wifi { connected, ssid } => {
@@ -110,11 +120,12 @@ impl ControlsBackend for WinControls {
     }
 }
 
-fn worker(rx: Receiver<ControlCommand>, shared: Arc<Mutex<ControlsState>>) {
+fn worker(rx: Receiver<ControlCommand>, shared: Arc<Mutex<ControlsState>>, sonar_flag: Arc<AtomicBool>) {
     unsafe {
         let _ = RoInitialize(RO_INIT_MULTITHREADED);
     }
     let mut ctx = Context::new();
+    ctx.look_for_sonar();
     while let Ok(first) = rx.recv() {
         // Many slider moves arrive in a burst: only the last of each kind matters.
         let mut batch = vec![first];
@@ -134,6 +145,7 @@ fn worker(rx: Receiver<ControlCommand>, shared: Arc<Mutex<ControlsState>>) {
         for c in last_volume.into_iter().chain(last_brightness).chain(rest) {
             let refresh_all = matches!(c, ControlCommand::Refresh);
             ctx.run(&c);
+            sonar_flag.store(ctx.sonar_target().is_some(), Ordering::Relaxed);
             let mut s = shared.lock().unwrap_or_else(|p| p.into_inner());
             if refresh_all {
                 *s = ctx.read_all();
@@ -146,6 +158,9 @@ fn worker(rx: Receiver<ControlCommand>, shared: Arc<Mutex<ControlsState>>) {
 
 struct Context {
     wlan: Option<HANDLE>,
+    /// Sonar's master, when SteelSeries Sonar runs in classic mode (looked for again whenever the panel is about to show).
+    sonar: Option<Sonar>,
+    sonar_looked: Option<Instant>,
 }
 
 impl Context {
@@ -153,20 +168,52 @@ impl Context {
         let mut version = 0u32;
         let mut handle = HANDLE::default();
         let wlan = (unsafe { WlanOpenHandle(2, None, &mut version, &mut handle) } == 0).then_some(handle);
-        Context { wlan }
+        Context { wlan, sonar: None, sonar_looked: None }
+    }
+
+    /// Look for Sonar through GG (at most every few seconds: most PCs have neither and the answer rarely changes).
+    fn look_for_sonar(&mut self) {
+        if self.sonar_looked.is_some_and(|t| t.elapsed() < Duration::from_secs(5)) {
+            return;
+        }
+        self.sonar_looked = Some(Instant::now());
+        self.sonar = Sonar::discover().filter(Sonar::is_classic);
+    }
+
+    /// Sonar's master, when the sound goes through Sonar: its virtual output is the default one. Anything else is Windows' volume.
+    fn sonar_target(&self) -> Option<&Sonar> {
+        self.sonar.as_ref().filter(|_| default_output_name().is_some_and(|n| n.contains("Sonar")))
+    }
+
+    /// The volume and mute the panel shows.
+    fn volume(&self) -> Option<(u8, bool)> {
+        self.sonar_target().and_then(Sonar::master).or_else(read_volume)
+    }
+
+    fn set_level(&self, percent: u8) {
+        match self.sonar_target() {
+            Some(s) if s.set_volume(percent) => {
+                // Raising the volume of a muted output is a request to hear it.
+                if percent > 0 {
+                    let _ = s.set_muted(false);
+                }
+            }
+            _ => set_volume(percent),
+        }
     }
 
     fn run(&mut self, c: &ControlCommand) {
         unsafe {
             match c {
-                ControlCommand::SetVolume(v) => set_volume(*v),
+                ControlCommand::SetVolume(v) => self.set_level(*v),
                 ControlCommand::VolumeStep(d) => {
-                    if let Some((v, _)) = read_volume() {
-                        set_volume((i16::from(v) + i16::from(*d)).clamp(0, 100) as u8);
+                    if let Some((v, _)) = self.volume() {
+                        self.set_level((i16::from(v) + i16::from(*d)).clamp(0, 100) as u8);
                     }
                 }
                 ControlCommand::ToggleMute => {
-                    if let Some(ep) = default_endpoint() {
+                    let by_sonar = self.sonar_target().and_then(|s| s.set_muted(!s.master()?.1).then_some(())).is_some();
+                    if let Some(ep) = default_endpoint().filter(|_| !by_sonar) {
                         if let Ok(m) = ep.GetMute() {
                             let _ = ep.SetMute(!m.as_bool(), std::ptr::null());
                         }
@@ -193,7 +240,8 @@ impl Context {
                 ControlCommand::Snip => open_uri("ms-screenclip:"),
                 ControlCommand::OpenSettings => open_uri("ms-settings:"),
                 ControlCommand::WifiSettings => open_uri("ms-settings:network-wifi"),
-                ControlCommand::Refresh | ControlCommand::ShowPage(_) => {}
+                ControlCommand::Refresh => self.look_for_sonar(),
+                ControlCommand::ShowPage(_) => {}
             }
         }
     }
@@ -202,14 +250,14 @@ impl Context {
     fn read_after(&mut self, c: &ControlCommand, s: &mut ControlsState) {
         match c {
             ControlCommand::SetVolume(_) | ControlCommand::VolumeStep(_) | ControlCommand::ToggleMute => {
-                if let Some((v, m)) = read_volume() {
+                if let Some((v, m)) = self.volume() {
                     s.volume = v;
                     s.muted = m;
                 }
             }
             ControlCommand::SetOutput(_) => {
                 s.outputs = read_outputs();
-                if let Some((v, m)) = read_volume() {
+                if let Some((v, m)) = self.volume() {
                     s.volume = v;
                     s.muted = m;
                 }
@@ -238,7 +286,7 @@ impl Context {
     }
 
     fn read_all(&mut self) -> ControlsState {
-        let (volume, muted) = read_volume().unwrap_or((0, false));
+        let (volume, muted) = self.volume().unwrap_or((0, false));
         ControlsState {
             volume,
             muted,
@@ -375,6 +423,16 @@ fn open_profile_xml(ssid: &str) -> String {
 
 unsafe fn enumerator() -> Option<IMMDeviceEnumerator> {
     CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).ok()
+}
+
+/// The friendly name of the default output.
+fn default_output_name() -> Option<String> {
+    unsafe {
+        let device = enumerator()?.GetDefaultAudioEndpoint(eRender, eConsole).ok()?;
+        let store = device.OpenPropertyStore(STGM_READ).ok()?;
+        let value = store.GetValue(&PKEY_DEVICE_FRIENDLY_NAME).ok()?;
+        PropVariantToStringAlloc(&value).ok()?.to_string().ok()
+    }
 }
 
 unsafe fn default_endpoint() -> Option<IAudioEndpointVolume> {

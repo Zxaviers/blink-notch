@@ -1041,34 +1041,6 @@ impl App {
         self.refresh_panel_height();
     }
 
-    /// An agent (or any program) reports its state: the Agents page takes it and may ask for a peek.
-    pub fn agent_update(&mut self, v: &Value) -> Result<Value, String> {
-        let wall = self.clock.wall_ms();
-        let Some(i) = self.slots.iter().position(|s| s.module.id() == "agents") else { return Err("NO_AGENTS_PAGE".to_string()) };
-        // With the page off, reports are taken and dropped: an agent that is connected must not be told off for it.
-        if !self.slots[i].enabled {
-            return Ok(serde_json::json!({ "ignored": true }));
-        }
-        let module = self.slots[i].module.as_any_mut().downcast_mut::<crate::modules::agents::AgentsModule>().ok_or("NO_AGENTS_PAGE")?;
-        let effects = module.apply_update(v, wall)?;
-        self.apply_module_effects(i, effects);
-        self.update_rest_style();
-        Ok(serde_json::json!({}))
-    }
-
-    pub fn agent_remove(&mut self, id: &str) -> Result<Value, String> {
-        let module = self.module_mut::<crate::modules::agents::AgentsModule>().ok_or("NO_AGENTS_PAGE")?;
-        let removed = module.remove(id);
-        self.update_rest_style();
-        Ok(serde_json::json!({ "removed": removed }))
-    }
-
-    pub fn agent_list(&mut self) -> Result<Value, String> {
-        let wall = self.clock.wall_ms();
-        let module = self.module_mut::<crate::modules::agents::AgentsModule>().ok_or("NO_AGENTS_PAGE")?;
-        Ok(serde_json::json!({ "agents": module.list_json(wall) }))
-    }
-
     /// Whether no window is in front (the desktop with its icons, or the taskbar): a song playing then shows
     /// on the notch with its lyrics until a window comes up.
     pub fn set_desktop(&mut self, showing: bool) {

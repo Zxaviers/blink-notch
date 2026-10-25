@@ -519,7 +519,9 @@ impl Runtime {
                         // Modal: the mouse carries the files until the button is let go. Messages for this window that arrive
                         // meanwhile are ignored (the runtime is busy), including its own drop target seeing the drag.
                         self.app.drag_out_begin();
-                        let accepted = super::dragout::drag_out(&paths);
+                        let (accepted, how) = super::dragout::drag_out(&paths);
+                        // What the last carry came to, for finding out why a drag was refused.
+                        let _ = self.store.write_atomic("dragout.log", how.as_bytes());
                         self.app.drag_out_end(&paths, accepted);
                     }
                 }
@@ -1240,7 +1242,6 @@ pub fn run(opts: Options) -> Result<(), String> {
         Box::new(MusicModule::new(media_backend, lyrics_source, media_wake)),
         Box::new(ProjectsModule::new(Store::new(store.dir()), clock.wall_ms())),
         Box::new(crate::modules::shelf::ShelfModule::new(Store::new(store.dir()))),
-        Box::new(crate::modules::agents::AgentsModule::new()),
         Box::new(SystemModule::new()),
     ];
     let mut app = App::new(clock, settings, tz, scale, &system_language(), modules)?;

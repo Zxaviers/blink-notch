@@ -19,12 +19,10 @@ const BRONE_EXPORT_URL = 'https://brone.ub.ac.id/calendar/export.php'
 
 const SCOPES = {
   deadlines: ['feeds', 'notifications', 'events', 'pill'],
-  app: ['display', 'pages', 'weather', 'music', 'agents', 'general']
+  app: ['display', 'pages', 'weather', 'music', 'general']
 }
 /** The pages Blink knows, in the order they turn by default. */
-const PAGE_IDS = ['clock', 'deadlines', 'controls', 'music', 'projects', 'shelf', 'agents', 'system']
-/** Pages that start switched off (they appear once something needs them). */
-const OFF_BY_DEFAULT = ['agents']
+const PAGE_IDS = ['clock', 'deadlines', 'controls', 'music', 'projects', 'shelf', 'system']
 const scopeOf = (name) => (SCOPES.deadlines.includes(name) ? 'deadlines' : 'app')
 
 const nav = document.getElementById('nav')
@@ -62,7 +60,7 @@ function hostModules () {
     seen.add(m.id)
     list.push({ id: m.id, enabled: m.enabled !== false, options: m.options && typeof m.options === 'object' ? m.options : {} })
   }
-  for (const id of PAGE_IDS) if (!seen.has(id)) list.push({ id, enabled: !OFF_BY_DEFAULT.includes(id), options: {} })
+  for (const id of PAGE_IDS) if (!seen.has(id)) list.push({ id, enabled: true, options: {} })
   return list
 }
 
@@ -75,11 +73,6 @@ async function saveHost (modules, extra = {}) {
   }
   api.emit('host-changed')
   return true
-}
-
-/** Switch a page on (connecting an app is a reason to show the page that shows it). */
-function enablePage (id) {
-  return saveHost(hostModules().map((m) => (m.id === id ? { ...m, enabled: true } : m)))
 }
 
 const optionsOf = (id) => hostModules().find((m) => m.id === id)?.options ?? {}
@@ -597,171 +590,6 @@ function musicSection () {
       t('music.peek')))
 }
 
-/** Agents reporting to the notch right now, refreshed while the page is open: the proof, in plain sight, that a connection works. */
-let agentsTimer = null
-
-function stopAgentsTimer () {
-  if (agentsTimer) {
-    clearInterval(agentsTimer)
-    agentsTimer = null
-  }
-}
-
-function liveAgents () {
-  const box = h('div', { class: 'live' })
-  const paint = (answer) => {
-    clear(box)
-    if (!answer.running) {
-      box.append(h('p', { class: 'hint' }, t('agents.live.off')))
-      return
-    }
-    if (!answer.agents.length) {
-      box.append(h('p', { class: 'hint' }, t('agents.live.none')))
-      return
-    }
-    box.append(h('p', { class: 'label' }, t('agents.live.title')), ...answer.agents.map((a) => h('div', { class: 'live-row' },
-      h('span', { class: `dot ${a.state}` }),
-      h('span', { class: 'name' }, a.name),
-      h('span', { class: 'meta' }, `${t(`agents.state.${a.state}`)}${a.title ? ` \u00b7 ${a.title}` : ''}`))))
-  }
-  const tick = () => api.agentsNow().then(paint).catch(() => {})
-  tick()
-  stopAgentsTimer()
-  agentsTimer = setInterval(tick, 3000)
-  return box
-}
-
-/**
- * The agents Blink can connect to, in plain words: the ones found on this PC come first, each with one button; the rest wait under
- * "other apps". Filled in when the answer comes.
- */
-function connectorsUi (out) {
-  const found = h('div', { class: 'connectors' }, h('p', { class: 'hint' }, t('connectors.loading')))
-  const other = h('div', { class: 'connectors' })
-  const allButton = h('button', { class: 'btn primary', type: 'button', hidden: true }, t('connectors.all'))
-  const errorOf = (e) => (typeof e === 'string' && e === 'BLINKCTL_MISSING' ? t('connectors.missing') : String(e))
-  const copy = async (text) => {
-    try {
-      await navigator.clipboard.writeText(text)
-      out.set('ok', t('general.diagnostics.done'))
-    } catch {
-      out.set('error', t('general.diagnostics.failed'))
-    }
-  }
-  const reload = () => api.connectorsList().then((list) => {
-    clear(found)
-    clear(other)
-    const here = list.filter((c) => c.installable && (c.found || c.connected))
-    const rest = list.filter((c) => !here.includes(c))
-    const todo = here.filter((c) => !c.connected)
-    allButton.hidden = todo.length < 2
-    allButton.onclick = async () => {
-      for (const c of todo) {
-        try {
-          await api.connectorSet(c.id, true)
-          await enablePage('agents')
-        } catch (e) {
-          out.set('error', `${c.name}: ${errorOf(e)}`)
-        }
-      }
-      reload()
-    }
-    if (!here.length) found.append(h('p', { class: 'hint' }, t('connectors.none')))
-    const card = (c, big) => {
-      const state = c.connected ? 'connected' : c.found ? 'found' : c.installable ? 'absent' : 'copy'
-      const buttons = []
-      if (c.installable && (c.found || c.connected)) {
-        buttons.push(h('button', {
-          class: c.connected ? 'btn' : 'btn primary', type: 'button',
-          onclick: async () => {
-            try {
-              out.set('ok', '')
-              await api.connectorSet(c.id, !c.connected)
-              if (!c.connected) await enablePage('agents')
-              out.set('ok', t(c.connected ? 'connectors.disconnected' : 'connectors.connected', { name: c.name }))
-            } catch (e) {
-              out.set('error', errorOf(e))
-            }
-            reload()
-          }
-        }, t(c.connected ? 'connectors.disconnect' : 'connectors.connect')))
-      }
-      // Copying is for what Blink cannot write for the person: an app that is not here, or a way with nothing to connect.
-      if (c.snippet && !(c.installable && (c.found || c.connected))) buttons.push(h('button', { class: 'btn', type: 'button', onclick: () => copy(c.snippet) }, t('connectors.copy')))
-      if (c.docs && !big) buttons.push(h('button', { class: 'btn', type: 'button', onclick: () => api.openUrl(c.docs).catch(() => {}) }, t('connectors.docs')))
-      return h('div', { class: `connector ${state}` },
-        h('div', { class: 'connector-head' },
-          h('span', { class: 'name' }, c.name),
-          h('span', { class: `badge ${state}` }, t(`connectors.state.${state}`)),
-          !c.verified && c.installable && h('span', { class: 'badge', title: t('connectors.unverified') }, t('connectors.experimental')),
-          c.user && h('span', { class: 'badge' }, t('connectors.yours'))),
-        c.connected && c.after ? h('p', { class: 'next' }, c.after) : h('p', { class: 'meta' }, c.description),
-        h('div', { class: 'inline' }, buttons))
-    }
-    here.forEach((c) => found.append(card(c, true)))
-    rest.forEach((c) => other.append(card(c, false)))
-  }).catch((e) => { clear(found).append(h('p', { class: 'status error' }, errorOf(e))) })
-  reload()
-  return { found, other, allButton }
-}
-
-/** AI agents: see what they are doing from the notch. Connect the apps with one button each; the rest is for those who want it. */
-function agentsSection () {
-  const options = optionsOf('agents')
-  const out = status()
-  const ui = connectorsUi(out)
-  const example = [
-    'blinkctl agent --id claude-1 --name "Claude Code" --state running --title "Refactor the parser"',
-    'blinkctl agent --id claude-1 --state input --title "Run the tests?"',
-    'blinkctl agent --id claude-1 --state done --title "Finished"',
-    'blinkctl agent --id claude-1 --remove'
-  ].join('\n')
-  return h('section', {},
-    h('h1', {}, t('agents.title')),
-    h('p', {}, t('agents.intro')),
-    liveAgents(),
-    h('h2', {}, t('connectors.title')),
-    ui.allButton,
-    ui.found,
-    out,
-    h('details', { class: 'more' },
-      h('summary', {}, t('connectors.more')),
-      h('p', { class: 'hint' }, t('connectors.more.hint')),
-      ui.other),
-    h('details', { class: 'more' },
-      h('summary', {}, t('agents.try')),
-      h('p', {}, t('agents.try.hint')),
-      h('div', { class: 'inline' },
-        h('button', {
-          class: 'btn primary', type: 'button',
-          onclick: async () => {
-            try {
-              await api.agentDemo('running', t('agents.try.running'))
-              setTimeout(() => api.agentDemo('input', t('agents.try.input')).catch(() => {}), 4000)
-              setTimeout(() => api.agentDemo('done', t('agents.try.done')).catch(() => {}), 11000)
-              out.set('ok', t('agents.try.started'))
-            } catch {
-              out.set('error', t('general.tour.failed'))
-            }
-          }
-        }, t('agents.try')),
-        h('button', { class: 'btn', type: 'button', onclick: () => api.agentDemo('', '', true).catch(() => {}) }, t('agents.try.remove')))),
-    h('details', { class: 'more' },
-      h('summary', {}, t('agents.options')),
-      h('label', { class: 'check' },
-        h('input', { type: 'checkbox', checked: options.accept !== false, onchange: (e) => setOptions('agents', { accept: e.target.checked }) }),
-        t('agents.accept')),
-      h('p', { class: 'hint' }, t('agents.accept.hint')),
-      h('label', { class: 'check' },
-        h('input', { type: 'checkbox', checked: options.peek !== false, onchange: (e) => setOptions('agents', { peek: e.target.checked }) }),
-        t('agents.peek'))),
-    h('details', { class: 'more' },
-      h('summary', {}, t('agents.example')),
-      h('pre', { class: 'code' }, example),
-      h('button', { class: 'btn', type: 'button', onclick: async () => { try { await navigator.clipboard.writeText(example); out.set('ok', t('general.diagnostics.done')) } catch { out.set('error', t('general.diagnostics.failed')) } } }, t('agents.copy')),
-      h('p', { class: 'hint' }, t('agents.docs'))))
-}
-
 function eventsSection () {
   const out = status()
   const title = h('input', { type: 'text', class: 'wide', maxlength: 120 })
@@ -935,7 +763,6 @@ const BUILDERS = {
   pages: pagesSection,
   weather: weatherSection,
   music: musicSection,
-  agents: agentsSection,
   general: generalSection
 }
 
@@ -961,7 +788,6 @@ function openSection (name) {
 }
 
 function renderMain () {
-  stopAgentsTimer()
   clear(main).append(BUILDERS[section]())
 }
 

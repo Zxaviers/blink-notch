@@ -642,7 +642,7 @@ impl DeadlinesModule {
                 vec![Effect::RefreshFeeds]
             }
             Action::OpenSettings => vec![Effect::OpenSettings],
-            Action::Control(_) | Action::Music(_) | Action::Project(_) | Action::Agent(_) | Action::Shelf(_) => Vec::new(),
+            Action::Control(_) | Action::Music(_) | Action::Project(_) | Action::Shelf(_) => Vec::new(),
         }
     }
 
@@ -757,7 +757,6 @@ impl Module for DeadlinesModule {
             Some(Action::Control(_)) => "Control".to_string(),
             Some(Action::Music(_)) => "Music".to_string(),
             Some(Action::Project(_)) => "Project".to_string(),
-            Some(Action::Agent(_)) => "Agent".to_string(),
             Some(Action::Shelf(_)) => "Shelf".to_string(),
             None => String::new(),
         };

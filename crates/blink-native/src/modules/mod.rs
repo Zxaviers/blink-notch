@@ -2,7 +2,6 @@
 //! animation and which module is on top; a module owns one kind of content
 //! (deadlines first; a timer, media, system peeks later).
 
-pub mod agents;
 pub mod clock;
 pub mod controls;
 pub mod deadlines;
@@ -105,7 +104,6 @@ pub enum Action {
     Control(controls::ControlCommand),
     Music(music::MusicAction),
     Project(projects::ProjectAction),
-    Agent(agents::AgentAction),
     Shelf(shelf::ShelfAction),
 }
 

@@ -151,115 +151,6 @@ fn open_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
     app.opener().open_url(url, None::<&str>).map_err(|_| "OPEN".to_string())
 }
 
-// ------------------------------------------------------------------ connectors
-
-/// Where `blinkctl.exe` is: next to this program.
-fn connector_ctx() -> Result<blink_core::connectors::Ctx, String> {
-    let ctl = stable_blinkctl()?;
-    Ok(blink_core::connectors::Ctx::new(ctl.clone(), short_path(&ctl)))
-}
-
-/// `blinkctl.exe` is copied to a folder of its own in Blink's data (kept up to date), and agents are pointed at that copy: a
-/// connected agent keeps working when Blink is updated, moved or rebuilt, which a path into the program's own folder would not.
-fn stable_blinkctl() -> Result<std::path::PathBuf, String> {
-    let source = std::env::current_exe().map_err(|_| "BLINKCTL_MISSING")?.with_file_name("blinkctl.exe");
-    if !source.exists() {
-        return Err("BLINKCTL_MISSING".to_string());
-    }
-    let dir = store()?.dir().join("bin");
-    let _ = std::fs::create_dir_all(&dir);
-    let copy = dir.join("blinkctl.exe");
-    let current = std::fs::metadata(&copy).ok().zip(std::fs::metadata(&source).ok()).is_some_and(|(c, s)| c.len() == s.len() && c.modified().ok() >= s.modified().ok());
-    if !current {
-        // A copy an agent is running right now cannot be replaced: then the one there is used.
-        let _ = std::fs::copy(&source, &copy);
-    }
-    Ok(if copy.exists() { copy } else { source })
-}
-
-/// The 8.3 form of a path, when Windows has one (a hook command without a space in it runs the same in any shell).
-fn short_path(path: &std::path::Path) -> Option<String> {
-    use std::os::windows::ffi::OsStrExt;
-    use windows::core::PCWSTR;
-    use windows::Win32::Storage::FileSystem::GetShortPathNameW;
-    let wide: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
-    let mut buf = vec![0u16; 1024];
-    let n = unsafe { GetShortPathNameW(PCWSTR(wide.as_ptr()), Some(&mut buf)) } as usize;
-    (n > 0 && n < buf.len()).then(|| String::from_utf16_lossy(&buf[..n]))
-}
-
-fn connectors() -> Result<Vec<blink_core::connectors::Connector>, String> {
-    let dir = store()?.dir().join("connectors");
-    Ok(blink_core::connectors::all(Some(&dir)))
-}
-
-/// The agents Blink can connect to, with whether each is on this PC and already connected.
-#[tauri::command]
-fn connectors_list() -> Result<Vec<Value>, String> {
-    use blink_core::connectors::{status, Install};
-    let ctx = connector_ctx().ok();
-    Ok(connectors()?
-        .iter()
-        .map(|c| {
-            let st = status(c);
-            let kind = match &c.install {
-                Install::JsonHooks { .. } => "hooks",
-                Install::JsonMcp { .. } => "mcp",
-                Install::File { .. } => "plugin",
-                Install::Snippet { .. } => "copy",
-            };
-            json!({
-                "id": c.id, "name": c.name, "description": c.description, "verified": c.verified, "docs": c.docs, "kind": kind,
-                "user": c.user, "installable": c.installable(), "found": st.found, "connected": st.connected,
-                "after": c.after, "target": st.target.map(|t| t.to_string_lossy().to_string()),
-                "snippet": ctx.as_ref().and_then(|x| c.snippet(x)),
-            })
-        })
-        .collect())
-}
-
-/// Which agents are reporting to the notch right now (for the page to show that a connection works).
-#[tauri::command]
-async fn agents_now() -> Value {
-    tauri::async_runtime::spawn_blocking(|| match ipc::request(&json!({ "cmd": "agent_list" })) {
-        Ok(answer) => json!({ "running": true, "agents": answer["agents"] }),
-        Err(_) => json!({ "running": false, "agents": [] }),
-    })
-    .await
-    .unwrap_or_else(|_| json!({ "running": false, "agents": [] }))
-}
-
-/// Connect (write what the connector says) or disconnect one agent; the answer says what was changed.
-#[tauri::command]
-fn connector_set(id: String, on: bool) -> Result<String, String> {
-    let all = connectors()?;
-    let c = all.iter().find(|c| c.id == id).ok_or("UNKNOWN_CONNECTOR")?;
-    if on {
-        blink_core::connectors::connect(c, &connector_ctx()?)
-    } else {
-        blink_core::connectors::disconnect(c)
-    }
-}
-
-/// Send the notch a pretend agent, so the Agents page can be tried without any real agent (`remove` takes it away again).
-#[tauri::command]
-async fn agent_demo(state: String, title: String, remove: bool) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let request = if remove {
-            json!({ "cmd": "agent_remove", "id": "demo-agent" })
-        } else {
-            json!({ "cmd": "agent_update", "id": "demo-agent", "name": "Demo agent", "state": state, "title": title })
-        };
-        match ipc::request(&request) {
-            Ok(_) => Ok(()),
-            Err(IpcError::NotRunning) => Err("NOT_RUNNING".to_string()),
-            Err(IpcError::Failed(code)) => Err(code),
-        }
-    })
-    .await
-    .map_err(|_| "NOT_RUNNING".to_string())?
-}
-
 /// Ask the running notch to show its welcome tour again.
 #[tauri::command]
 async fn show_tour() -> Result<(), String> {
@@ -419,10 +310,6 @@ fn main() {
             diagnostics,
             weather_find,
             show_tour,
-            agent_demo,
-            connectors_list,
-            connector_set,
-            agents_now,
             clipboard_text,
         ])
         // Closing the window ends the program, so no web engine stays behind.

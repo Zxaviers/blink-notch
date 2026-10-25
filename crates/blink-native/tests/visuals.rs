@@ -30,7 +30,7 @@ fn rig() -> (App, Arc<FakeMedia>, Arc<Spectrum>) {
 
 #[test]
 fn the_bars_stand_as_high_as_the_sound_and_fall_back_to_a_beat_when_it_cannot_be_heard() {
-    let (mut app, _media, spectrum) = rig();
+    let (app, _media, spectrum) = rig();
     // The capture is not working: a plain beat, never all flat while a song plays.
     let beat = app.bar_levels(1_000);
     assert!(beat.iter().any(|l| *l > 0.0));

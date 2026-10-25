@@ -280,14 +280,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "blink-cli"
-version = "0.2.0"
-dependencies = [
- "blink-core",
- "serde_json",
-]
-
-[[package]]
 name = "blink-core"
 version = "0.2.0"
 dependencies = [

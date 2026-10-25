@@ -305,7 +305,6 @@ impl Runtime {
                 };
                 self.refresh_fullscreen();
             }
-            "agent_update" | "agent_remove" | "agent_list" => return self.agent_command(&v),
             // The gestures, as the window messages would make them.
             // Files dragged over the notch, and dropped, as the drop target would report them (screen x).
             "drag" => {

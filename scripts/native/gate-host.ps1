@@ -17,7 +17,7 @@ try {
 
   'modules and the pill'
   $m = Ctl @{cmd='modules'}
-  Check 'the clock, deadlines, controls, music and the system peeks are on, in that order' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'clock:True,deadlines:True,controls:True,music:True,projects:True,shelf:True,agents:False,system:True') (($m.modules | ConvertTo-Json -Compress))
+  Check 'the clock, deadlines, controls, music and the system peeks are on, in that order' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'clock:True,deadlines:True,controls:True,music:True,projects:True,shelf:True,system:True') (($m.modules | ConvertTo-Json -Compress))
   Check 'the nearest deadline owns the pill' ($m.restOwner -eq 'deadlines')
   Ctl @{cmd='settings'; patch=@{restingStyle='when-due'; dueHorizonHours=1}} | Out-Null
   # The 3 h 13 m deadline is not close once the pill's hours are 1.
@@ -38,9 +38,9 @@ try {
 
   'turning modules off from the host file'
   Ctl @{cmd='mouse'; kind='leave'} | Out-Null; Ctl @{cmd='advance'; ms=1500} | Out-Null
-  Ctl @{cmd='host'; config=@{ modules = @(@{id='clock'; enabled=$true}, @{id='deadlines'; enabled=$false}, @{id='controls'; enabled=$false}, @{id='music'; enabled=$false}, @{id='projects'; enabled=$false}, @{id='shelf'; enabled=$false}, @{id='agents'; enabled=$false}) }} | Out-Null
+  Ctl @{cmd='host'; config=@{ modules = @(@{id='clock'; enabled=$true}, @{id='deadlines'; enabled=$false}, @{id='controls'; enabled=$false}, @{id='music'; enabled=$false}, @{id='projects'; enabled=$false}, @{id='shelf'; enabled=$false}) }} | Out-Null
   $m = Ctl @{cmd='modules'}
-  Check 'the order and flags are applied' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'clock:True,deadlines:False,controls:False,music:False,projects:False,shelf:False,agents:False,system:True')
+  Check 'the order and flags are applied' (($m.modules | ForEach-Object { "$($_.id):$($_.enabled)" }) -join ',' -eq 'clock:True,deadlines:False,controls:False,music:False,projects:False,shelf:False,system:True')
   Check 'host.json was written' (Test-Path (Join-Path $data 'host.json'))
   Check 'with one module on there are no tabs and the clock owns the pill' ((St).tabs -eq $false -and $m.restOwner -eq 'clock')
   Ctl @{cmd='host'; config=@{ modules = @(@{id='clock'; enabled=$false}, @{id='deadlines'; enabled=$false}, @{id='controls'; enabled=$false}) }} | Out-Null

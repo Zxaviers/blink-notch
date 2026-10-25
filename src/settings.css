@@ -314,40 +314,6 @@ textarea {
   display: none;
 }
 
-.connector {
-  margin: 0 0 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-.connector-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-.connector .name {
-  font-weight: 600;
-}
-.connector .meta {
-  margin: 0 0 6px;
-}
-.badge {
-  padding: 1px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  font-size: 0.74rem;
-  color: var(--dim);
-}
-.badge.connected {
-  color: #34d399;
-  border-color: #34d399;
-}
-.badge.found {
-  color: var(--brand);
-  border-color: var(--brand);
-}
-
 .swatches {
   display: flex;
   flex-wrap: wrap;
@@ -397,26 +363,8 @@ textarea {
   user-select: all;
 }
 
-.connector.connected {
-  border-color: #34d399;
-}
-.connector .next {
-  margin: 0 0 8px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  background: var(--line);
-}
 .live {
   margin: 0 0 14px;
-}
-.live-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-}
-.live-row .meta {
-  color: var(--dim);
 }
 .dot {
   width: 9px;

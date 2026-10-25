@@ -150,7 +150,6 @@ Section "Install"
 
   File "${BINDIR}\blink.exe"
   File "${BINDIR}\blink-settings.exe"
-  File "${BINDIR}\blinkctl.exe"
   WriteUninstaller "$INSTDIR\uninstall.exe"
 
   CreateDirectory "$SMPROGRAMS\${APP}"

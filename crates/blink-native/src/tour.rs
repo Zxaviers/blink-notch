@@ -24,7 +24,7 @@ pub struct Card {
     pub icon: Icon,
 }
 
-pub const STEPS: usize = 4;
+pub const STEPS: usize = 3;
 
 pub fn card(step: usize, lang: Lang) -> Card {
     let id = lang == Lang::Id;
@@ -47,7 +47,7 @@ pub fn card(step: usize, lang: Lang) -> Card {
             },
             icon: Icon::Gear,
         },
-        2 => Card {
+        _ => Card {
             title: if id { "Musik, file, dan lainnya" } else { "Music, files and more" },
             body: if id {
                 "Lagu yang diputar muncul di sini beserta liriknya; pin menahan notch tetap terbuka. Seret file ke notch: lepas di Rak untuk menyimpannya sebentar lalu seret keluar ke aplikasi lain, atau di Proyek. Baterai, Wi-Fi, dan volume muncul sebagai intip singkat."
@@ -55,15 +55,6 @@ pub fn card(step: usize, lang: Lang) -> Card {
                 "A song that plays shows up with its lyrics; the pin keeps the notch open. Drag a file onto me: drop it on the Shelf to keep it for a moment and drag it out to another app, or on Projects. Battery, Wi-Fi and volume show up as short peeks."
             },
             icon: Icon::Music,
-        },
-        _ => Card {
-            title: if id { "Asisten AI" } else { "AI assistants" },
-            body: if id {
-                "Pakai Claude Code, Gemini, Cursor atau asisten AI lain? Buka Pengaturan Blink (tiga titik), lalu Agen, dan tekan Hubungkan. Setelah itu aku memberi tahu saat ia bekerja, butuh kamu, atau selesai."
-            } else {
-                "Using Claude Code, Gemini, Cursor or another AI assistant? Open Blink settings (the three dots), then Agents, and press Connect. After that I tell you when it is working, needs you, or has finished."
-            },
-            icon: Icon::Message,
         },
     }
 }
