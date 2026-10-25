@@ -88,6 +88,9 @@ pub struct App {
     tour: Option<usize>,
     /// Where the tour's buttons are (window coordinates), from the last frame.
     tour_hits: Vec<(f32, f32, f32, f32, crate::tour::TourButton)>,
+    /// Sideways scroll gathered so far, and when a page may be turned again (a touchpad swipe sends many small steps).
+    swipe: f32,
+    swipe_locked_until: u64,
     /// No window is in front: the desktop (or the taskbar) is.
     desktop: bool,
     /// When the desktop came to the front (the notch waits a moment before opening for it).
@@ -144,6 +147,8 @@ impl App {
             look: Look::default(),
             tour: None,
             tour_hits: Vec::new(),
+            swipe: 0.0,
+            swipe_locked_until: 0,
             desktop: false,
             desktop_since: 0,
             live_on: false,
@@ -807,6 +812,61 @@ impl App {
 
     pub fn look(&self) -> Look {
         self.look
+    }
+
+    /// Whether a point (window coordinates) is on the notch as it is drawn now.
+    pub fn notch_contains(&self, x: f32, y: f32) -> bool {
+        let shape = self.shell.shape(self.clock.now_ms());
+        let sx = (WINDOW_W - shape.w) / 2.0;
+        x >= sx && x < sx + shape.w && y >= 0.0 && y < shape.h
+    }
+
+    /// The wheel over the notch while it is not open: the volume (with Ctrl, the brightness). True when it was taken.
+    pub fn quick_wheel(&mut self, notches: f32, ctrl: bool) -> bool {
+        if self.shell.mode() == Mode::Open || notches == 0.0 || self.tour.is_some() {
+            return false;
+        }
+        let Some(controls) = self.module_mut::<crate::modules::controls::ControlsModule>() else { return false };
+        let up = notches > 0.0;
+        if ctrl {
+            if let Some(now) = controls.brightness() {
+                let next = (i16::from(now) + if up { 5 } else { -5 }).clamp(0, 100) as u8;
+                controls.quick(crate::modules::controls::ControlCommand::SetBrightness(next));
+            }
+        } else {
+            controls.quick(crate::modules::controls::ControlCommand::VolumeStep(if up { 4 } else { -4 }));
+        }
+        true
+    }
+
+    /// A middle click on the notch while it is not open: play or pause what is playing. True when something was.
+    pub fn middle_click(&mut self) -> bool {
+        if self.shell.mode() == Mode::Open {
+            return false;
+        }
+        let wall = self.clock.wall_ms();
+        self.module_mut::<crate::modules::music::MusicModule>().is_some_and(|m| m.quick_play_pause(wall))
+    }
+
+    /// Sideways scroll (a two-finger swipe on a touchpad) over the open notch turns the page, once per swipe.
+    pub fn swipe(&mut self, delta: f32) {
+        let now = self.clock.now_ms();
+        if self.shell.mode() != Mode::Open || self.tour.is_some() {
+            self.swipe = 0.0;
+            return;
+        }
+        // The tail of a swipe that already turned a page is thrown away, so it does not run on through the pages.
+        if now < self.swipe_locked_until {
+            self.swipe = 0.0;
+            return;
+        }
+        self.swipe += delta;
+        if self.swipe.abs() >= 1.0 {
+            let direction = if self.swipe > 0.0 { 1 } else { -1 };
+            self.swipe = 0.0;
+            self.swipe_locked_until = now + 600;
+            self.switch_by(direction);
+        }
     }
 
     /// Show the welcome tour: the notch opens by itself on the first card and stays until the tour is finished or skipped.

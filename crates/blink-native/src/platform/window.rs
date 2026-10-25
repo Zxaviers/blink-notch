@@ -36,7 +36,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
     RegisterClassExW, SetTimer, ShowWindow, SystemParametersInfoW, TranslateMessage, UpdateLayeredWindow, WindowFromPoint, CS_HREDRAW,
     CS_VREDRAW, GWL_EXSTYLE, IDC_ARROW, MSG, PM_REMOVE, QS_ALLINPUT, SPI_GETCLIENTAREAANIMATION, SW_SHOWNOACTIVATE, SW_SHOWNORMAL,
     ULW_ALPHA, EVENT_SYSTEM_FOREGROUND, SW_HIDE, WINEVENT_OUTOFCONTEXT, WM_ACTIVATE, WM_CHAR, WM_DESTROY, WM_DISPLAYCHANGE, WM_DPICHANGED, WM_ERASEBKGND, WM_HOTKEY, WM_KEYDOWN,
-    WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_QUIT, WM_SETTINGCHANGE, WM_TIMER, WNDCLASSEXW,
+    WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MOUSEACTIVATE, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_QUIT, WM_SETTINGCHANGE, WM_TIMER, WNDCLASSEXW,
     WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
 };
 
@@ -842,8 +842,26 @@ impl Runtime {
                 // The wheel message carries screen coordinates.
                 let x = (lo(lparam.0) - self.origin.0) as f32 / scale;
                 let y = (hi(lparam.0) - self.origin.1) as f32 / scale;
-                self.app.pointer(PointerKind::Wheel(notches * WHEEL_STEP), x, y);
+                // Over a notch that is not open the wheel is a gesture (volume; with Ctrl, brightness).
+                let ctrl = lo(wparam.0 as isize) & 0x0008 != 0;
+                if !self.app.quick_wheel(notches, ctrl) {
+                    self.app.pointer(PointerKind::Wheel(notches * WHEEL_STEP), x, y);
+                }
                 self.after();
+            }
+            // Sideways scroll (a two-finger swipe): the next or the previous page.
+            0x020E => {
+                self.app.swipe(hi(wparam.0 as isize) as f32 / 120.0);
+                self.after();
+            }
+            // A middle click on the pill: play or pause.
+            WM_MBUTTONDOWN => {
+                self.app.middle_click();
+                self.after();
+            }
+            // A right click on the notch: the same menu as the tray icon.
+            0x0205 => {
+                self.context_menu();
             }
             WM_KEYDOWN => {
                 let key = match wparam.0 as u32 {

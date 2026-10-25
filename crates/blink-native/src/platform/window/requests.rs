@@ -6,6 +6,25 @@ use super::*;
 impl Runtime {
     /// The settings program is a separate executable next to this one (Phase 4).
     /// Open the settings program, on one of its sections (`feeds` for the deadlines, `general` for Blink).
+    /// The menu of the tray icon, at the pointer. In a scripted run it is only noted, since an OS menu would wait for a click.
+    pub(super) fn context_menu(&mut self) {
+        if self.control {
+            self.effects_log.push("context_menu".to_string());
+            return;
+        }
+        // The menu needs the foreground to close when clicking elsewhere; the app that had it gets it back afterwards.
+        let before = unsafe { windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow() };
+        let cmd = tray::show_menu(self.hwnd, &self.menu_labels(), self.paused);
+        if cmd != 0 {
+            self.tray_command(cmd);
+        }
+        if !before.0.is_null() && before != self.hwnd {
+            unsafe {
+                let _ = windows::Win32::UI::WindowsAndMessaging::SetForegroundWindow(before);
+            }
+        }
+    }
+
     pub(super) fn open_settings(&mut self, section: &str) {
         let path = std::env::var_os("BLINK_SETTINGS_EXE")
             .map(std::path::PathBuf::from)

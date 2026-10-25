@@ -109,6 +109,14 @@ try {
   Check 'Escape ends it and the notch closes again' ($null -eq $s.tour -and $s.mode -eq 'rest') "mode=$($s.mode) tour=$($s.tour)"
   Check 'the end was remembered' (@($esc.effects) -contains 'tour_done') ($esc | ConvertTo-Json -Compress)
 
+  'gestures'
+  $w = Ctl @{cmd='wheel_quick'; notches=1}
+  Check 'the wheel over the resting pill is taken (it changes the volume)' (@($w.effects) -contains 'wheel_quick:true') ($w | ConvertTo-Json -Compress)
+  $m = Ctl @{cmd='middle'}
+  Check 'a middle click with nothing playing does nothing' (@($m.effects) -contains 'middle:false')
+  $c = Ctl @{cmd='context_menu'}
+  Check 'a right click offers the menu' (@($c.effects) -contains 'context_menu')
+
   'drawing'
   Ctl @{cmd='mouse'; kind='move'; x=320; y=10} | Out-Null; Ctl @{cmd='advance'; ms=800} | Out-Null
   $dib = Ctl @{cmd='dibcheck'}

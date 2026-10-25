@@ -310,6 +310,15 @@ impl MusicModule {
         }
     }
 
+    /// Play or pause what is playing, without the page open (a middle click on the pill). False when nothing is open in a player.
+    pub fn quick_play_pause(&self, wall_ms: i64) -> bool {
+        if !self.backend.state().active {
+            return false;
+        }
+        self.backend.send(MediaCommand::PlayPause, wall_ms);
+        true
+    }
+
     pub fn lyrics_shown(&self) -> bool {
         self.show_lyrics
     }

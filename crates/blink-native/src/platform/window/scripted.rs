@@ -306,6 +306,17 @@ impl Runtime {
                 self.refresh_fullscreen();
             }
             "agent_update" | "agent_remove" | "agent_list" => return self.agent_command(&v),
+            // The gestures, as the window messages would make them.
+            "wheel_quick" => {
+                let taken = self.app.quick_wheel(v["notches"].as_f64().unwrap_or(1.0) as f32, v["ctrl"].as_bool().unwrap_or(false));
+                self.effects_log.push(format!("wheel_quick:{taken}"));
+            }
+            "middle" => {
+                let taken = self.app.middle_click();
+                self.effects_log.push(format!("middle:{taken}"));
+            }
+            "swipe" => self.app.swipe(v["delta"].as_f64().unwrap_or(1.0) as f32),
+            "context_menu" => self.context_menu(),
             "tour" => {
                 // The first-run tour, on demand (it starts by itself only the first time, and not in scripted runs).
                 self.app.start_tour();

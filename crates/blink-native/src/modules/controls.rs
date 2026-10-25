@@ -404,6 +404,15 @@ pub struct ControlsModule {
 }
 
 impl ControlsModule {
+    /// Do something at once without the page open: the wheel over the resting pill changes the volume.
+    pub fn quick(&self, command: ControlCommand) {
+        self.backend.send(command);
+    }
+
+    pub fn brightness(&self) -> Option<u8> {
+        self.backend.state().brightness
+    }
+
     pub fn new(backend: Arc<dyn ControlsBackend>) -> Self {
         ControlsModule {
             backend,
