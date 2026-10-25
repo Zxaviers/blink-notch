@@ -17,6 +17,8 @@ import { acceleratorFromEvent, DEFAULT_HOTKEY } from './lib/hotkey.js'
 
 const BRONE_EXPORT_URL = 'https://brone.ub.ac.id/calendar/export.php'
 
+/** Where a release's update file is (GitHub gives "latest" a link of its own, so the link never changes). */
+const DEFAULT_UPDATE_URL = 'https://github.com/Zxaviers/blink-notch/releases/latest/download/latest.json'
 /** The shelf's shortcut by default (Ctrl+Alt+V puts what you copied on the shelf). */
 const DEFAULT_SHELF_HOTKEY = 'Ctrl+Alt+V'
 const SCOPES = {
@@ -719,7 +721,7 @@ function generalSection () {
 
   const diagOut = status()
   const updateOut = status()
-  const updateBox = h('input', { type: 'text', class: 'wide', placeholder: 'https://example.org/blink/latest.json', spellcheck: 'false', value: typeof host.updateUrl === 'string' ? host.updateUrl : '' })
+  const updateBox = h('input', { type: 'text', class: 'wide', placeholder: 'https://example.org/blink/latest.json', spellcheck: 'false', value: typeof host.updateUrl === 'string' ? host.updateUrl : DEFAULT_UPDATE_URL })
   const updateLink = h('p', { class: 'hint', hidden: true })
   const tourOut = status()
   const exportOut = status()
@@ -750,7 +752,23 @@ function generalSection () {
           const answer = await api.checkUpdate(url)
           if (answer.state === 'newer') {
             updateOut.set('ok', t('general.update.newer', { v: answer.version }))
-            clear(updateLink).append(answer.notes ? `${answer.notes} ` : '', h('button', { class: 'btn', type: 'button', onclick: () => api.openUrl(answer.url).catch(() => {}) }, t('general.update.open')))
+            const buttons = []
+            // Blink installs only a file whose hash the update file gave; otherwise the person gets the page.
+            if (answer.sha256) {
+              buttons.push(h('button', {
+                class: 'btn primary', type: 'button',
+                onclick: async () => {
+                  try {
+                    updateOut.set('ok', t('general.update.installing'))
+                    await api.installUpdate(answer.url, answer.sha256, answer.version)
+                  } catch (e) {
+                    updateOut.set('error', t(`error.${typeof e === 'string' ? e : 'UPDATE_OFFLINE'}`))
+                  }
+                }
+              }, t('general.update.install')))
+            }
+            buttons.push(h('button', { class: 'btn', type: 'button', onclick: () => api.openUrl(answer.url).catch(() => {}) }, t('general.update.open')))
+            clear(updateLink).append(answer.notes ? `${answer.notes} ` : '', ...buttons)
             updateLink.hidden = false
           } else {
             updateOut.set('ok', t('general.update.current', { v: answer.version }))

@@ -18,6 +18,7 @@ export const api = {
   notify: (title, body) => invoke('notify', { title, body }),
   openUrl: (url) => invoke('open_url', { url }),
   checkUpdate: (url) => invoke('check_update', { url }),
+  installUpdate: (url, sha256, version) => invoke('install_update', { url, sha256, version }),
   openSettings: () => invoke('open_settings'),
   diagnostics: () => invoke('diagnostics'),
   showTour: () => invoke('show_tour'),

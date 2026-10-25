@@ -40,6 +40,12 @@ let requests = 0
 http.createServer((req, res) => {
   requests += 1
   // The update file the settings check is tried against.
+  // The same with the installer's hash, so the settings page offers to install it (the e2e run does not press that).
+  if (req.url === '/latest-hash.json') {
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ version: '9.9.9', url: 'https://example.org/Blink-9.9.9-setup.exe', sha256: 'a'.repeat(64), notes: 'A test release.' }))
+    return
+  }
   if (req.url === '/latest.json') {
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify({ version: '9.9.9', url: 'https://example.org/Blink-9.9.9-setup.exe', notes: 'A test release.' }))

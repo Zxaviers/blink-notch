@@ -1,94 +1,63 @@
-# Deadline Notch (working title)
+<p align="center"><img src="assets/icon/blink-256.png" width="128" alt="Blink"></p>
 
-A Windows overlay that turns the top-center edge of the screen into a small notch. At rest it shows the nearest deadline and its countdown. Hover it and it expands into a deadline list. Deadlines come from calendar links you add (Moodle/BRONE, Google Calendar secret iCal address, or any `.ics` URL) and from events you type in yourself.
+# Blink
 
-Requirements and plan live in the PRD ("PRD Deadline Notch (working title)") and `HANDOFF.md`. This repo is a clean start; the Reminder Widget v1.2 repo is only a reference for the feed parser and tests.
+A small notch at the top edge of your screen for the things a student keeps looking for: the next deadline, the song that is playing, the files you are carrying around, and the quick controls (volume, Wi-Fi, brightness). It stays out of the way, shows what matters when you point at it, and uses almost no memory.
 
-> **Blink (native rebuild).** This project is being rebuilt as a native Windows program called Blink (no web engine in the always-running part, about 3.5 MB at rest). The plan and progress are in `docs/NATIVE-PLAN.md`, the beta notes (install, upgrade, accessibility, what is verified) in `docs/RELEASE.md`, the code in `crates/` and the checks in `scripts/native/`. The text below describes the WebView2 version (`src-tauri/`, tag `webview2-v0.1`), which keeps working until the native build replaces it.
+**Windows only.** Written in Rust, no web engine in the part that always runs (about 10 MB of memory at rest, 0% CPU when idle). Free, MIT licensed, no account, no analytics.
 
-## Status: v0.1 in progress
+*Bahasa Indonesia:* Blink adalah "poni" kecil di tepi atas layar Windows: tenggat berikutnya, lagu yang diputar (dengan lirik), file yang sedang kamu bawa, dan kontrol cepat. Gratis, sumber terbuka, tanpa akun, tanpa telemetri. Antarmuka tersedia dalam Bahasa Indonesia dan Inggris.
 
-Built: notch shell (click-through, hover/peek/open, fullscreen hiding, multi-monitor placement), deadlines module, feed fetching with conditional requests, notifications at configurable thresholds, mark done, personal events, snooze, global hotkey with keyboard navigation, tray, settings window, first-run wizard, English and Indonesian.
+## What it does
 
-Not built yet: group by course, focus timer, to-do, media module, system peeks.
+- **Deadlines.** Add a calendar link (Moodle/BRONE, a Google Calendar secret iCal address, or any `.ics` link) and the nearest deadline sits in the notch with a countdown. Click a course to see only that course, snooze a deadline's reminders, mark it done, or turn it into a project.
+- **Music.** Whatever plays in Windows (Spotify, a browser tab, any player): title, cover, controls, synced lyrics, bars that move with the sound, and a colour taken from the cover.
+- **Shelf.** Drop files on the notch to carry them for a moment, then drag them out onto another app. It also takes what you copied: files, screenshots, text.
+- **Projects.** Tasks and files for a project, in one small list.
+- **Controls.** Volume, brightness, output device, Wi-Fi, Bluetooth, microphone, cast, lock, screenshot. If you use SteelSeries Sonar, the volume moves Sonar's master.
+- **Clock and weather.** Time, the month, and the weather for the city you pick.
+- **Peeks.** Short messages for a charger, a low battery, a Bluetooth device, Wi-Fi, volume, brightness, Caps Lock.
+- **Yours to shape.** Palettes, accents and pill shapes; gestures (wheel for volume, middle click for play/pause, Shift+wheel or a swipe to turn pages) that can each be switched off; keyboard shortcuts (`Ctrl+Alt+D` opens it, `Ctrl+Alt+H` hides it, `Ctrl+Alt+V` puts the clipboard on the shelf).
+- Built for the keyboard and for screen readers too (UI Automation).
 
-## Keyboard
+## Install
 
-Ctrl+Alt+D (rebindable in Settings, Display; can be turned off) opens the notch and moves keyboard focus into it. Inside: Up/Down/Home/End select a deadline, Enter opens its page, D (or Space) marks it done, S then 1/2/3 snoozes it for 30 minutes, 2 hours or until tomorrow 08:00, Esc closes (the first Esc only closes the snooze chooser). Pressing the hotkey again, clicking another app or Alt+Tab also closes it, and focus goes back to the app you were in. Without the hotkey the notch never takes focus.
+Download `Blink-<version>-setup.exe` from the [Releases](../../releases) page and run it. It installs for you only (no administrator rights).
 
-## Privacy
+The installer is **not code-signed yet**, so Windows SmartScreen may say "Windows protected your PC": choose *More info*, then *Run anyway*. Each release lists the file's SHA-256 so you can check what you downloaded:
 
-- No account, no analytics.
-- Feed links carry access tokens, so they live in Windows Credential Manager. They are never written to settings, caches or logs, and the page never sees them again after saving.
-- The page has no network access (CSP `default-src 'self'`). Only the Rust side fetches, and only the feed links you saved (or the one you are testing).
-
-## Develop
-
-Prerequisites: Rust (MSVC toolchain), Visual Studio Build Tools with the C++ workload, WebView2 runtime, Node 20+.
-
-```bash
-npm install
-npm test                  # unit tests for the pure modules in src/lib
-npm run build:debug       # debug exe at src-tauri/target/debug/deadline-notch.exe
-npx tauri build --no-bundle   # optimized exe at src-tauri/target/release/
+```powershell
+Get-FileHash .\Blink-<version>-setup.exe -Algorithm SHA256
 ```
 
-The frontend is plain ES modules with no bundler; the frontend assets are embedded at build time, so rebuild after editing `src/`.
+Needs Windows 11 (tested) or Windows 10 1809 and later. The settings window uses the Microsoft Edge WebView2 Runtime, which Windows 11 already has; the notch itself does not need it.
 
-## Layout
+## Your data and privacy
 
-- `src/lib/` pure logic with tests: ICS parser, feed merging, done store, personal events, notification planner, countdown text, settings validation, i18n, view model.
-- `src/core.js` loads data, syncs feeds, plans notifications. `src/notch.js` is the shell. `src/modules/deadlines.js` is the first module (the internal module contract is `rest`, `peek`, `panel`).
-- `src/settings.*` is the settings window and the first-run wizard.
-- `src-tauri/src/` Rust: `feed.rs` (network), `secret.rs` (Credential Manager), `store.rs` (atomic JSON files), `win32.rs` (overlay window and fullscreen detection), `lib.rs` (window, tray, placement, commands).
+Everything stays on your PC. Blink has no account and no analytics. It contacts the internet only for the things you turn on: your calendar links, the weather for the city you chose (Open-Meteo), song lyrics when you ask for them (LRCLIB), and an update check when you press the button. The full list is in [`docs/PRIVACY.md`](docs/PRIVACY.md).
 
-## Checks that drive the real app (Windows)
+## Build it yourself
 
-These move the real cursor for a few seconds, so keep your hands off the mouse.
+You need Rust (MSVC toolchain) with the Visual Studio Build Tools (C++ workload). For the installer, NSIS 3.
 
-- `scripts/probe.ps1`: click-through, hover, focus-stealing checks.
-- `scripts/e2e.ps1`: seeds a throwaway profile and a fixture feed (`scripts/serve-fixture.mjs`), hovers the notch and saves screenshots to `scripts/out/`.
-- `scripts/e2e-settings.ps1`: first-run wizard opens.
-- `scripts/e2e-hotkey.ps1`: sends the real hotkey and navigation keys, checks focus goes in and comes back, and that D marks a deadline done (real keystrokes, so keep your hands off the keyboard too).
-- `scripts/mem-probe.ps1` (memory by WebView2 process, flag trials) and `scripts/anim-cost.ps1` (CPU per expand and collapse).
-- `scripts/startup-time.ps1` (launch to window visible and to content ready) and `scripts/stress-cost.ps1` (CPU of sustained animation variants; `DN_STRESS` loads `src/stress.js`, which is never loaded otherwise). Both use the shared `scripts/profile.ps1` test profile and need no cursor movement.
-- `scripts/measure-idle.ps1 -Minutes 30`: samples CPU and memory of the app plus its WebView2 processes.
+```powershell
+cargo build --release -p blink-native -p blink-settings    # blink.exe and blink-settings.exe in target\release
+cargo test -p blink-native -p blink-core                    # unit and behaviour tests
+powershell -File scripts\native\build-release.ps1           # both programs and the installer, with its SHA-256
+```
 
-All three back up and restore `%APPDATA%\dev.riski.deadlinenotch`.
+What is where:
 
-## Measured so far
+- `crates/blink-core`: logic with no windows in it (calendar parsing, planning, feeds, projects, lyrics, weather, updates).
+- `crates/blink-native`: the notch (drawing, the window, the pages).
+- `crates/blink-settings`: the settings window (Tauri; the pages are plain JavaScript in `src/`).
+- `scripts/native`: the checks that drive the real programs (gates, the settings end-to-end run, installer, soak). `docs/RELEASE.md` says what has and has not been verified, and how a release is made.
+- `docs/`: plans, release notes and design notes. The first, WebView2-based version is described in `docs/WEBVIEW2-HISTORY.md`.
 
-Release exe, resting, one fixture feed loaded, 5 minutes (28 samples, 16 logical cores):
+## Contributing and reporting problems
 
-- CPU 0.05% average, 0.17% peak (PRD target: under 0.5%).
-- Memory as Task Manager's Memory column shows it (private working set summed over the app and its six WebView2 processes): 62.7 MB average, 66.2 MB peak (PRD target: under 80 MB).
+Open an issue and say what you did, what you expected and what happened; **Settings, General, Copy diagnostics** gives a report with no personal data in it (no feed links, no titles). Pull requests are welcome; run the tests above first.
 
-How memory got there: the first full build sat at about 97 MB. A breakdown by WebView2 process (`scripts/mem-probe.ps1`) showed the GPU process at 38 MB. Starting WebView2 with `--disable-gpu` (software rendering) took the total to 66 MB. On their own, `--in-process-gpu` reached 86 MB and `--enable-low-end-device-mode` changed nothing; on top of `--disable-gpu`, `--in-process-gpu` and extra `--disable-features` saved only 2 to 3 MB, so they were not adopted. The flags are in `src-tauri/tauri.conf.json` and `WEBVIEW_ARGS` in `lib.rs`; both windows must use the same string or WebView2 starts a second set of processes.
+## License
 
-What software rendering costs: an expand plus collapse uses about 0.3 to 0.4 CPU-seconds across the app and WebView2 (about 0.01 with the GPU), mostly in the GPU process doing software compositing. Frame pacing of the expand animation, measured in the app (DN_DEBUG=1 logs `frames open: ...`): median 6.9 ms between frames on a 144 Hz display, none over 20 ms. That is one machine; check a low-end laptop before calling it done.
-
-Startup (`scripts/startup-time.ps1`, five launches, release exe): the notch window is visible after a median 0.65 s and the page has its settings loaded and first feed synced after 0.9 s (PRD target: under 1.5 s). The first launch of a batch is slowest (1.2 s).
-
-Sustained animation (`scripts/stress-cost.ps1`, panel open and something moving every frame, 10 s windows, repeated; 100% = one full core of 16): with the shipped software rendering it costs about 9 to 13% of a core whatever is animating (transform, width, text, scrolling list). With the GPU enabled (a comparison build, not shipped) a transform or text animation costs 1 to 2%, a width animation still 11%, and the scrolling list 32 to 34%, so the GPU is not uniformly cheaper and memory goes back to about 97 MB. Only the open panel animates, so a resting notch with music playing would still draw nothing. Takeaway: a native build would mainly save memory; sustained animation under WebView2 is affordable if modules update coarsely (about once a second) except while the panel is open.
-
-Native checks on the release exe (`scripts/probe.ps1`, four runs in a row): click-through outside the notch, input on the pill and expanded area, no focus stolen by hover or a real click. Not yet checked on real hardware: fullscreen hiding, multi-monitor and DPI changes, Windows toasts, and a long soak (the full app has only been sampled for 5 minutes).
-
-## Native spike (spikes/native-notch)
-
-A throwaway program to answer "how much of the cost is WebView2?". No web engine, no GPU: a layered per-pixel-alpha window, tiny-skia drawing on the CPU, glyphs rasterized lazily from the system fonts with ttf-parser and cached. Fully transparent pixels let the mouse through, so there is no cursor polling, and a resting notch sleeps in `GetMessage`. It draws the same pill and open panel (232x32 to 420x340, 150 ms hover intent, 300 ms grace, 280 ms ease-out, a progress bar) with hard-coded text and no data, tray, settings or notifications.
-
-Measured with `scripts/native-spike.ps1` against the shipped WebView2 app (same machine, 16 logical cores; a game was running in the foreground, so treat CPU as noisy):
-
-| | WebView2 app | Native spike |
-|---|---|---|
-| Memory at rest (Task Manager private working set) | 62.7 MB | 3.9 MB |
-| Launch to window visible | 0.65 s (content ready 0.9 s) | 47 ms |
-| Idle CPU | 0.05% | 0% |
-| Panel open and still | about 2.8% of a core | 0.2% |
-| Progress bar moving every frame (144 Hz) | 9 to 13% of a core | 6.4% |
-| Expand frame pacing | median 6.9 ms | median 6.9 ms |
-| Executable | about 4 MB | 0.5 MB |
-
-Expand plus collapse CPU for the spike is not measured yet: that part needs the real cursor (`-Hover`).
-
-What the spike does not show: it holds none of the app's logic (feeds, planner, settings, notifications, Credential Manager), has no accessibility support and no ClearType (text is grayscale antialiased), and positions everything with hard-coded numbers. The first version used the fontdue crate, which parses every glyph of a font up front and cost about 28 MB for two fonts; reading outlines lazily brought that to almost nothing, so font handling matters a lot in a native build.
+MIT, see [`LICENSE`](LICENSE). The libraries Blink is built from and their licenses are listed in [`THIRD-PARTY-LICENSES.md`](THIRD-PARTY-LICENSES.md).

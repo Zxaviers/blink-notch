@@ -1,8 +1,9 @@
 ; Blink installer (NSIS). Per user: no administrator rights, nothing outside the user's profile.
 ;
-;   makensis /DVERSION=0.2.0 /DBINDIR=..\target\release /DOUT=..\scripts\out\Blink-0.2.0-setup.exe installer\blink.nsi
+;   makensis /DVERSION=0.3.0 /DBINDIR=..\target\release /DOUT=..\scripts\out\Blink-0.3.0-setup.exe installer\blink.nsi
 ;
-; Silent use:  Blink-setup.exe /S [/AUTOSTART] [/D=C:\where]      install (autostart off unless asked)
+; Silent use:  Blink-setup.exe /S [/AUTOSTART] [/RUN] [/D=C:\where]  install (autostart off unless asked; /RUN starts
+;                                                                   Blink when it is done, which the updater uses)
 ;              uninstall.exe /S [/PURGE]                           remove; /PURGE also deletes settings,
 ;                                                                   caches and saved feed links
 ;
@@ -20,7 +21,7 @@ Unicode true
 !insertmacro un.GetOptions
 
 !ifndef VERSION
-  !define VERSION "0.2.0"
+  !define VERSION "0.3.0"
 !endif
 !ifndef BINDIR
   !define BINDIR "..\target\release"
@@ -30,6 +31,7 @@ Unicode true
 !endif
 
 !define APP "Blink"
+!define PUBLISHER "Zxaviers"
 !define UNINSTKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP}"
 !define LEGACY_UNINSTKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\Deadline Notch"
 !define RUNKEY "Software\Microsoft\Windows\CurrentVersion\Run"
@@ -46,6 +48,8 @@ BrandingText "${APP} ${VERSION}"
 
 VIProductVersion "${VERSION}.0"
 VIAddVersionKey "ProductName" "${APP}"
+VIAddVersionKey "CompanyName" "${PUBLISHER}"
+VIAddVersionKey "LegalCopyright" "MIT License, ${PUBLISHER}"
 VIAddVersionKey "FileDescription" "${APP} installer"
 VIAddVersionKey "FileVersion" "${VERSION}"
 VIAddVersionKey "ProductVersion" "${VERSION}"
@@ -57,6 +61,7 @@ Var AutostartBox
 Var AutostartState
 
 !insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_LICENSE "..\LICENSE"
 !insertmacro MUI_PAGE_DIRECTORY
 Page custom OptionsPage OptionsPageLeave
 !insertmacro MUI_PAGE_INSTFILES
@@ -175,7 +180,11 @@ Section "Install"
 
   WriteRegStr HKCU "${UNINSTKEY}" "DisplayName" "${APP}"
   WriteRegStr HKCU "${UNINSTKEY}" "DisplayVersion" "${VERSION}"
-  WriteRegStr HKCU "${UNINSTKEY}" "Publisher" "${APP}"
+  WriteRegStr HKCU "${UNINSTKEY}" "Publisher" "${PUBLISHER}"
+  !ifdef URL
+    WriteRegStr HKCU "${UNINSTKEY}" "URLInfoAbout" "${URL}"
+    WriteRegStr HKCU "${UNINSTKEY}" "HelpLink" "${URL}/issues"
+  !endif
   WriteRegStr HKCU "${UNINSTKEY}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "${UNINSTKEY}" "DisplayIcon" "$INSTDIR\blink.exe"
   WriteRegStr HKCU "${UNINSTKEY}" "UninstallString" '"$INSTDIR\uninstall.exe"'
@@ -186,6 +195,12 @@ Section "Install"
   WriteRegDWORD HKCU "${UNINSTKEY}" "EstimatedSize" $0
 
   !insertmacro WebView2Check
+
+  ; /RUN: start Blink again when done (an update closed it).
+  ${GetOptions} $R1 "/RUN" $R4
+  ${IfNot} ${Errors}
+    Exec '"$INSTDIR\blink.exe"'
+  ${EndIf}
 SectionEnd
 
 ; --------------------------------------------------------------------------- uninstall

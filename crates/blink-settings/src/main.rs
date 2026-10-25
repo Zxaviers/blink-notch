@@ -175,10 +175,31 @@ fn open_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
 async fn check_update(url: String) -> Result<Value, String> {
     tauri::async_runtime::spawn_blocking(move || match blink_core::update::check(&url, env!("CARGO_PKG_VERSION"))? {
         blink_core::update::Checked::UpToDate { latest } => Ok(json!({ "state": "uptodate", "version": latest })),
-        blink_core::update::Checked::Newer(r) => Ok(json!({ "state": "newer", "version": r.version, "url": r.url, "notes": r.notes })),
+        blink_core::update::Checked::Newer(r) => Ok(json!({ "state": "newer", "version": r.version, "url": r.url, "notes": r.notes, "sha256": r.sha256 })),
     })
     .await
     .map_err(|_| "UPDATE_OFFLINE".to_string())?
+}
+
+/// Download the installer the update file named, check it is exactly that file (its SHA-256), run it silently (it closes Blink and
+/// this window, replaces the programs and starts Blink again) and leave. An installer that does not match is deleted and never run.
+#[tauri::command]
+async fn install_update(app: tauri::AppHandle, url: String, sha256: String, version: String) -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    let installer = tauri::async_runtime::spawn_blocking(move || {
+        let tag: String = version.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '.').collect();
+        let dest = std::env::temp_dir().join(format!("blink-update-{tag}")).join("Blink-setup.exe");
+        blink_core::update::download_verified(&url, &sha256, &dest)?;
+        Ok::<std::path::PathBuf, String>(dest)
+    })
+    .await
+    .map_err(|_| "UPDATE_OFFLINE".to_string())??;
+    // Detached, so it goes on when this program is closed under it.
+    const DETACHED_PROCESS: u32 = 0x0000_0008;
+    const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+    std::process::Command::new(&installer).args(["/S", "/RUN"]).creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP).spawn().map_err(|_| "UPDATE_RUN".to_string())?;
+    app.exit(0);
+    Ok(())
 }
 
 /// Ask the running notch to show its welcome tour again.
@@ -342,6 +363,7 @@ fn main() {
             weather_find,
             show_tour,
             check_update,
+            install_update,
             clipboard_text,
         ])
         // Closing the window ends the program, so no web engine stays behind.

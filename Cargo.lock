@@ -281,7 +281,7 @@ dependencies = [
 
 [[package]]
 name = "blink-core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "jiff",
  "keyring",
@@ -295,9 +295,10 @@ dependencies = [
 
 [[package]]
 name = "blink-native"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "blink-core",
+ "embed-resource",
  "jiff",
  "memmap2",
  "serde",
@@ -311,7 +312,7 @@ dependencies = [
 
 [[package]]
 name = "blink-settings"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "blink-core",
  "serde",

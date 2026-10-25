@@ -10,7 +10,8 @@ $ErrorActionPreference = 'Stop'
 $root = Resolve-Path "$PSScriptRoot\..\.."
 $bin = if ($BinDir) { (Resolve-Path $BinDir).Path } else { "$root\target\release" }
 $nsis = Join-Path $env:LOCALAPPDATA 'tauri\NSIS\makensis.exe'
-$setup = Join-Path $root 'scripts\out\Blink-0.2.0-setup.exe'
+$version = (Select-String -Path "$root\Cargo.toml" -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
+$setup = Join-Path $root "scripts\out\Blink-$version-setup.exe"
 New-Item -ItemType Directory -Force (Split-Path $setup) | Out-Null
 
 $script:pass = 0; $script:fail = 0
@@ -20,7 +21,7 @@ function Check([string]$what, [bool]$ok, [string]$detail = '') {
 function Wait-For([scriptblock]$cond, [int]$ms = 15000) { $sw = [System.Diagnostics.Stopwatch]::StartNew(); while ($sw.ElapsedMilliseconds -lt $ms) { if (& $cond) { return $true }; Start-Sleep -Milliseconds 100 }; $false }
 
 'building the installer'
-& $nsis -V1 /DVERSION=0.2.0 "/DBINDIR=$bin" "/DOUT=$setup" "$root\installer\blink.nsi" | Out-Null
+& $nsis -V1 "/DVERSION=$version" "/DBINDIR=$bin" "/DOUT=$setup" "$root\installer\blink.nsi" | Out-Null
 Check 'makensis produced the installer' (Test-Path $setup)
 "        ($([math]::Round((Get-Item $setup).Length / 1KB)) KB)"
 
@@ -37,7 +38,8 @@ $menu = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Blink'
 $marker = Join-Path $data 'settings.json'
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 
-function Install([string[]]$extra = @()) { $a = @('/S') + $extra + @("/D=$app"); Start-Process -FilePath $setup -ArgumentList $a -Wait }
+# Not `Start-Process -Wait`: that waits for everything the installer starts too, and /RUN starts a notch that does not end.
+function Install([string[]]$extra = @()) { $a = @('/S') + $extra + @("/D=$app"); $p = Start-Process -FilePath $setup -ArgumentList $a -PassThru; $p.WaitForExit() }
 function Uninstall([string[]]$extra = @()) { Start-Process -FilePath (Join-Path $app 'uninstall.exe') -ArgumentList (@('/S') + $extra + @("_?=$app")) -Wait; Remove-Item (Join-Path $app 'uninstall.exe') -Force -ErrorAction SilentlyContinue; Remove-Item $app -Force -ErrorAction SilentlyContinue }
 function RunValue() { try { (Get-ItemProperty "HKCU:\$runKey" -ErrorAction Stop).Blink } catch { $null } }
 
@@ -56,7 +58,7 @@ try {
   Check 'blink.exe and blink-settings.exe are in place' ((Test-Path "$app\blink.exe") -and (Test-Path "$app\blink-settings.exe") -and (Test-Path "$app\uninstall.exe"))
   Check 'Start Menu has Blink and Blink settings' ((Test-Path "$menu\Blink.lnk") -and (Test-Path "$menu\Blink settings.lnk"))
   $u = Get-ItemProperty $uninstKey -ErrorAction SilentlyContinue
-  Check 'Windows lists it under Installed apps with its version and location' ($u.DisplayVersion -eq '0.2.0' -and $u.InstallLocation -eq $app -and $u.QuietUninstallString -like '*uninstall.exe*') ($u | Out-String)
+  Check 'Windows lists it under Installed apps with its version and location' ($u.DisplayVersion -eq $version -and $u.InstallLocation -eq $app -and $u.QuietUninstallString -like '*uninstall.exe*') ($u | Out-String)
   Check 'autostart points at the notch' ((RunValue) -eq "`"$app\blink.exe`"") (RunValue)
   Check 'the old autostart entry is gone' ($null -eq (Get-ItemProperty "HKCU:\$runKey" -ErrorAction SilentlyContinue).'Deadline Notch')
   Remove-Item $legacyKey -Force -ErrorAction SilentlyContinue
@@ -74,11 +76,14 @@ try {
   'upgrade over a running copy'
   $before = (Get-Item "$app\blink.exe").LastWriteTime
   Start-Sleep -Milliseconds 1100
-  Install
+  $env:BLINK_INSTANCE = 'inst'   # the notch that /RUN starts must not meet one in use
+  Install @('/RUN')
   Check 'the running notch was asked to leave' ($running.HasExited -or (Wait-For { $running.Refresh(); $running.HasExited } 5000))
   Check 'files were replaced and the install location kept' ((Test-Path "$app\blink.exe") -and (Get-Item "$app\blink.exe").LastWriteTime -ge $before)
   Check 'a silent upgrade without /AUTOSTART leaves autostart as it was' ((RunValue) -eq "`"$app\blink.exe`"") (RunValue)
   Check 'settings are untouched' (Test-Path $marker)
+  Check '/RUN starts Blink again when the install is done (what an update does)' (Wait-For { @(Get-Process blink -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$app\*" -and -not $_.HasExited }).Count -ge 1 } 8000)
+  Remove-Item Env:BLINK_INSTANCE
   $c.Pipe.Dispose()
 
   'uninstall (data kept)'

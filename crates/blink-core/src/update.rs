@@ -1,8 +1,10 @@
 //! Is there a newer Blink? Asked only when the person presses "Check for updates" (nothing is checked in the background), at a link
 //! they were given: a small JSON file, `{"version": "0.3.0", "url": "https://.../Blink-0.3.0-setup.exe", "notes": "..."}`.
 //!
-//! Nothing is downloaded or installed here: the answer says what the newest version is and where to get it, and the person opens
-//! the link. Only `https` links are asked (a link to this computer, `http://127.0.0.1`, is allowed for tests).
+//! The answer says what the newest version is and where to get it; the person opens the link, or, when the file also gives the
+//! installer's SHA-256 (`"sha256": "<64 hex digits>"`), Blink can download it and check it is exactly that file before anything is
+//! run (`download_verified`). An installer with no hash is never run by Blink. Only `https` links are asked (a link to this computer,
+//! `http://127.0.0.1`, is allowed for tests).
 
 use std::time::Duration;
 
@@ -14,6 +16,8 @@ pub struct Release {
     pub version: String,
     pub url: String,
     pub notes: String,
+    /// The installer's SHA-256 as the update file gave it (lowercase hex), when it gave one.
+    pub sha256: Option<String>,
 }
 
 /// The result of a check.
@@ -59,7 +63,13 @@ pub fn judge(body: &str, current: &str) -> Result<Checked, String> {
         return Err("BAD_UPDATE_LINK".to_string());
     }
     let notes: String = v.get("notes").and_then(Value::as_str).unwrap_or("").chars().take(600).collect();
-    Ok(Checked::Newer(Release { version, url, notes }))
+    let sha256 = match v.get("sha256").and_then(Value::as_str).map(|s| s.trim().to_ascii_lowercase()) {
+        None => None,
+        // A hash that is not a hash is a mistake in the file, not something to ignore.
+        Some(h) if h.len() == 64 && h.bytes().all(|b| b.is_ascii_hexdigit()) => Some(h),
+        Some(_) => return Err("BAD_UPDATE_FILE".to_string()),
+    };
+    Ok(Checked::Newer(Release { version, url, notes, sha256 }))
 }
 
 /// Ask the update file at `link` (blocks: call it off the interface thread).
@@ -83,6 +93,70 @@ pub fn check(link: &str, current: &str) -> Result<Checked, String> {
     judge(&body, current)
 }
 
+/// An installer is never bigger than this.
+const MAX_INSTALLER_BYTES: u64 = 120 * 1024 * 1024;
+
+fn agent(timeout_secs: u64) -> ureq::Agent {
+    ureq::Agent::config_builder()
+        .timeout_global(Some(Duration::from_secs(timeout_secs)))
+        .max_redirects(5)
+        .http_status_as_error(false)
+        .user_agent("Blink (a personal notch for Windows)")
+        .tls_config(ureq::tls::TlsConfig::builder().provider(ureq::tls::TlsProvider::NativeTls).root_certs(ureq::tls::RootCerts::PlatformVerifier).build())
+        .build()
+        .into()
+}
+
+/// Download `link` to `dest` and check its SHA-256 is `expected` (64 hex digits, any case). The file is kept only if it matches: a
+/// different file is deleted and `UPDATE_HASH_MISMATCH` comes back. Blocks (a few seconds to minutes): call it off the interface thread.
+pub fn download_verified(link: &str, expected: &str, dest: &std::path::Path) -> Result<(), String> {
+    use std::io::{Read, Write};
+    let expected = expected.trim().to_ascii_lowercase();
+    if expected.len() != 64 || !expected.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return Err("BAD_UPDATE_FILE".to_string());
+    }
+    if !allowed(link.trim()) {
+        return Err("UPDATE_URL_PROTOCOL".to_string());
+    }
+    let response = agent(600).get(link.trim()).call().map_err(|_| "UPDATE_OFFLINE".to_string())?;
+    if response.status().as_u16() != 200 {
+        return Err("UPDATE_NOT_FOUND".to_string());
+    }
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent).map_err(|_| "UPDATE_DISK".to_string())?;
+    }
+    let part = dest.with_extension("part");
+    let result = (|| {
+        let mut file = std::fs::File::create(&part).map_err(|_| "UPDATE_DISK".to_string())?;
+        let mut reader = response.into_body().into_with_config().limit(MAX_INSTALLER_BYTES).reader();
+        let mut hasher = crate::sha256::Sha256::new();
+        let mut buffer = vec![0u8; 64 * 1024];
+        loop {
+            let n = reader.read(&mut buffer).map_err(|_| "UPDATE_OFFLINE".to_string())?;
+            if n == 0 {
+                break;
+            }
+            hasher.update(&buffer[..n]);
+            file.write_all(&buffer[..n]).map_err(|_| "UPDATE_DISK".to_string())?;
+        }
+        file.flush().map_err(|_| "UPDATE_DISK".to_string())?;
+        if hasher.finish_hex() != expected {
+            return Err("UPDATE_HASH_MISMATCH".to_string());
+        }
+        Ok(())
+    })();
+    match result {
+        Ok(()) => {
+            let _ = std::fs::remove_file(dest);
+            std::fs::rename(&part, dest).map_err(|_| "UPDATE_DISK".to_string())
+        }
+        Err(code) => {
+            let _ = std::fs::remove_file(&part);
+            Err(code)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -103,7 +177,11 @@ mod tests {
     #[test]
     fn the_update_file_is_judged_and_only_a_web_link_is_accepted() {
         let file = r#"{"version":"0.3.0","url":"https://example.org/Blink-0.3.0-setup.exe","notes":"Faster."}"#;
-        assert_eq!(judge(file, "0.2.0"), Ok(Checked::Newer(Release { version: "0.3.0".into(), url: "https://example.org/Blink-0.3.0-setup.exe".into(), notes: "Faster.".into() })));
+        assert_eq!(judge(file, "0.2.0"), Ok(Checked::Newer(Release { version: "0.3.0".into(), url: "https://example.org/Blink-0.3.0-setup.exe".into(), notes: "Faster.".into(), sha256: None })));
+        let hash = "A".repeat(64);
+        let with_hash = file.replace("\"notes\"", &format!("\"sha256\":\"{hash}\",\"notes\""));
+        assert!(matches!(judge(&with_hash, "0.2.0"), Ok(Checked::Newer(r)) if r.sha256.as_deref() == Some("a".repeat(64).as_str())), "lowercased");
+        assert_eq!(judge(&file.replace("\"notes\"", "\"sha256\":\"abc\",\"notes\""), "0.2.0"), Err("BAD_UPDATE_FILE".to_string()), "a hash that is not one"); 
         assert_eq!(judge(file, "0.3.0"), Ok(Checked::UpToDate { latest: "0.3.0".into() }));
         assert_eq!(judge(file, "0.4.0"), Ok(Checked::UpToDate { latest: "0.3.0".into() }), "newer than the file says is up to date");
         assert_eq!(judge(&file.replace("https://example.org/Blink-0.3.0-setup.exe", "file:///C:/Windows/System32/calc.exe"), "0.2.0"), Err("BAD_UPDATE_LINK".to_string()));
@@ -139,5 +217,43 @@ mod tests {
         let missing = serve("404 Not Found", "nope");
         assert_eq!(check(&missing, "0.2.0"), Err("UPDATE_NOT_FOUND".to_string()));
         assert_eq!(check("http://127.0.0.1:1/latest.json", "0.2.0"), Err("UPDATE_OFFLINE".to_string()));
+    }
+
+    fn serve_bytes(status: &'static str, body: &'static [u8]) -> String {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let link = format!("http://{}/Blink-setup.exe", listener.local_addr().unwrap());
+        std::thread::spawn(move || {
+            if let Ok((mut stream, _)) = listener.accept() {
+                let mut buf = [0u8; 1024];
+                let _ = stream.read(&mut buf);
+                let _ = write!(stream, "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", body.len());
+                let _ = stream.write_all(body);
+            }
+        });
+        link
+    }
+
+    #[test]
+    fn a_download_is_kept_only_when_it_is_exactly_the_file_the_hash_names() {
+        let dir = std::env::temp_dir().join(format!("blink-update-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let dest = dir.join("setup.exe");
+        let body: &'static [u8] = b"pretend this is an installer";
+        let good = crate::sha256::hex(body);
+        // The right hash (in capitals, as people paste it): kept.
+        let link = serve_bytes("200 OK", body);
+        assert_eq!(download_verified(&link, &good.to_ascii_uppercase(), &dest), Ok(()));
+        assert_eq!(std::fs::read(&dest).unwrap(), body);
+        assert!(!dir.join("setup.part").exists(), "no leftovers");
+        // Another file with the same name asked for: the old one is replaced only by a good one.
+        let link = serve_bytes("200 OK", b"something else");
+        assert_eq!(download_verified(&link, &good, &dest), Err("UPDATE_HASH_MISMATCH".to_string()));
+        assert_eq!(std::fs::read(&dest).unwrap(), body, "the good file is still there");
+        assert!(!dir.join("setup.part").exists(), "and the bad one is gone");
+        // A missing file, a link that is not allowed, a hash that is not one.
+        assert_eq!(download_verified(&serve_bytes("404 Not Found", b"no"), &good, &dir.join("x.exe")), Err("UPDATE_NOT_FOUND".to_string()));
+        assert_eq!(download_verified("http://example.org/x.exe", &good, &dir.join("y.exe")), Err("UPDATE_URL_PROTOCOL".to_string()));
+        assert_eq!(download_verified("https://example.org/x.exe", "nothex", &dir.join("z.exe")), Err("BAD_UPDATE_FILE".to_string()));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

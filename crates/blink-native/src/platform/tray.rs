@@ -1,5 +1,5 @@
-//! The notification-area icon and its menu. The icon is drawn here, so there is
-//! no resource to ship.
+//! The notification-area icon and its menu. The icon is the one in blink.exe itself (what Explorer shows); a small one is drawn
+//! here as a fallback, for a build that has none.
 
 use std::ffi::c_void;
 
@@ -10,9 +10,10 @@ use windows::Win32::Graphics::Gdi::{CreateBitmap, CreateDIBSection, DeleteObject
 use windows::Win32::UI::Shell::{
     Shell_NotifyIconW, NIF_ICON, NIF_INFO, NIF_MESSAGE, NIF_TIP, NIIF_USER, NIM_ADD, NIM_DELETE, NIM_MODIFY, NOTIFYICONDATAW,
 };
+use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::WindowsAndMessaging::{
-    AppendMenuW, CreateIconIndirect, CreatePopupMenu, DestroyIcon, DestroyMenu, GetCursorPos, PostMessageW, SetForegroundWindow, TrackPopupMenu,
-    HICON, ICONINFO, MF_CHECKED, MF_SEPARATOR, MF_STRING, TPM_RETURNCMD, TPM_RIGHTBUTTON, WM_NULL,
+    AppendMenuW, CreateIconIndirect, CreatePopupMenu, DestroyIcon, DestroyMenu, GetCursorPos, GetSystemMetrics, LoadImageW, PostMessageW, SetForegroundWindow,
+    TrackPopupMenu, HICON, ICONINFO, IMAGE_ICON, LR_DEFAULTCOLOR, MF_CHECKED, MF_SEPARATOR, MF_STRING, SM_CXSMICON, TPM_RETURNCMD, TPM_RIGHTBUTTON, WM_NULL,
 };
 
 /// Sent to the window for tray mouse events (`lparam` is the mouse message).
@@ -59,7 +60,23 @@ fn draw_icon() -> Pixmap {
     pm
 }
 
+/// The program's own icon at the size the notification area wants, else the drawn one.
 fn make_icon() -> Option<HICON> {
+    unsafe {
+        if let Ok(module) = GetModuleHandleW(None) {
+            let size = GetSystemMetrics(SM_CXSMICON).max(16);
+            // Resource 1 is the icon blink.exe carries (see build.rs).
+            if let Ok(handle) = LoadImageW(Some(module.into()), PCWSTR(1usize as *const u16), IMAGE_ICON, size, size, LR_DEFAULTCOLOR) {
+                if !handle.is_invalid() {
+                    return Some(HICON(handle.0));
+                }
+            }
+        }
+    }
+    drawn_icon()
+}
+
+fn drawn_icon() -> Option<HICON> {
     let pm = draw_icon();
     unsafe {
         let info = BITMAPINFO {

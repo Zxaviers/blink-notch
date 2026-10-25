@@ -27,7 +27,7 @@ Interactive: run the setup. Pages: welcome, folder (default `%LOCALAPPDATA%\Prog
 Silent:
 
 ```
-Blink-0.2.0-setup.exe /S [/AUTOSTART] [/D=C:\where]      install; autostart only with /AUTOSTART
+Blink-0.3.0-setup.exe /S [/AUTOSTART] [/D=C:\where]      install; autostart only with /AUTOSTART
 "%LOCALAPPDATA%\Programs\Blink\uninstall.exe" /S [/PURGE]   remove; /PURGE also deletes settings and saved links
 ```
 
@@ -63,11 +63,11 @@ When ready to sign (not needed for the beta): an OV or EV code-signing certifica
 
 A checklist for the day Blink goes to someone else's PC (nothing here is automated yet):
 
-1. **Build** from a clean checkout: `scripts\native\build-release.ps1` (makes `blink.exe`, `blink-settings.exe` and `scripts\out\Blink-<version>-setup.exe`). Bump the version in the workspace `Cargo.toml` first; the installer takes it from there.
+1. **Build** from a clean checkout and pack it: `scripts\native\make-release.ps1` (builds both programs, makes `scripts\out\release\Blink-<version>-setup.exe`, `SHA256SUMS.txt` and `latest.json`). Bump the version in the workspace `Cargo.toml` and in `crates/blink-settings/tauri.conf.json` first; the programs, the installer and `latest.json` take it from there. The icon is made by `python scripts/make-icon.py`, the third-party list by `python scripts/third-party-licenses.py`.
 2. **Check**: `cargo test -p blink-native -p blink-core`, every `gate-*.ps1`, `settings-e2e.mjs` and `installer-test.ps1 -BinDir <release folder>`; then a day of use by the people who are to get it, with the list under "What has not been checked" in hand.
 3. **Sign** (when there is a certificate; see the signing plan above): the two programs first, then the installer, and check with `signtool verify /pa`.
 4. **Publish** the installer and its SHA-256 on a page that says what is in this version and that an unsigned installer shows SmartScreen's warning (More info, Run anyway).
-5. **Update file** (so "Check for updates" in Blink settings can tell people): a small JSON file at a fixed https link, for example next to the installer: `{"version": "0.3.0", "url": "https://.../Blink-0.3.0-setup.exe", "notes": "What changed, in a sentence or two."}`. `url` must be a web page or file link (https). Blink only asks it when the person presses the button, shows the version and notes, and opens the link; it never downloads or installs anything by itself. People get the link to paste from the page in step 4. A link that is not https is refused, and so is an update file whose `url` is not https.
+5. **Update file** (so "Check for updates" in Blink settings can tell people): `latest.json`, made by `make-release.ps1`, uploaded to the release next to the installer: `{"version": "0.3.0", "url": "https://.../Blink-0.3.0-setup.exe", "sha256": "<64 hex digits>", "notes": "What changed, in a sentence or two."}`. GitHub gives the newest release a link that never changes, `https://github.com/<owner>/<repo>/releases/latest/download/latest.json`, which is what Blink asks by default. `url` must be a web page or file link (https). Blink only asks it when the person presses the button. It shows the version and notes and can open the page; with a `sha256` it also offers "Download and install": it downloads the installer to the temp folder, checks the SHA-256 is exactly the one in the file (a different file is deleted and never run), then runs it silently with `/S /RUN` (the installer closes Blink and its settings window, replaces the programs, keeps the install folder and the autostart choice, and starts Blink again). Without a `sha256` Blink never runs the file. Nothing happens by itself. People get the link to paste from the page in step 4. A link that is not https is refused, and so is an update file whose `url` is not https.
 6. **After**: keep the old installer for a while, so a bad release can be rolled back (installing the older one over the newer one keeps the data).
 
 ## What has been verified

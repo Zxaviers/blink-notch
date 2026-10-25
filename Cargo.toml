@@ -8,7 +8,7 @@ exclude = ["src-tauri", "spikes/native-notch"]
 [workspace.package]
 edition = "2021"
 license = "MIT"
-version = "0.2.0"
+version = "0.3.0"
 
 [profile.release]
 opt-level = "z"

@@ -25,6 +25,7 @@ pub mod planner;
 pub mod projects;
 pub mod secret;
 pub mod settings;
+pub mod sha256;
 pub mod sonar;
 pub mod update;
 pub mod store;

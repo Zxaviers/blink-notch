@@ -22,6 +22,10 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 jiff = { version = "0.2", default-features = false, features = ["std", "tz-system", "tzdb-bundle-platform", "tzdb-concatenated"] }
 
+[target.'cfg(windows)'.build-dependencies]
+# The icon and the version information in blink.exe.
+embed-resource = "3"
+
 [target.'cfg(windows)'.dependencies]
 # The `implement` macro for the UI Automation providers expects this crate by name.
 windows-core = "0.62"

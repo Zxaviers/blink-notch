@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Blink Settings",
-  "version": "0.2.0",
-  "identifier": "dev.riski.blink",
+  "version": "0.3.0",
+  "identifier": "dev.zxaviers.blink",
   "build": {
     "frontendDist": "../../src"
   },
@@ -15,6 +15,8 @@
   },
   "bundle": {
     "active": false,
+    "publisher": "Zxaviers",
+    "copyright": "MIT License, Zxaviers",
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.ico"]
   }
 }

@@ -73,7 +73,10 @@ fn purge_data() {
     // A scripted run points the data folder somewhere scratch; then the real web profile is not ours to delete.
     if std::env::var_os("BLINK_DATA_DIR").is_none() {
         if let Some(local) = std::env::var_os("LOCALAPPDATA") {
-            let _ = std::fs::remove_dir_all(std::path::Path::new(&local).join("dev.riski.blink"));
+            // The web profile of the settings window: under its current name and under the one it had before 0.3.
+            for name in ["dev.zxaviers.blink", "dev.riski.blink"] {
+                let _ = std::fs::remove_dir_all(std::path::Path::new(&local).join(name));
+            }
         }
     }
 }
