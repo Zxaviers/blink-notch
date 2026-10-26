@@ -59,6 +59,16 @@
   }
   document.addEventListener('visibilitychange', function () { if (document.hidden) stop(); else start() })
 
+  // Nothing moves while the picture is scrolled out of view.
+  var screen = stage.parentNode
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function (entries) {
+      var seen = entries[0].isIntersecting
+      screen.classList.toggle('paused', !seen)
+      if (seen) start(); else stop()
+    }).observe(screen)
+  }
+
   // It rests for a moment first, as it does on a real screen, and then opens.
   rested()
   window.setTimeout(function () { show('deadlines'); start() }, calm ? 0 : 1300)
